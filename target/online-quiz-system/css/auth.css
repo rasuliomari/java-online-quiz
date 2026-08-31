@@ -1,0 +1,413 @@
+/* =========================================================
+   AUTHENTICATION PAGES
+   ========================================================= */
+
+:root {
+    --primary: #003b73;
+    --primary-dark: #002b54;
+    --secondary: #f4b41a;
+    --light-bg: #f6f8fb;
+    --text: #334e68;
+    --muted: #829ab1;
+    --border: #d9e2ec;
+}
+
+
+/* ================= PAGE ================= */
+
+.auth-page {
+    background: var(--light-bg);
+    min-height: 100vh;
+}
+
+
+/* ================= LEFT PANEL ================= */
+
+.auth-intro {
+    background:
+        linear-gradient(
+            145deg,
+            #002b54,
+            #00509d
+        );
+
+    color: white;
+
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-intro::before {
+    content: "";
+
+    position: absolute;
+
+    width: 450px;
+    height: 450px;
+
+    border-radius: 50%;
+
+    background: rgba(244,180,26,0.08);
+
+    top: -150px;
+    right: -150px;
+}
+
+.auth-intro::after {
+    content: "";
+
+    position: absolute;
+
+    width: 350px;
+    height: 350px;
+
+    border-radius: 50%;
+
+    background: rgba(255,255,255,0.05);
+
+    bottom: -130px;
+    left: -130px;
+}
+
+.auth-intro-content {
+    width: 100%;
+    padding: 55px;
+
+    display: flex;
+    flex-direction: column;
+
+    position: relative;
+    z-index: 2;
+}
+
+.auth-brand {
+    display: inline-flex;
+    align-items: center;
+
+    color: white;
+
+    width: fit-content;
+}
+
+.auth-brand:hover {
+    color: white;
+}
+
+.auth-brand strong {
+    font-size: 20px;
+    letter-spacing: 1px;
+}
+
+.auth-brand small {
+    display: block;
+    color: rgba(255,255,255,0.65);
+    font-size: 11px;
+}
+
+.intro-content {
+    max-width: 510px;
+}
+
+.intro-label {
+    color: var(--secondary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.intro-content h1 {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-top: 18px;
+}
+
+.intro-content h1 span {
+    color: var(--secondary);
+}
+
+.intro-content > p {
+    color: rgba(255,255,255,0.72);
+    line-height: 1.8;
+    margin-top: 20px;
+    margin-bottom: 35px;
+}
+
+.intro-feature {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+
+    margin-bottom: 20px;
+}
+
+.intro-feature > i {
+    color: var(--secondary);
+    font-size: 22px;
+}
+
+.intro-feature strong {
+    display: block;
+}
+
+.intro-feature small {
+    color: rgba(255,255,255,0.55);
+}
+
+.intro-footer {
+    margin-top: auto;
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+}
+
+
+/* ================= FORM SIDE ================= */
+
+.auth-form-side {
+    background: var(--light-bg);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 50px 25px;
+}
+
+.registration-container {
+    width: 100%;
+    max-width: 800px;
+}
+
+
+/* ================= MOBILE BRAND ================= */
+
+.mobile-brand {
+    padding-bottom: 15px;
+}
+
+.mobile-brand .auth-brand {
+    color: var(--primary);
+}
+
+.mobile-brand .auth-brand:hover {
+    color: var(--primary);
+}
+
+.mobile-brand .auth-brand small {
+    color: var(--muted);
+}
+
+
+/* ================= HEADER ================= */
+
+.form-header {
+    margin-bottom: 30px;
+}
+
+.form-label-custom {
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.form-header h2 {
+    font-size: 32px;
+    font-weight: 800;
+    color: #102a43;
+    margin: 7px 0;
+}
+
+.form-header p {
+    color: var(--muted);
+    margin: 0;
+}
+
+
+/* ================= FORM ================= */
+
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    color: var(--primary);
+
+    font-size: 14px;
+    font-weight: 800;
+
+    border-bottom: 1px solid var(--border);
+
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+}
+
+.form-section-title i {
+    font-size: 17px;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334e68;
+}
+
+.form-label span {
+    color: #dc3545;
+}
+
+.form-control,
+.form-select {
+    min-height: 47px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    font-size: 14px;
+
+    padding: 10px 13px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 3px rgba(0,59,115,0.1);
+}
+
+.input-group-text {
+    background: white;
+    border-color: var(--border);
+    color: var(--muted);
+}
+
+.input-group .form-control {
+    border-left: 0;
+}
+
+.input-group:focus-within .input-group-text {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+
+/* ================= PASSWORD ================= */
+
+.password-field {
+    position: relative;
+}
+
+.password-field .form-control {
+    padding-right: 48px;
+}
+
+.password-toggle {
+    position: absolute;
+
+    right: 10px;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    border: 0;
+    background: transparent;
+
+    color: var(--muted);
+
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: var(--primary);
+}
+
+.password-help {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 5px;
+}
+
+
+/* ================= TERMS ================= */
+
+.terms-check {
+    color: var(--text);
+    font-size: 12px;
+}
+
+.terms-check .form-check-input {
+    margin-top: 3px;
+}
+
+.terms-check .form-check-input:checked {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+
+/* ================= BUTTON ================= */
+
+.btn-register {
+    min-height: 50px;
+
+    background: var(--primary);
+    border: 2px solid var(--primary);
+
+    color: white;
+
+    font-weight: 700;
+
+    border-radius: 9px;
+
+    transition: 0.2s ease;
+}
+
+.btn-register:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: white;
+
+    transform: translateY(-1px);
+}
+
+
+/* ================= LOGIN LINK ================= */
+
+.login-link {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.login-link a {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.login-link a:hover {
+    color: #f4a900;
+}
+
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 991px) {
+
+    .auth-form-side {
+        padding: 35px 20px;
+    }
+
+}
+
+@media (max-width: 576px) {
+
+    .form-header h2 {
+        font-size: 27px;
+    }
+
+    .auth-form-side {
+        padding: 25px 15px;
+    }
+
+}
