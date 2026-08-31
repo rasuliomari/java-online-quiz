@@ -1,4 +1,3 @@
-package tz.udom.quiz.util;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
