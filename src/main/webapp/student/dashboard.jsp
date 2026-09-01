@@ -125,7 +125,6 @@
     </div>
 
 </div>
-```
 
 </nav>
 
@@ -136,7 +135,6 @@
     tabindex="-1"
     id="studentSidebar">
 
-```
 <div class="offcanvas-header d-lg-none">
 
     <h5 class="offcanvas-title">
@@ -259,7 +257,6 @@
     </div>
 
 </div>
-```
 
 </div>
 
@@ -267,7 +264,6 @@
 
 <main class="dashboard-main">
 
-```
 <div class="container-fluid dashboard-container">
 
 
@@ -982,7 +978,6 @@
     </footer>
 
 </div>
-```
 
 </main>
 
