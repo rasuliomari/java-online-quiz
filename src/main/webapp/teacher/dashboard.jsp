@@ -240,10 +240,9 @@
 
         </a>
 
-
         <!-- Create Quiz -->
 
-        <a href="#" class="sidebar-link">
+        <a href="create-quiz.jsp" class="sidebar-link">
 
             <i class="bi bi-plus-circle-fill"></i>
 
@@ -928,10 +927,9 @@
 
                 </div>
 
-
                 <!-- Create quiz -->
 
-                <a href="#" class="quick-action">
+                <a href="create-quiz.jsp" class="quick-action">
 
                     <div class="quick-action-icon icon-blue">
 
@@ -939,19 +937,15 @@
 
                     </div>
 
-
                     <div>
 
                         <h6>Create New Quiz</h6>
 
                         <span>
-
                             Create a new assessment
-
                         </span>
 
                     </div>
-
 
                     <i class="bi bi-chevron-right ms-auto"></i>
 
