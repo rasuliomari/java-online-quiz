@@ -802,3 +802,49 @@ color: var(--udom-primary);
 }
 
 }
+
+/* =========================================================
+TEACHER DASHBOARD
+QUICK ACTIONS
+========================================================= */
+
+.quick-action {
+display: flex;
+align-items: center;
+gap: 12px;
+padding: 13px 0;
+border-top: 1px solid #edf0f3;
+color: var(--text-dark);
+transition: 0.2s ease;
+}
+
+.quick-action:hover {
+transform: translateX(3px);
+}
+
+.quick-action-icon {
+min-width: 43px;
+height: 43px;
+border-radius: 10px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 17px;
+}
+
+.quick-action h6 {
+margin: 0 0 3px;
+font-size: 12px;
+font-weight: 650;
+}
+
+.quick-action span {
+font-size: 9px;
+color: var(--text-muted);
+}
+
+.quick-action > i {
+color: #9ca3af;
+font-size: 12px;
+}
+
