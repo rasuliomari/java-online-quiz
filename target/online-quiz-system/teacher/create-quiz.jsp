@@ -833,7 +833,15 @@
                         value="continue"
                         class="btn btn-primary">
 
-                        Continue
+                        <!-- Continue -->
+                        <a href="add-questions.jsp"
+                            class="btn btn-primary">
+
+                            Continue
+
+                            <i class="bi bi-arrow-right ms-1"></i>
+
+                        </a>
 
                         <i class="bi bi-arrow-right ms-1"></i>
 
