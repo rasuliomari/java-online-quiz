@@ -415,7 +415,7 @@
                         </div>
 
 
-                        <div class="col-md-6">
+                        <!-- <div class="col-md-6">
 
                             <label for="department"
                                    class="form-label">
@@ -433,7 +433,7 @@
                                 placeholder="Department"
                                 required>
 
-                        </div>
+                        </div> -->
 
 
                         <div class="col-md-6">
