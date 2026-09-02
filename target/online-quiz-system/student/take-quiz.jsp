@@ -1,4 +1,3 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
 <%@ page import="java.sql.Connection" %>
 <%@ page import="java.sql.PreparedStatement" %>
@@ -31,6 +30,28 @@
                 HttpServletResponse.SC_BAD_REQUEST,
                 "Invalid quiz ID."
         );
+        return;
+    }
+
+
+    /* ============================================================
+       PREVENT SECOND ATTEMPT
+       ============================================================ */
+
+    jakarta.servlet.http.HttpSession currentSession =
+            request.getSession(false);
+
+    String attemptKey =
+            "quizAttempted_" + quizId;
+
+    if (currentSession != null
+            && Boolean.TRUE.equals(
+                    currentSession.getAttribute(attemptKey))) {
+
+        response.sendRedirect(
+                "quiz-already-attempted.jsp?quizId=" + quizId
+        );
+
         return;
     }
 
@@ -99,9 +120,14 @@
 
                 if (resultSet.next()) {
 
-                    quizTitle = resultSet.getString("title");
-                    course = resultSet.getString("course");
-                    description = resultSet.getString("description");
+                    quizTitle =
+                            resultSet.getString("title");
+
+                    course =
+                            resultSet.getString("course");
+
+                    description =
+                            resultSet.getString("description");
 
                     duration =
                             resultSet.getInt("duration_minutes");
@@ -140,9 +166,7 @@
     }
 %>
 
-
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
@@ -153,29 +177,125 @@
           content="width=device-width, initial-scale=1.0">
 
     <title>
-        Take Quiz - <%= quizTitle %>
+        <%= quizTitle %> - Take Quiz
     </title>
 
-
-    <!-- Bootstrap CSS -->
-
+    <!-- Bootstrap -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet">
 
-
     <!-- Bootstrap Icons -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+        rel="stylesheet">
 
+    <!-- Dashboard CSS -->
     <link
         rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+        href="<%= request.getContextPath() %>/css/dashboard.css">
 
+    <style>
 
-    <!-- SAME DASHBOARD CSS -->
+        .quiz-header {
+            background: linear-gradient(
+                135deg,
+                #0d6efd,
+                #084298
+            );
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
 
-    <link
-        rel="stylesheet"
-        href="../css/dashboard.css">
+        .quiz-info-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .question-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+
+        .question-number {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0d6efd;
+            color: white;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .option-label {
+            display: block;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-label:hover {
+            border-color: #0d6efd;
+            background-color: #f8faff;
+        }
+
+        .option-label input {
+            margin-right: 10px;
+        }
+
+        .timer-card {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .timer-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: #0d6efd;
+        }
+
+        .timer-danger {
+            color: #dc3545 !important;
+        }
+
+        .progress {
+            height: 8px;
+            border-radius: 10px;
+        }
+
+        .submit-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .submit-btn {
+            min-width: 180px;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+        }
+
+        .quiz-description {
+            white-space: pre-line;
+        }
+
+    </style>
 
 </head>
 
@@ -187,152 +307,82 @@
      NAVBAR
      ============================================================ -->
 
-<nav class="navbar navbar-expand-lg dashboard-navbar fixed-top">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
 
     <div class="container-fluid">
 
+        <a class="navbar-brand fw-bold"
+           href="<%= request.getContextPath() %>/student/dashboard.jsp">
 
-        <!-- Mobile Sidebar Button -->
+            <i class="bi bi-mortarboard-fill me-2"></i>
 
-        <button
-            class="btn sidebar-toggle d-lg-none me-2"
-            type="button"
-            data-bs-toggle="offcanvas"
-            data-bs-target="#studentSidebar">
-
-            <i class="bi bi-list"></i>
-
-        </button>
-
-
-        <!-- Brand -->
-
-        <a
-            class="navbar-brand d-flex align-items-center"
-            href="dashboard.jsp">
-
-            <div class="brand-icon">
-
-                <i class="bi bi-mortarboard-fill"></i>
-
-            </div>
-
-            <div class="brand-text">
-
-                <span>UDOM</span>
-
-                <small>
-                    Online Quiz System
-                </small>
-
-            </div>
+            UDOM Online Quiz
 
         </a>
 
 
-        <!-- Right Side -->
+        <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarContent">
 
-        <div class="d-flex align-items-center ms-auto">
+            <span class="navbar-toggler-icon"></span>
 
-
-            <!-- Notification -->
-
-            <button
-                class="notification-btn me-3">
-
-                <i class="bi bi-bell"></i>
-
-                <span class="notification-badge">
-                    3
-                </span>
-
-            </button>
+        </button>
 
 
-            <!-- Profile -->
+        <div
+            class="collapse navbar-collapse"
+            id="navbarContent">
 
-            <div class="dropdown">
+            <ul class="navbar-nav ms-auto">
 
-                <button
-                    class="profile-button dropdown-toggle"
-                    data-bs-toggle="dropdown">
+                <li class="nav-item">
 
-                    <div class="student-avatar">
-                        RO
-                    </div>
+                    <a
+                        class="nav-link"
+                        href="<%= request.getContextPath() %>/student/dashboard.jsp">
 
-                    <div class="student-name d-none d-md-block">
+                        <i class="bi bi-house-door me-1"></i>
 
-                        <strong>
-                            Student
-                        </strong>
+                        Dashboard
 
-                        <small>
-                            Student Account
-                        </small>
+                    </a>
 
-                    </div>
-
-                </button>
+                </li>
 
 
-                <ul
-                    class="dropdown-menu dropdown-menu-end shadow">
+                <li class="nav-item">
 
-                    <li>
+                    <a
+                        class="nav-link"
+                        href="<%= request.getContextPath() %>/student/dashboard.jsp">
 
-                        <a
-                            class="dropdown-item"
-                            href="#">
+                        <i class="bi bi-journal-text me-1"></i>
 
-                            <i class="bi bi-person me-2"></i>
+                        Quizzes
 
-                            My Profile
+                    </a>
 
-                        </a>
-
-                    </li>
+                </li>
 
 
-                    <li>
+                <li class="nav-item">
 
-                        <a
-                            class="dropdown-item"
-                            href="#">
+                    <a
+                        class="nav-link"
+                        href="<%= request.getContextPath() %>/index.jsp">
 
-                            <i class="bi bi-gear me-2"></i>
+                        <i class="bi bi-box-arrow-right me-1"></i>
 
-                            Settings
+                        Logout
 
-                        </a>
+                    </a>
 
-                    </li>
+                </li>
 
-
-                    <li>
-
-                        <hr class="dropdown-divider">
-
-                    </li>
-
-
-                    <li>
-
-                        <a
-                            class="dropdown-item text-danger"
-                            href="../login.jsp">
-
-                            <i class="bi bi-box-arrow-right me-2"></i>
-
-                            Logout
-
-                        </a>
-
-                    </li>
-
-                </ul>
-
-            </div>
+            </ul>
 
         </div>
 
@@ -343,237 +393,70 @@
 
 
 <!-- ============================================================
-     SIDEBAR
-     ============================================================ -->
-
-<div
-    class="offcanvas-lg offcanvas-start student-sidebar"
-    tabindex="-1"
-    id="studentSidebar">
-
-
-    <!-- Mobile Header -->
-
-    <div class="offcanvas-header d-lg-none">
-
-        <h5 class="offcanvas-title">
-            Student Menu
-        </h5>
-
-        <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="offcanvas">
-        </button>
-
-    </div>
-
-
-    <div class="sidebar-content">
-
-
-        <!-- Sidebar Profile -->
-
-        <div class="sidebar-profile">
-
-            <div class="sidebar-avatar">
-                RO
-            </div>
-
-            <div>
-
-                <h6>
-                    Student
-                </h6>
-
-                <span>
-                    Student Account
-                </span>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- Sidebar Menu -->
-
-        <div class="sidebar-menu">
-
-
-            <p class="menu-title">
-                MAIN MENU
-            </p>
-
-
-            <!-- Dashboard -->
-
-            <a
-                href="dashboard.jsp"
-                class="sidebar-link">
-
-                <i class="bi bi-grid-1x2-fill"></i>
-
-                <span>
-                    Dashboard
-                </span>
-
-            </a>
-
-
-            <!-- Available Quizzes -->
-
-            <a
-                href="dashboard.jsp"
-                class="sidebar-link active">
-
-                <i class="bi bi-journal-check"></i>
-
-                <span>
-                    Available Quizzes
-                </span>
-
-                <span class="menu-badge">
-                    <%= availableQuizzes %>
-                </span>
-
-            </a>
-
-
-            <!-- Quiz History -->
-
-            <a
-                href="#"
-                class="sidebar-link">
-
-                <i class="bi bi-clock-history"></i>
-
-                <span>
-                    Quiz History
-                </span>
-
-            </a>
-
-
-            <!-- My Results -->
-
-            <a
-                href="#"
-                class="sidebar-link">
-
-                <i class="bi bi-bar-chart-fill"></i>
-
-                <span>
-                    My Results
-                </span>
-
-            </a>
-
-
-            <!-- Account -->
-
-            <p class="menu-title mt-4">
-                ACCOUNT
-            </p>
-
-
-            <!-- Profile -->
-
-            <a
-                href="#"
-                class="sidebar-link">
-
-                <i class="bi bi-person-fill"></i>
-
-                <span>
-                    My Profile
-                </span>
-
-            </a>
-
-
-            <!-- Settings -->
-
-            <a
-                href="#"
-                class="sidebar-link">
-
-                <i class="bi bi-gear-fill"></i>
-
-                <span>
-                    Settings
-                </span>
-
-            </a>
-
-        </div>
-
-
-
-        <!-- Sidebar Bottom -->
-
-        <div class="sidebar-bottom">
-
-            <a
-                href="../login.jsp"
-                class="logout-link">
-
-                <i class="bi bi-box-arrow-left"></i>
-
-                <span>
-                    Logout
-                </span>
-
-            </a>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- ============================================================
      MAIN CONTENT
      ============================================================ -->
 
-<main class="dashboard-main">
+<div class="container-fluid py-4">
 
-
-    <div class="container-fluid dashboard-container">
+    <div class="row">
 
 
         <!-- ====================================================
-             PAGE HEADER
+             SIDEBAR
              ==================================================== -->
 
-        <div class="welcome-section">
+        <div class="col-lg-2 mb-4">
 
-            <div>
+            <div class="card shadow-sm border-0">
 
-                <h1>
-                    Take Quiz
-                </h1>
+                <div class="card-body">
 
-                <p>
-                    Answer all questions before submitting your quiz.
-                </p>
+                    <h6 class="text-muted mb-3">
 
-            </div>
+                        <i class="bi bi-grid me-2"></i>
+
+                        Student Menu
+
+                    </h6>
 
 
-            <div>
+                    <div class="list-group list-group-flush">
 
-                <a
-                    href="dashboard.jsp"
-                    class="btn btn-outline-secondary">
+                        <a
+                            href="<%= request.getContextPath() %>/student/dashboard.jsp"
+                            class="list-group-item list-group-item-action">
 
-                    <i class="bi bi-arrow-left me-1"></i>
+                            <i class="bi bi-speedometer2 me-2"></i>
 
-                    Back to Dashboard
+                            Dashboard
 
-                </a>
+                        </a>
+
+
+                        <a
+                            href="<%= request.getContextPath() %>/student/dashboard.jsp"
+                            class="list-group-item list-group-item-action active">
+
+                            <i class="bi bi-question-circle me-2"></i>
+
+                            Take Quiz
+
+                        </a>
+
+
+                        <a
+                            href="<%= request.getContextPath() %>/student/dashboard.jsp"
+                            class="list-group-item list-group-item-action">
+
+                            <i class="bi bi-bar-chart me-2"></i>
+
+                            My Results
+
+                        </a>
+
+                    </div>
+
+                </div>
 
             </div>
 
@@ -582,275 +465,223 @@
 
 
         <!-- ====================================================
-             QUIZ INFORMATION
+             QUIZ CONTENT
              ==================================================== -->
 
-        <div class="content-card mb-4">
+        <div class="col-lg-8">
 
 
-            <div class="card-header-custom">
+            <!-- =================================================
+                 QUIZ HEADER
+                 ================================================= -->
 
-                <div>
+            <div class="quiz-header">
 
-                    <h5 class="mb-1">
+                <div class="d-flex align-items-start">
 
-                        <i class="bi bi-journal-text me-2"></i>
+                    <div class="me-3">
 
-                        <%= quizTitle %>
-
-                    </h5>
-
-                    <small class="text-muted">
-
-                        <%= course %>
-
-                    </small>
-
-                </div>
-
-
-                <span class="badge bg-success">
-
-                    <%= status %>
-
-                </span>
-
-            </div>
-
-
-
-            <div class="card-body">
-
-
-                <% if (description != null
-                        && !description.trim().isEmpty()) { %>
-
-                    <p class="text-muted mb-4">
-
-                        <%= description %>
-
-                    </p>
-
-                <% } %>
-
-
-
-                <div class="row g-3">
-
-
-                    <!-- Duration -->
-
-                    <div class="col-md-3">
-
-                        <div class="border rounded p-3 h-100">
-
-                            <div class="text-muted small">
-
-                                <i class="bi bi-clock me-1"></i>
-
-                                Duration
-
-                            </div>
-
-                            <h5 class="mb-0 mt-1">
-
-                                <%= duration %> minutes
-
-                            </h5>
-
-                        </div>
+                        <i
+                            class="bi bi-journal-check fs-1">
+                        </i>
 
                     </div>
 
 
+                    <div>
 
-                    <!-- Questions -->
+                        <h2 class="fw-bold mb-2">
 
-                    <div class="col-md-3">
+                            <%= quizTitle %>
 
-                        <div class="border rounded p-3 h-100">
-
-                            <div class="text-muted small">
-
-                                <i class="bi bi-question-circle me-1"></i>
-
-                                Questions
-
-                            </div>
-
-                            <h5 class="mb-0 mt-1">
-
-                                <%= questionCount %>
-
-                            </h5>
-
-                        </div>
-
-                    </div>
+                        </h2>
 
 
+                        <div class="mb-2">
 
-                    <!-- Pass Mark -->
+                            <span class="badge bg-light text-primary me-2">
 
-                    <div class="col-md-3">
+                                <i class="bi bi-book me-1"></i>
 
-                        <div class="border rounded p-3 h-100">
+                                <%= course %>
 
-                            <div class="text-muted small">
+                            </span>
+
+
+                            <span class="badge bg-light text-primary">
 
                                 <i class="bi bi-check-circle me-1"></i>
 
-                                Pass Mark
-
-                            </div>
-
-                            <h5 class="mb-0 mt-1">
-
-                                <%= passMark %>%
-
-                            </h5>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- Status -->
-
-                    <div class="col-md-3">
-
-                        <div class="border rounded p-3 h-100">
-
-                            <div class="text-muted small">
-
-                                <i class="bi bi-shield-check me-1"></i>
-
-                                Status
-
-                            </div>
-
-                            <h5 class="mb-0 mt-1 text-success">
-
                                 Published
 
-                            </h5>
+                            </span>
 
                         </div>
 
-                    </div>
 
-                </div>
+                        <% if (description != null
+                                && !description.trim().isEmpty()) { %>
 
-            </div>
+                            <p class="mb-0 quiz-description">
 
-        </div>
+                                <%= description %>
 
+                            </p>
 
-
-        <!-- ====================================================
-             QUIZ TOOLBAR
-             ==================================================== -->
-
-        <div
-            class="content-card mb-4">
-
-            <div
-                class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-
-                <div>
-
-                    <strong>
-
-                        <i class="bi bi-list-check me-2"></i>
-
-                        Quiz Progress
-
-                    </strong>
-
-                    <div class="text-muted small mt-1">
-
-                        Answered
-                        <span id="answeredCount">0</span>
-                        of
-                        <%= questionCount %>
-                        questions
+                        <% } %>
 
                     </div>
 
                 </div>
 
-
-                <!-- Timer -->
-
-                <div class="text-center">
-
-                    <div class="text-muted small">
-
-                        Time Remaining
-
-                    </div>
-
-                    <h4
-                        id="timer"
-                        class="mb-0">
-
-                        <%= duration %>:00
-
-                    </h4>
-
-                </div>
-
             </div>
-
-
-            <!-- Progress -->
-
-            <div class="progress mt-3"
-                 role="progressbar"
-                 aria-label="Quiz progress"
-                 aria-valuemin="0"
-                 aria-valuemax="100">
-
-                <div
-                    id="quizProgress"
-                    class="progress-bar"
-                    style="width: 0%;">
-
-                    0%
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- ====================================================
-             QUIZ FORM
-             ==================================================== -->
-
-        <form
-            id="quizForm"
-            action="../submitQuiz"
-            method="post">
-
-
-            <input
-                type="hidden"
-                name="quizId"
-                value="<%= quizId %>">
 
 
 
             <!-- =================================================
-                 QUESTIONS
+                 QUIZ INFORMATION
                  ================================================= -->
 
-            <%
-                try (Connection connection =
-                             DBConnection.getConnection()) {
+            <div class="card quiz-info-card mb-4">
+
+                <div class="card-body">
+
+                    <div class="row text-center">
+
+                        <div class="col-md-3 mb-3 mb-md-0">
+
+                            <i
+                                class="bi bi-list-ol text-primary fs-3">
+                            </i>
+
+                            <h6 class="mt-2 mb-1">
+
+                                Questions
+
+                            </h6>
+
+                            <strong>
+
+                                <%= questionCount %>
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="col-md-3 mb-3 mb-md-0">
+
+                            <i
+                                class="bi bi-clock text-primary fs-3">
+                            </i>
+
+                            <h6 class="mt-2 mb-1">
+
+                                Duration
+
+                            </h6>
+
+                            <strong>
+
+                                <%= duration %> minutes
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="col-md-3 mb-3 mb-md-0">
+
+                            <i
+                                class="bi bi-trophy text-primary fs-3">
+                            </i>
+
+                            <h6 class="mt-2 mb-1">
+
+                                Pass Mark
+
+                            </h6>
+
+                            <strong>
+
+                                <%= passMark %>%
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="col-md-3">
+
+                            <i
+                                class="bi bi-collection text-primary fs-3">
+                            </i>
+
+                            <h6 class="mt-2 mb-1">
+
+                                Available
+
+                            </h6>
+
+                            <strong>
+
+                                <%= availableQuizzes %>
+
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 WARNING
+                 ================================================= -->
+
+            <div class="alert alert-warning d-flex align-items-start">
+
+                <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+
+                <div>
+
+                    <strong>Important:</strong>
+
+                    You are allowed only one attempt for this quiz.
+
+                    Once you submit your answers, you cannot take this
+                    quiz again.
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 QUIZ FORM
+                 ================================================= -->
+
+            <form
+                id="quizForm"
+                action="<%= request.getContextPath() %>/submitQuiz"
+                method="post">
+
+
+                <input
+                    type="hidden"
+                    name="quizId"
+                    value="<%= quizId %>">
+
+
+                <%
+                    /* ====================================================
+                       LOAD QUESTIONS
+                       ==================================================== */
 
                     String questionSql =
                             "SELECT id, question_text, question_number " +
@@ -858,8 +689,11 @@
                             "WHERE quiz_id = ? " +
                             "ORDER BY question_number ASC";
 
-                    try (PreparedStatement questionStatement =
-                                 connection.prepareStatement(questionSql)) {
+                    try (Connection questionConnection =
+                                 DBConnection.getConnection();
+                         PreparedStatement questionStatement =
+                                 questionConnection.prepareStatement(
+                                         questionSql)) {
 
                         questionStatement.setInt(1, quizId);
 
@@ -868,122 +702,94 @@
 
                             while (questionResult.next()) {
 
-                                int currentQuestionId =
+                                int questionId =
                                         questionResult.getInt("id");
 
-                                int currentQuestionNumber =
-                                        questionResult.getInt("question_number");
+                                String questionText =
+                                        questionResult.getString(
+                                                "question_text");
 
-                                String currentQuestionText =
-                                        questionResult.getString("question_text");
-            %>
-
-
-            <!-- =================================================
-                 QUESTION CARD
-                 ================================================= -->
-
-            <div class="content-card mb-4">
+                                int questionNumber =
+                                        questionResult.getInt(
+                                                "question_number");
+                %>
 
 
-                <!-- Question Header -->
+                <!-- ====================================================
+                     QUESTION CARD
+                     ==================================================== -->
 
-                <div
-                    class="d-flex justify-content-between align-items-center mb-3">
+                <div class="card question-card">
 
-
-                    <div>
-
-                        <span class="badge bg-primary rounded-pill">
-
-                            Question
-                            <%= currentQuestionNumber %>
-
-                        </span>
-
-                    </div>
+                    <div class="card-body p-4">
 
 
-                    <span class="text-muted small">
+                        <div class="d-flex align-items-start mb-4">
 
-                        <%= currentQuestionNumber %>
-                        /
-                        <%= questionCount %>
+                            <div class="question-number me-3">
 
-                    </span>
+                                <%= questionNumber %>
 
-                </div>
+                            </div>
+
+
+                            <div class="flex-grow-1">
+
+                                <h5 class="fw-semibold mb-0">
+
+                                    <%= questionText %>
+
+                                </h5>
+
+                            </div>
+
+                        </div>
 
 
 
-                <!-- Question -->
+                        <!-- ============================================
+                             ANSWERS
+                             ============================================ -->
 
-                <div class="mb-4">
+                        <%
+                            String answerSql =
+                                    "SELECT option_label, answer_text " +
+                                    "FROM answers " +
+                                    "WHERE question_id = ? " +
+                                    "ORDER BY option_label ASC";
 
-                    <h5 class="mb-0">
+                            try (PreparedStatement answerStatement =
+                                         questionConnection.prepareStatement(
+                                                 answerSql)) {
 
-                        <%= currentQuestionText %>
+                                answerStatement.setInt(
+                                        1,
+                                        questionId
+                                );
 
-                    </h5>
+                                try (ResultSet answerResult =
+                                             answerStatement.executeQuery()) {
 
-                </div>
+                                    while (answerResult.next()) {
 
+                                        String optionLabel =
+                                                answerResult.getString(
+                                                        "option_label");
 
-
-                <!-- Answers -->
-
-                <div>
-
-
-                    <%
-                        String answerSql =
-                                "SELECT option_label, answer_text " +
-                                "FROM answers " +
-                                "WHERE question_id = ? " +
-                                "ORDER BY option_label ASC";
-
-                        try (PreparedStatement answerStatement =
-                                     connection.prepareStatement(answerSql)) {
-
-                            answerStatement.setInt(
-                                    1,
-                                    currentQuestionId
-                            );
-
-                            try (ResultSet answerResult =
-                                         answerStatement.executeQuery()) {
-
-                                while (answerResult.next()) {
-
-                                    String optionLabel =
-                                            answerResult.getString(
-                                                    "option_label"
-                                            );
-
-                                    String answerText =
-                                            answerResult.getString(
-                                                    "answer_text"
-                                            );
-                    %>
+                                        String answerText =
+                                                answerResult.getString(
+                                                        "answer_text");
+                        %>
 
 
-                    <!-- Answer -->
+                        <label class="option-label">
 
-                    <div
-                        class="form-check border rounded p-3 mb-2">
-
-                        <input
-                            class="form-check-input ms-0 me-2"
-                            type="radio"
-                            name="question_<%= currentQuestionId %>"
-                            id="question_<%= currentQuestionId %>_<%= optionLabel %>"
-                            value="<%= optionLabel %>"
-                            required>
-
-
-                        <label
-                            class="form-check-label w-100"
-                            for="question_<%= currentQuestionId %>_<%= optionLabel %>">
+                            <input
+                                type="radio"
+                                class="form-check-input"
+                                name="question_<%= questionId %>"
+                                value="<%= optionLabel %>"
+                                required>
 
                             <strong class="me-2">
 
@@ -995,137 +801,221 @@
 
                         </label>
 
-                    </div>
 
-
-                    <%
+                        <%
+                                    }
                                 }
                             }
-                        }
-                    %>
+                        %>
 
+                    </div>
 
                 </div>
 
-            </div>
 
-
-            <%
+                <%
                             }
                         }
-                    }
 
-                } catch (SQLException e) {
+                    } catch (SQLException e) {
 
-                    e.printStackTrace();
-            %>
-
-
-            <div class="alert alert-danger">
-
-                <i class="bi bi-exclamation-triangle me-2"></i>
-
-                Unable to load quiz questions.
-
-            </div>
+                        e.printStackTrace();
+                %>
 
 
-            <%
-                }
-            %>
+                <div class="alert alert-danger">
 
+                    <i class="bi bi-database-x me-2"></i>
 
-        </form>
-
-
-
-        <!-- ====================================================
-             SUBMIT AREA
-             ==================================================== -->
-
-        <div class="content-card mb-4">
-
-
-            <div
-                class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-
-
-                <div>
-
-                    <strong>
-
-                        <i class="bi bi-info-circle me-2"></i>
-
-                        Ready to submit?
-
-                    </strong>
-
-                    <p class="text-muted small mb-0 mt-1">
-
-                        Make sure you have answered all questions.
-
-                    </p>
+                    Unable to load quiz questions.
 
                 </div>
 
 
-                <button
-                    type="submit"
-                    form="quizForm"
-                    class="btn btn-primary">
+                <%
+                    }
+                %>
 
-                    <i class="bi bi-send-fill me-1"></i>
 
-                    Submit Quiz
+                <!-- =================================================
+                     SUBMIT CARD
+                     ================================================= -->
 
-                </button>
+                <div class="card submit-card mb-4">
 
-            </div>
+                    <div class="card-body p-4 text-center">
+
+                        <i
+                            class="bi bi-send-check text-primary fs-1">
+                        </i>
+
+
+                        <h5 class="fw-bold mt-3">
+
+                            Ready to Submit?
+
+                        </h5>
+
+
+                        <p class="text-muted">
+
+                            Make sure you have answered every question
+                            before submitting.
+
+                        </p>
+
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary submit-btn">
+
+                            <i class="bi bi-check-circle me-2"></i>
+
+                            Submit Quiz
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
 
         </div>
 
 
 
         <!-- ====================================================
-             FOOTER
+             RIGHT SIDEBAR
              ==================================================== -->
 
-        <footer class="dashboard-footer">
+        <div class="col-lg-2">
 
-            <p>
-                © 2026 UDOM Online Quiz System.
-                University of Dodoma.
-            </p>
+            <div class="card timer-card">
 
-            <div>
+                <div class="card-body text-center">
 
-                <a href="#">
-                    Help
-                </a>
+                    <i
+                        class="bi bi-stopwatch text-primary fs-2">
+                    </i>
 
-                <a href="#">
-                    Privacy
-                </a>
 
-                <a href="#">
-                    Support
-                </a>
+                    <h6 class="mt-2">
+
+                        Time Remaining
+
+                    </h6>
+
+
+                    <div
+                        id="timer"
+                        class="timer-value">
+
+                        <%= duration %>:00
+
+                    </div>
+
+
+                    <div class="progress mt-3">
+
+                        <div
+                            id="progressBar"
+                            class="progress-bar"
+                            role="progressbar"
+                            style="width: 100%;">
+
+                        </div>
+
+                    </div>
+
+
+                    <small
+                        id="timerMessage"
+                        class="text-muted d-block mt-2">
+
+                        Manage your time carefully.
+
+                    </small>
+
+                </div>
 
             </div>
 
-        </footer>
 
+            <div class="card shadow-sm border-0 mt-3">
+
+                <div class="card-body">
+
+                    <h6 class="fw-bold">
+
+                        <i
+                            class="bi bi-info-circle text-primary me-2">
+                        </i>
+
+                        Quiz Rules
+
+                    </h6>
+
+
+                    <ul class="small text-muted ps-3 mb-0">
+
+                        <li class="mb-2">
+                            Answer all questions.
+                        </li>
+
+                        <li class="mb-2">
+                            Each question has one correct answer.
+                        </li>
+
+                        <li class="mb-2">
+                            You have one attempt only.
+                        </li>
+
+                        <li>
+                            Submit before the timer ends.
+                        </li>
+
+                    </ul>
+
+                </div>
+
+            </div>
+
+        </div>
 
     </div>
 
-</main>
+</div>
 
 
 
 <!-- ============================================================
-     BOOTSTRAP JS
+     FOOTER
      ============================================================ -->
 
+<footer class="bg-light border-top py-4 mt-4">
+
+    <div class="container text-center">
+
+        <p class="mb-1 text-muted">
+
+            UDOM Online Quiz System
+
+        </p>
+
+        <small class="text-muted">
+
+            University of Dodoma
+
+        </small>
+
+    </div>
+
+</footer>
+
+
+
+<!-- Bootstrap JS -->
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
@@ -1133,19 +1023,26 @@
 
 
 <!-- ============================================================
-     QUIZ JAVASCRIPT
+     QUIZ TIMER
      ============================================================ -->
 
 <script>
 
-    /* ============================================================
-       TIMER
-       ============================================================ */
+    let durationMinutes = <%= duration %>;
 
-    let totalSeconds = <%= duration %> * 60;
+    let totalSeconds = durationMinutes * 60;
 
-    const timer =
+    let remainingSeconds = totalSeconds;
+
+
+    const timerElement =
         document.getElementById("timer");
+
+    const progressBar =
+        document.getElementById("progressBar");
+
+    const timerMessage =
+        document.getElementById("timerMessage");
 
     const quizForm =
         document.getElementById("quizForm");
@@ -1154,49 +1051,59 @@
     function updateTimer() {
 
         const minutes =
-            Math.floor(totalSeconds / 60);
+            Math.floor(remainingSeconds / 60);
 
         const seconds =
-            totalSeconds % 60;
+            remainingSeconds % 60;
 
 
-        timer.textContent =
-            minutes +
-            ":" +
-            (seconds < 10 ? "0" : "") +
-            seconds;
+        timerElement.textContent =
+            minutes + ":" +
+            String(seconds).padStart(2, "0");
 
 
-        /* Last minute warning */
+        if (totalSeconds > 0) {
 
-        if (totalSeconds <= 60) {
+            const percentage =
+                (remainingSeconds / totalSeconds) * 100;
 
-            timer.classList.add("text-danger");
-
-        } else {
-
-            timer.classList.remove("text-danger");
+            progressBar.style.width =
+                percentage + "%";
 
         }
 
 
-        /* Time finished */
+        if (remainingSeconds <= 60) {
 
-        if (totalSeconds <= 0) {
+            timerElement.classList.add(
+                "timer-danger"
+            );
+
+            timerMessage.textContent =
+                "Less than one minute remaining!";
+
+        }
+
+
+        if (remainingSeconds <= 0) {
 
             clearInterval(timerInterval);
 
-            alert(
-                "Time is over. Your quiz will be submitted automatically."
-            );
+            timerElement.textContent =
+                "0:00";
+
+            timerMessage.textContent =
+                "Time is over. Submitting your quiz...";
+
 
             quizForm.submit();
 
             return;
+
         }
 
 
-        totalSeconds--;
+        remainingSeconds--;
 
     }
 
@@ -1210,107 +1117,45 @@
 
 
     /* ============================================================
-       QUIZ PROGRESS
+       PREVENT ACCIDENTAL DOUBLE SUBMISSION
        ============================================================ */
 
-    const answeredCount =
-        document.getElementById("answeredCount");
+    let submitted = false;
 
-    const quizProgress =
-        document.getElementById("quizProgress");
-
-
-    function updateProgress() {
-
-        const selectedAnswers =
-            document.querySelectorAll(
-                '#quizForm input[type="radio"]:checked'
-            );
-
-
-        const uniqueQuestions =
-            new Set();
-
-
-        selectedAnswers.forEach(function (radio) {
-
-            uniqueQuestions.add(
-                radio.name
-            );
-
-        });
-
-
-        const answered =
-            uniqueQuestions.size;
-
-
-        const total =
-            <%= questionCount %>;
-
-
-        let percentage = 0;
-
-
-        if (total > 0) {
-
-            percentage =
-                Math.round(
-                    (answered / total) * 100
-                );
-
-        }
-
-
-        answeredCount.textContent =
-            answered;
-
-
-        quizProgress.style.width =
-            percentage + "%";
-
-
-        quizProgress.textContent =
-            percentage + "%";
-
-    }
-
-
-    document
-        .querySelectorAll(
-            '#quizForm input[type="radio"]'
-        )
-        .forEach(function (radio) {
-
-            radio.addEventListener(
-                "change",
-                updateProgress
-            );
-
-        });
-
-
-    updateProgress();
-
-
-
-    /* ============================================================
-       SUBMIT CONFIRMATION
-       ============================================================ */
 
     quizForm.addEventListener(
         "submit",
         function (event) {
 
-            const confirmed =
-                confirm(
-                    "Are you sure you want to submit this quiz?"
-                );
-
-
-            if (!confirmed) {
+            if (submitted) {
 
                 event.preventDefault();
+
+                return;
+
+            }
+
+
+            submitted = true;
+
+        }
+    );
+
+
+
+    /* ============================================================
+       WARN BEFORE LEAVING PAGE
+       ============================================================ */
+
+    window.addEventListener(
+        "beforeunload",
+        function (event) {
+
+            if (!submitted) {
+
+                event.preventDefault();
+
+                event.returnValue = "";
 
             }
 
@@ -1318,7 +1163,6 @@
     );
 
 </script>
-
 
 </body>
 

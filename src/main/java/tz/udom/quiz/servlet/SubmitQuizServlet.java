@@ -5,6 +5,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -26,69 +28,146 @@ public class SubmitQuizServlet extends HttpServlet {
         String quizIdValue = request.getParameter("quizId");
 
         if (quizIdValue == null || quizIdValue.trim().isEmpty()) {
+
             response.sendError(
                     HttpServletResponse.SC_BAD_REQUEST,
                     "Quiz ID is required."
             );
+
             return;
         }
 
         int quizId;
 
         try {
+
             quizId = Integer.parseInt(quizIdValue);
+
         } catch (NumberFormatException e) {
+
             response.sendError(
                     HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid quiz ID."
             );
+
             return;
         }
+
+
+        /*
+         * Get the current student session.
+         */
+        HttpSession session = request.getSession();
+
+
+        /*
+         * ========================================================
+         * PREVENT SECOND ATTEMPT
+         * ========================================================
+         */
+
+        String attemptKey =
+                "quizAttempted_" + quizId;
+
+        synchronized (session) {
+
+            if (Boolean.TRUE.equals(
+                    session.getAttribute(attemptKey))) {
+
+                response.sendRedirect(
+                        "student/quiz-already-attempted.jsp?quizId="
+                                + quizId
+                );
+
+                return;
+            }
+
+
+            /*
+             * Mark this quiz as attempted BEFORE processing.
+             *
+             * This prevents the student from submitting the same
+             * quiz twice from two requests.
+             */
+            session.setAttribute(
+                    attemptKey,
+                    Boolean.TRUE
+            );
+        }
+
 
         int score = 0;
         int totalQuestions = 0;
         int passMark = 0;
+
         String quizTitle = "";
 
-        try (Connection connection = DBConnection.getConnection()) {
+
+        /*
+         * Store the student's selected answers.
+         *
+         * Key   = question ID
+         * Value = selected option A/B/C/D
+         */
+        Map<Integer, String> submittedAnswers =
+                new LinkedHashMap<>();
+
+
+        try (Connection connection =
+                     DBConnection.getConnection()) {
+
 
             /*
-             * Get quiz information.
-             * Only published quizzes can be submitted.
+             * ====================================================
+             * GET QUIZ INFORMATION
+             * ====================================================
              */
+
             String quizSql =
                     "SELECT title, question_count, pass_mark " +
                     "FROM quizzes " +
                     "WHERE id = ? " +
                     "AND status = 'PUBLISHED'";
 
+
             try (PreparedStatement statement =
                          connection.prepareStatement(quizSql)) {
 
                 statement.setInt(1, quizId);
 
+
                 try (ResultSet resultSet =
                              statement.executeQuery()) {
 
                     if (!resultSet.next()) {
+
+                        session.removeAttribute(attemptKey);
+
                         response.sendError(
                                 HttpServletResponse.SC_NOT_FOUND,
                                 "Published quiz not found."
                         );
+
                         return;
                     }
 
+
                     quizTitle =
                             resultSet.getString("title");
+
 
                     passMark =
                             resultSet.getInt("pass_mark");
                 }
             }
 
+
             /*
-             * Get all questions and their correct answers.
+             * ====================================================
+             * GET QUESTIONS AND CORRECT ANSWERS
+             * ====================================================
              */
+
             String questionSql =
                     "SELECT q.id, a.option_label " +
                     "FROM questions q " +
@@ -98,32 +177,56 @@ public class SubmitQuizServlet extends HttpServlet {
                     "WHERE q.quiz_id = ? " +
                     "ORDER BY q.question_number ASC";
 
+
             try (PreparedStatement statement =
                          connection.prepareStatement(questionSql)) {
 
                 statement.setInt(1, quizId);
 
+
                 try (ResultSet resultSet =
                              statement.executeQuery()) {
+
 
                     while (resultSet.next()) {
 
                         totalQuestions++;
 
+
                         int questionId =
                                 resultSet.getInt("id");
 
-                        String correctAnswer =
-                                resultSet.getString("option_label");
 
+                        String correctAnswer =
+                                resultSet.getString(
+                                        "option_label"
+                                );
+
+
+                        /*
+                         * Get the student's selected answer.
+                         */
                         String submittedAnswer =
                                 request.getParameter(
                                         "question_" + questionId
                                 );
 
+
                         /*
-                         * If the student did not answer,
-                         * it is counted as incorrect.
+                         * Store answer for the result review.
+                         */
+                        if (submittedAnswer != null
+                                && !submittedAnswer.trim().isEmpty()) {
+
+                            submittedAnswers.put(
+                                    questionId,
+                                    submittedAnswer
+                            );
+                        }
+
+
+                        /*
+                         * Check whether answer is correct.
                          */
                         if (submittedAnswer != null
                                 && submittedAnswer.equalsIgnoreCase(
@@ -135,76 +238,109 @@ public class SubmitQuizServlet extends HttpServlet {
                 }
             }
 
+
             /*
-             * Calculate percentage.
+             * ====================================================
+             * CALCULATE RESULT
+             * ====================================================
              */
+
             double percentage = 0.0;
 
+
             if (totalQuestions > 0) {
+
                 percentage =
-                        ((double) score / totalQuestions) * 100.0;
+                        ((double) score / totalQuestions)
+                                * 100.0;
             }
 
-            /*
-             * Determine whether the student passed.
-             */
+
             boolean passed =
                     percentage >= passMark;
 
+
             /*
-             * Store result temporarily in the session.
-             * We will later replace this with permanent
-             * database storage when student accounts/results
-             * are implemented.
+             * ====================================================
+             * STORE RESULT IN SESSION
+             * ====================================================
              */
-            HttpSession session =
-                    request.getSession();
 
             session.setAttribute(
                     "quizResultQuizId",
                     quizId
             );
 
+
             session.setAttribute(
                     "quizResultTitle",
                     quizTitle
             );
+
 
             session.setAttribute(
                     "quizResultScore",
                     score
             );
 
+
             session.setAttribute(
                     "quizResultTotal",
                     totalQuestions
             );
+
 
             session.setAttribute(
                     "quizResultPercentage",
                     percentage
             );
 
+
             session.setAttribute(
                     "quizResultPassMark",
                     passMark
             );
+
 
             session.setAttribute(
                     "quizResultPassed",
                     passed
             );
 
+
             /*
-             * Redirect to result page.
+             * Save student's answers so the result page
+             * can display exactly what the student selected.
              */
+            session.setAttribute(
+                    "quizSubmittedAnswers_" + quizId,
+                    submittedAnswers
+            );
+
+
+            /*
+             * ====================================================
+             * GO TO RESULT PAGE
+             * ====================================================
+             */
+
             response.sendRedirect(
                     "student/quiz-result.jsp"
             );
 
+
         } catch (SQLException e) {
 
             e.printStackTrace();
+
+
+            /*
+             * If database processing fails, allow the student
+             * to try again because the submission was not
+             * successfully processed.
+             */
+            session.removeAttribute(attemptKey);
+
 
             response.sendError(
                     HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
