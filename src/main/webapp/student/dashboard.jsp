@@ -1,5 +1,38 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="java.sql.SQLException" %>
+<%@ page import="tz.udom.quiz.util.DBConnection" %>
+
+<%
+int availableQuizzes = 0;
+
+try (Connection connection = DBConnection.getConnection()) {
+
+    String countSql =
+            "SELECT COUNT(*) " +
+            "FROM quizzes " +
+            "WHERE status = 'PUBLISHED'";
+
+    try (PreparedStatement statement =
+                 connection.prepareStatement(countSql);
+         ResultSet resultSet =
+                 statement.executeQuery()) {
+
+        if (resultSet.next()) {
+            availableQuizzes = resultSet.getInt(1);
+        }
+    }
+
+} catch (SQLException e) {
+    e.printStackTrace();
+}
+
+%>
+
+
 <!DOCTYPE html>
 
 <html lang="en">
@@ -194,7 +227,7 @@
 
             <span>Available Quizzes</span>
 
-            <span class="menu-badge">12</span>
+            <span class="menu-badge"><%= availableQuizzes %></span>
 
         </a>
 
@@ -318,7 +351,7 @@
 
                     <span>Available Quizzes</span>
 
-                    <h2>12</h2>
+                    <h2><%= availableQuizzes %></h2>
 
                     <small>
                         <i class="bi bi-arrow-up"></i>
@@ -455,188 +488,159 @@
                 </div>
 
 
-                <!-- Quiz 1 -->
+               <%
+                String quizSql =
+                "SELECT id, title, course, question_count, " +
+                "duration_minutes, pass_mark " +
+                "FROM quizzes " +
+                "WHERE status = 'PUBLISHED' " +
+                "ORDER BY created_at DESC " +
+                "LIMIT 5";
+
+                try (Connection connection = DBConnection.getConnection();
+                    PreparedStatement statement =
+                            connection.prepareStatement(quizSql);
+                    ResultSet resultSet =
+                            statement.executeQuery()) {
+
+                    boolean hasQuizzes = false;
+
+                    while (resultSet.next()) {
+
+                        hasQuizzes = true;
+
+                        int quizId =
+                                resultSet.getInt("id");
+
+                        String title =
+                                resultSet.getString("title");
+
+                        String course =
+                                resultSet.getString("course");
+
+                        int questionCount =
+                                resultSet.getInt("question_count");
+
+                        int duration =
+                                resultSet.getInt("duration_minutes");
+
+                        int passMark =
+                                resultSet.getInt("pass_mark");
+
+                        String icon = "bi-journal-check";
+
+                        if (course != null) {
+                            String courseLower =
+                                    course.toLowerCase();
+
+                            if (courseLower.contains("security")) {
+                                icon = "bi-shield-lock-fill";
+                            } else if (courseLower.contains("network")) {
+                                icon = "bi-diagram-3-fill";
+                            } else if (courseLower.contains("software")) {
+                                icon = "bi-code-slash";
+                            } else if (courseLower.contains("database")) {
+                                icon = "bi-database-fill";
+                            }
+                        }
+
+                %>
 
                 <div class="quiz-item">
+                <div class="quiz-icon">
 
-                    <div class="quiz-icon">
+                    <i class="bi <%= icon %>"></i>
 
-                        <i class="bi bi-database-fill"></i>
+                </div>
 
-                    </div>
+                <div class="quiz-information">
 
-                    <div class="quiz-information">
+                    <h5>
+                        <%= title %>
+                    </h5>
 
-                        <h5>Database Management Systems</h5>
+                    <div class="quiz-meta">
 
-                        <div class="quiz-meta">
-
-                            <span>
-                                <i class="bi bi-question-circle"></i>
-                                20 Questions
-                            </span>
-
-                            <span>
-                                <i class="bi bi-clock"></i>
-                                30 Minutes
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                    <div class="quiz-action">
-
-                        <span class="quiz-status">
-                            Available
+                        <span>
+                            <i class="bi bi-book"></i>
+                            <%= course %>
                         </span>
 
-                        <button class="btn start-quiz-btn">
-                            Start Quiz
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
+                        <span>
+                            <i class="bi bi-question-circle"></i>
+                            <%= questionCount %> Questions
+                        </span>
+
+                        <span>
+                            <i class="bi bi-clock"></i>
+                            <%= duration %> Minutes
+                        </span>
 
                     </div>
 
                 </div>
 
+                <div class="quiz-action">
 
-                <!-- Quiz 2 -->
+                    <span class="quiz-status">
+                        Available
+                    </span>
 
-                <div class="quiz-item">
+                    <a
+                        href="take-quiz.jsp?quizId=<%= quizId %>"
+                        class="btn start-quiz-btn">
 
-                    <div class="quiz-icon security-icon">
+                        Start Quiz
 
-                        <i class="bi bi-shield-lock-fill"></i>
+                        <i class="bi bi-arrow-right"></i>
 
-                    </div>
-
-                    <div class="quiz-information">
-
-                        <h5>Computer Security</h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-                                <i class="bi bi-question-circle"></i>
-                                25 Questions
-                            </span>
-
-                            <span>
-                                <i class="bi bi-clock"></i>
-                                40 Minutes
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                    <div class="quiz-action">
-
-                        <span class="quiz-status">
-                            Available
-                        </span>
-
-                        <button class="btn start-quiz-btn">
-                            Start Quiz
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-
-                    </div>
+                    </a>
 
                 </div>
 
+                </div>
 
-                <!-- Quiz 3 -->
+                <%
+                }
+                    if (!hasQuizzes) {
+                %>
 
-                <div class="quiz-item">
+                <div class="text-center py-5">
+                <i
+                    class="bi bi-journal-x"
+                    style="font-size: 3rem; color: #94a3b8;">
+                </i>
 
-                    <div class="quiz-icon software-icon">
+                <h5 class="mt-3">
+                    No Quizzes Available
+                </h5>
 
-                        <i class="bi bi-code-slash"></i>
-
-                    </div>
-
-                    <div class="quiz-information">
-
-                        <h5>Software Engineering</h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-                                <i class="bi bi-question-circle"></i>
-                                30 Questions
-                            </span>
-
-                            <span>
-                                <i class="bi bi-clock"></i>
-                                45 Minutes
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                    <div class="quiz-action">
-
-                        <span class="quiz-status">
-                            Available
-                        </span>
-
-                        <button class="btn start-quiz-btn">
-                            Start Quiz
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-
-                    </div>
+                <p class="text-muted mb-0">
+                    There are currently no published quizzes available.
+                </p>
 
                 </div>
 
+                <%
+                }
 
-                <!-- Quiz 4 -->
+                } catch (SQLException e) {
 
-                <div class="quiz-item">
+                %>
 
-                    <div class="quiz-icon network-icon">
+                <div class="alert alert-danger">
 
-                        <i class="bi bi-diagram-3-fill"></i>
+                <i class="bi bi-exclamation-triangle me-2"></i>
 
-                    </div>
-
-                    <div class="quiz-information">
-
-                        <h5>Computer Networks</h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-                                <i class="bi bi-question-circle"></i>
-                                20 Questions
-                            </span>
-
-                            <span>
-                                <i class="bi bi-clock"></i>
-                                30 Minutes
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                    <div class="quiz-action">
-
-                        <span class="quiz-status">
-                            Available
-                        </span>
-
-                        <button class="btn start-quiz-btn">
-                            Start Quiz
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-
-                    </div>
+                Unable to load available quizzes.
 
                 </div>
+
+                <%
+                e.printStackTrace();
+                }
+                %>
+
 
             </div>
 
