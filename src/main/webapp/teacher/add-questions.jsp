@@ -101,6 +101,27 @@ try (Connection connection = DBConnection.getConnection()) {
 // Next question number
 int nextQuestionNumber = existingQuestions + 1;
 
+// Check whether this is the final question
+boolean lastQuestion =
+        nextQuestionNumber == questionCount;
+
+// Check whether all questions have already been saved
+boolean quizComplete =
+        existingQuestions >= questionCount;
+
+// If the quiz is already complete,
+// go directly to the review page.
+if (quizComplete) {
+
+    response.sendRedirect(
+            "review-quiz.jsp?quizId=" + quizId
+    );
+
+    return;
+}
+
+
+
 %>
 
 <!DOCTYPE html>
@@ -815,11 +836,11 @@ int nextQuestionNumber = existingQuestions + 1;
 
 
                     <!-- Buttons -->
-
                     <div
                         class="d-flex justify-content-between
-                               align-items-center mt-4">
+                            align-items-center mt-4">
 
+                        <!-- Back -->
 
                         <a
                             href="create-quiz.jsp"
@@ -834,33 +855,60 @@ int nextQuestionNumber = existingQuestions + 1;
 
                         <div class="d-flex gap-2">
 
+                            <% if (lastQuestion) { %>
 
-                            <button
-                                type="submit"
-                                name="action"
-                                value="add"
-                                class="btn btn-outline-primary">
+                                <!-- =========================================
+                                    LAST QUESTION
+                                    ========================================= -->
 
-                                <i class="bi bi-plus-circle me-1"></i>
+                                <button
+                                    type="submit"
+                                    name="action"
+                                    value="review"
+                                    class="btn btn-primary">
 
-                                Add Question
+                                    <i class="bi bi-check-circle-fill me-1"></i>
 
-                            </button>
+                                    Save & Review
+
+                                </button>
 
 
-                            <a
-                                href="review-quiz.jsp?quizId=<%= quizId %>"
-                                class="btn btn-primary">
+                            <% } else { %>
 
-                                Review Quiz
+                                <!-- =========================================
+                                    MORE QUESTIONS REMAIN
+                                    ========================================= -->
 
-                                <i class="bi bi-arrow-right ms-1"></i>
+                                <button
+                                    type="submit"
+                                    name="action"
+                                    value="add"
+                                    class="btn btn-outline-primary">
 
-                            </a>
+                                    <i class="bi bi-plus-circle me-1"></i>
+
+                                    Save & Next
+
+                                </button>
+
+
+                                <a
+                                    href="review-quiz.jsp?quizId=<%= quizId %>"
+                                    class="btn btn-primary">
+
+                                    Review Quiz
+
+                                    <i class="bi bi-arrow-right ms-1"></i>
+
+                                </a>
+
+                            <% } %>
 
                         </div>
 
                     </div>
+
 
                 </form>
 

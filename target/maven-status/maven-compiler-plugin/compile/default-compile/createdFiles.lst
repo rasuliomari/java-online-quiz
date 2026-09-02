@@ -1,3 +1,4 @@
+tz/udom/quiz/servlet/UpdateQuestionServlet.class
 tz/udom/quiz/util/DBConnection.class
 tz/udom/quiz/servlet/CreateQuizServlet.class
 tz/udom/quiz/servlet/SaveQuestionServlet.class

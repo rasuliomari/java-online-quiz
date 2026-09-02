@@ -1,31 +1,179 @@
+
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="java.sql.SQLException" %>
+
+<%@ page import="tz.udom.quiz.util.DBConnection" %>
+
+<%
+    // =========================================================
+    // GET QUIZ ID
+    // =========================================================
+
+    String quizIdValue = request.getParameter("quizId");
+
+    if (quizIdValue == null || quizIdValue.trim().isEmpty()) {
+        response.sendError(400, "Quiz ID is required.");
+        return;
+    }
+
+    int quizId;
+
+    try {
+        quizId = Integer.parseInt(quizIdValue);
+    } catch (NumberFormatException e) {
+        response.sendError(400, "Invalid quiz ID.");
+        return;
+    }
+
+
+    // =========================================================
+    // QUIZ INFORMATION VARIABLES
+    // =========================================================
+
+    String quizTitle = "";
+    String course = "";
+    String description = "";
+    int durationMinutes = 0;
+    int questionCount = 0;
+    int passMark = 0;
+    String status = "";
+
+    int savedQuestionCount = 0;
+
+
+    // =========================================================
+    // LOAD QUIZ INFORMATION
+    // =========================================================
+
+    String quizSql =
+            "SELECT title, course, description, duration_minutes, " +
+            "question_count, pass_mark, status " +
+            "FROM quizzes WHERE id = ?";
+
+    try (
+        Connection connection = DBConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(quizSql)
+    ) {
+
+        statement.setInt(1, quizId);
+
+        try (ResultSet resultSet = statement.executeQuery()) {
+
+            if (!resultSet.next()) {
+                response.sendError(404, "Quiz was not found.");
+                return;
+            }
+
+            quizTitle = resultSet.getString("title");
+            course = resultSet.getString("course");
+            description = resultSet.getString("description");
+
+            durationMinutes =
+                    resultSet.getInt("duration_minutes");
+
+            questionCount =
+                    resultSet.getInt("question_count");
+
+            passMark =
+                    resultSet.getInt("pass_mark");
+
+            status =
+                    resultSet.getString("status");
+        }
+
+    } catch (SQLException e) {
+
+        e.printStackTrace();
+
+        response.sendError(
+                500,
+                "Database error while loading quiz information."
+        );
+
+        return;
+    }
+
+
+    // =========================================================
+    // COUNT SAVED QUESTIONS
+    // =========================================================
+
+    String countSql =
+            "SELECT COUNT(*) FROM questions WHERE quiz_id = ?";
+
+    try (
+        Connection connection = DBConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(countSql)
+    ) {
+
+        statement.setInt(1, quizId);
+
+        try (ResultSet resultSet = statement.executeQuery()) {
+
+            if (resultSet.next()) {
+                savedQuestionCount = resultSet.getInt(1);
+            }
+        }
+
+    } catch (SQLException e) {
+
+        e.printStackTrace();
+
+        response.sendError(
+                500,
+                "Database error while counting questions."
+        );
+
+        return;
+    }
+%>
+
 
 <!DOCTYPE html>
 
 <html lang="en">
 
-<head>  
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head>
 
-<title>Review Quiz | UDOM Online Quiz System</title>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>
+    Review Quiz | UDOM Online Quiz System
+</title>
+
 
 <!-- Bootstrap 5.3.3 -->
+
 <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     rel="stylesheet">
 
+
 <!-- Bootstrap Icons -->
+
 <link
     rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
+
 <!-- SAME Dashboard CSS -->
-<link rel="stylesheet" href="../css/dashboard.css">
+
+<link
+    rel="stylesheet"
+    href="../css/dashboard.css">
 
 </head>
 
+
 <body>
+
 
 <!-- =========================================================
      TOP NAVBAR
@@ -184,6 +332,8 @@
 
 </nav>
 
+
+
 <!-- =========================================================
      SIDEBAR
 ========================================================= -->
@@ -193,216 +343,219 @@
     tabindex="-1"
     id="teacherSidebar">
 
-<!-- Mobile header -->
 
-<div class="offcanvas-header d-lg-none">
+    <!-- Mobile header -->
 
-    <h5 class="offcanvas-title">
-        Lecturer Menu
-    </h5>
+    <div class="offcanvas-header d-lg-none">
 
-
-    <button
-        type="button"
-        class="btn-close"
-        data-bs-dismiss="offcanvas">
-    </button>
-
-</div>
+        <h5 class="offcanvas-title">
+            Lecturer Menu
+        </h5>
 
 
+        <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="offcanvas">
+        </button>
 
-<div class="sidebar-content">
+    </div>
 
 
-    <!-- Lecturer information -->
 
-    <div class="sidebar-profile">
+    <div class="sidebar-content">
 
-        <div class="sidebar-avatar">
-            RO
+
+        <!-- Lecturer information -->
+
+        <div class="sidebar-profile">
+
+            <div class="sidebar-avatar">
+                RO
+            </div>
+
+
+            <div>
+
+                <h6>
+                    Lecturer
+                </h6>
+
+                <span>
+                    Academic Staff
+                </span>
+
+            </div>
+
         </div>
 
 
-        <div>
 
-            <h6>
-                Lecturer
-            </h6>
+        <!-- Navigation -->
 
-            <span>
-                Academic Staff
-            </span>
+        <div class="sidebar-menu">
+
+
+            <p class="menu-title">
+                MAIN MENU
+            </p>
+
+
+            <!-- Dashboard -->
+
+            <a
+                href="dashboard.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-grid-1x2-fill"></i>
+
+                <span>
+                    Dashboard
+                </span>
+
+            </a>
+
+
+            <!-- Create Quiz -->
+
+            <a
+                href="create-quiz.jsp"
+                class="sidebar-link active">
+
+                <i class="bi bi-plus-circle-fill"></i>
+
+                <span>
+                    Create Quiz
+                </span>
+
+            </a>
+
+
+            <!-- My Quizzes -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-journal-text"></i>
+
+                <span>
+                    My Quizzes
+                </span>
+
+                <span class="menu-badge">
+                    18
+                </span>
+
+            </a>
+
+
+            <!-- Questions -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-question-circle-fill"></i>
+
+                <span>
+                    Questions
+                </span>
+
+            </a>
+
+
+            <!-- Results -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-bar-chart-fill"></i>
+
+                <span>
+                    Student Results
+                </span>
+
+            </a>
+
+
+            <!-- Reports -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-file-earmark-bar-graph-fill"></i>
+
+                <span>
+                    Quiz Reports
+                </span>
+
+            </a>
+
+
+            <p class="menu-title mt-4">
+                ACCOUNT
+            </p>
+
+
+            <!-- Profile -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-person-fill"></i>
+
+                <span>
+                    My Profile
+                </span>
+
+            </a>
+
+
+            <!-- Settings -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-gear-fill"></i>
+
+                <span>
+                    Settings
+                </span>
+
+            </a>
+
+        </div>
+
+
+
+        <!-- Logout -->
+
+        <div class="sidebar-bottom">
+
+            <a
+                href="../login.jsp"
+                class="logout-link">
+
+                <i class="bi bi-box-arrow-left"></i>
+
+                <span>
+                    Logout
+                </span>
+
+            </a>
 
         </div>
 
     </div>
 
-
-
-    <!-- Navigation -->
-
-    <div class="sidebar-menu">
-
-
-        <p class="menu-title">
-            MAIN MENU
-        </p>
-
-
-        <!-- Dashboard -->
-
-        <a
-            href="dashboard.jsp"
-            class="sidebar-link">
-
-            <i class="bi bi-grid-1x2-fill"></i>
-
-            <span>
-                Dashboard
-            </span>
-
-        </a>
-
-
-        <!-- Create Quiz -->
-
-        <a
-            href="create-quiz.jsp"
-            class="sidebar-link active">
-
-            <i class="bi bi-plus-circle-fill"></i>
-
-            <span>
-                Create Quiz
-            </span>
-
-        </a>
-
-
-        <!-- My Quizzes -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-journal-text"></i>
-
-            <span>
-                My Quizzes
-            </span>
-
-            <span class="menu-badge">
-                18
-            </span>
-
-        </a>
-
-
-        <!-- Questions -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-question-circle-fill"></i>
-
-            <span>
-                Questions
-            </span>
-
-        </a>
-
-
-        <!-- Results -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-bar-chart-fill"></i>
-
-            <span>
-                Student Results
-            </span>
-
-        </a>
-
-
-        <!-- Reports -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-file-earmark-bar-graph-fill"></i>
-
-            <span>
-                Quiz Reports
-            </span>
-
-        </a>
-
-
-        <p class="menu-title mt-4">
-            ACCOUNT
-        </p>
-
-
-        <!-- Profile -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-person-fill"></i>
-
-            <span>
-                My Profile
-            </span>
-
-        </a>
-
-
-        <!-- Settings -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-gear-fill"></i>
-
-            <span>
-                Settings
-            </span>
-
-        </a>
-
-    </div>
-
-
-
-    <!-- Logout -->
-
-    <div class="sidebar-bottom">
-
-        <a
-            href="../login.jsp"
-            class="logout-link">
-
-            <i class="bi bi-box-arrow-left"></i>
-
-            <span>
-                Logout
-            </span>
-
-        </a>
-
-    </div>
-
 </div>
 
-</div>
+
 
 <!-- =========================================================
      MAIN CONTENT
@@ -461,25 +614,30 @@
             <div>
 
                 <h4>
-                    Database Management Systems
+                    <%= quizTitle %>
                 </h4>
 
                 <p>
-                    Introduction to Database Concepts
+                    <%= course %>
                 </p>
 
             </div>
 
 
             <span class="quiz-status">
-                Draft
+
+                <%= status %>
+
             </span>
 
         </div>
 
 
+
         <div class="row g-3 mt-2">
 
+
+            <!-- Course -->
 
             <div class="col-md-3">
 
@@ -500,7 +658,7 @@
                         <div class="quiz-meta">
 
                             <span>
-                                Database Management Systems
+                                <%= course %>
                             </span>
 
                         </div>
@@ -512,6 +670,8 @@
             </div>
 
 
+
+            <!-- Duration -->
 
             <div class="col-md-3">
 
@@ -532,7 +692,7 @@
                         <div class="quiz-meta">
 
                             <span>
-                                60 Minutes
+                                <%= durationMinutes %> Minutes
                             </span>
 
                         </div>
@@ -544,6 +704,8 @@
             </div>
 
 
+
+            <!-- Questions -->
 
             <div class="col-md-3">
 
@@ -564,7 +726,12 @@
                         <div class="quiz-meta">
 
                             <span>
-                                20 Questions
+
+                                <%= savedQuestionCount %>
+                                /
+                                <%= questionCount %>
+                                Questions
+
                             </span>
 
                         </div>
@@ -576,6 +743,8 @@
             </div>
 
 
+
+            <!-- Pass Mark -->
 
             <div class="col-md-3">
 
@@ -596,7 +765,7 @@
                         <div class="quiz-meta">
 
                             <span>
-                                50%
+                                <%= passMark %>%
                             </span>
 
                         </div>
@@ -640,9 +809,22 @@
 
         <p class="mb-0">
 
-            This quiz evaluates students' understanding of
-            database management systems, including database
-            concepts, SQL, normalization, keys and relationships.
+            <%
+                if (description != null
+                        && !description.trim().isEmpty()) {
+            %>
+
+                <%= description %>
+
+            <%
+                } else {
+            %>
+
+                No description was provided for this quiz.
+
+            <%
+                }
+            %>
 
         </p>
 
@@ -674,7 +856,12 @@
 
 
             <span class="quiz-status">
-                20 Questions
+
+                <%= savedQuestionCount %>
+                /
+                <%= questionCount %>
+                Questions
+
             </span>
 
         </div>
@@ -682,7 +869,38 @@
 
 
         <!-- =================================================
-             QUESTION 1
+             LOAD ALL QUESTIONS
+        ================================================== -->
+
+        <%
+            String questionsSql =
+                    "SELECT id, question_text, question_number " +
+                    "FROM questions " +
+                    "WHERE quiz_id = ? " +
+                    "ORDER BY question_number ASC";
+
+            try (
+                Connection connection = DBConnection.getConnection();
+                PreparedStatement questionStatement =
+                        connection.prepareStatement(questionsSql)
+            ) {
+
+                questionStatement.setInt(1, quizId);
+
+                try (
+                    ResultSet questionResult =
+                            questionStatement.executeQuery()
+                ) {
+
+                    while (questionResult.next()) {
+                            int currentQuestionId = questionResult.getInt("id");
+                            int currentQuestionNumber = questionResult.getInt("question_number");
+                            String currentQuestionText = questionResult.getString("question_text");
+        %>
+
+
+        <!-- =================================================
+             QUESTION
         ================================================== -->
 
         <div class="quiz-item mb-4">
@@ -690,21 +908,22 @@
 
             <div class="quiz-icon">
 
-                <i class="bi bi-1-circle-fill"></i>
+                <i class="bi bi-<%= currentQuestionNumber %>-circle-fill"></i>
 
             </div>
 
 
             <div class="quiz-information w-100">
 
+
                 <h5>
-                    Question 1
+                    Question <%= currentQuestionNumber %>
                 </h5>
 
 
                 <p class="mt-2 mb-3">
 
-                    What is a database?
+                    <%= currentQuestionText %>
 
                 </p>
 
@@ -712,66 +931,121 @@
                 <div class="row g-2">
 
 
+                    <%
+                        String answersSql =
+                                "SELECT option_label, answer_text, is_correct " +
+                                "FROM answers " +
+                                "WHERE question_id = ? " +
+                                "ORDER BY option_label ASC";
+
+                        try (
+                            PreparedStatement answerStatement =
+                                    connection.prepareStatement(answersSql)
+                        ) {
+
+                            answerStatement.setInt(
+                                    1,
+                                    currentQuestionId
+                            );
+
+                            try (
+                                ResultSet answerResult =
+                                        answerStatement.executeQuery()
+                            ) {
+
+                                while (answerResult.next()) {
+
+                                    String optionLabel =
+                                            answerResult.getString(
+                                                    "option_label"
+                                            );
+
+                                    String answerText =
+                                            answerResult.getString(
+                                                    "answer_text"
+                                            );
+
+                                    boolean isCorrect =
+                                            answerResult.getBoolean(
+                                                    "is_correct"
+                                            );
+                    %>
+
+
                     <div class="col-md-6">
 
-                        <div class="border rounded p-3">
+                        <div
+                            class="border rounded p-3
+                            <%= isCorrect ? "border-success bg-light" : "" %>">
+
 
                             <strong>
-                                A.
+                                <%= optionLabel %>.
                             </strong>
 
-                            Collection of related data
+                            <%= answerText %>
+
+
+                            <% if (isCorrect) { %>
+
+                                <span
+                                    class="badge bg-success ms-2">
+
+                                    Correct
+
+                                </span>
+
+                            <% } %>
+
 
                         </div>
 
                     </div>
 
 
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                B.
-                            </strong>
-
-                            A computer program
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                C.
-                            </strong>
-
-                            An operating system
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                D.
-                            </strong>
-
-                            A computer network
-
-                        </div>
-
-                    </div>
+                    <%
+                                }
+                            }
+                        }
+                    %>
 
                 </div>
+
+
+                <%
+                    String correctSql =
+                            "SELECT option_label, answer_text " +
+                            "FROM answers " +
+                            "WHERE question_id = ? " +
+                            "AND is_correct = TRUE";
+
+                    try (
+                        PreparedStatement correctStatement =
+                                connection.prepareStatement(correctSql)
+                    ) {
+
+                        correctStatement.setInt(
+                                1,
+                                currentQuestionId
+                        );
+
+                        try (
+                            ResultSet correctResult =
+                                    correctStatement.executeQuery()
+                        ) {
+
+                            if (correctResult.next()) {
+
+                                String correctLabel =
+                                        correctResult.getString(
+                                                "option_label"
+                                        );
+
+                                String correctText =
+                                        correctResult.getString(
+                                                "answer_text"
+                                        );
+                %>
 
 
                 <div class="alert alert-success mt-3 mb-0">
@@ -782,255 +1056,89 @@
                         Correct Answer:
                     </strong>
 
-                    A. Collection of related data
+                    <%= correctLabel %>.
+                    <%= correctText %>
 
                 </div>
 
+
+                <%
+                            }
+                        }
+                    }
+                %>
+
+
             </div>
+              <div class="d-flex justify-content-end mt-3">
+
+                    <a
+                        href="edit-question.jsp?quizId=<%= quizId %>&questionId=<%= currentQuestionId %>"
+                        class="btn btn-outline-primary">
+
+                        <i class="bi bi-pencil-square me-1"></i>
+
+                        Edit Question
+
+                    </a>
+
+                </div>
+
+
+            </div>
+        </div>
+
+
+        <%
+                    }
+                }
+
+            } catch (SQLException e) {
+
+                e.printStackTrace();
+        %>
+
+
+        <div class="alert alert-danger">
+
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
+            Unable to load quiz questions.
 
         </div>
+
+
+        <%
+            }
+        %>
 
 
 
         <!-- =================================================
-             QUESTION 2
+             NO QUESTIONS
         ================================================== -->
 
-        <div class="quiz-item mb-4">
+        <%
+            if (savedQuestionCount == 0) {
+        %>
 
+        <div class="text-center py-4">
 
-            <div class="quiz-icon software-icon">
+            <i
+                class="bi bi-question-circle display-5 text-muted">
+            </i>
 
-                <i class="bi bi-2-circle-fill"></i>
+            <p class="text-muted mt-3 mb-0">
 
-            </div>
+                No questions have been added to this quiz yet.
 
-
-            <div class="quiz-information w-100">
-
-                <h5>
-                    Question 2
-                </h5>
-
-
-                <p class="mt-2 mb-3">
-
-                    Which key uniquely identifies a record
-                    in a database table?
-
-                </p>
-
-
-                <div class="row g-2">
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                A.
-                            </strong>
-
-                            Foreign Key
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                B.
-                            </strong>
-
-                            Primary Key
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                C.
-                            </strong>
-
-                            Alternate Key
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                D.
-                            </strong>
-
-                            Composite Key
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div class="alert alert-success mt-3 mb-0">
-
-                    <i class="bi bi-check-circle-fill me-2"></i>
-
-                    <strong>
-                        Correct Answer:
-                    </strong>
-
-                    B. Primary Key
-
-                </div>
-
-            </div>
+            </p>
 
         </div>
 
-
-
-        <!-- =================================================
-             QUESTION 3
-        ================================================== -->
-
-        <div class="quiz-item mb-4">
-
-
-            <div class="quiz-icon network-icon">
-
-                <i class="bi bi-3-circle-fill"></i>
-
-            </div>
-
-
-            <div class="quiz-information w-100">
-
-                <h5>
-                    Question 3
-                </h5>
-
-
-                <p class="mt-2 mb-3">
-
-                    What language is commonly used to
-                    communicate with relational databases?
-
-                </p>
-
-
-                <div class="row g-2">
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                A.
-                            </strong>
-
-                            HTML
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                B.
-                            </strong>
-
-                            CSS
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                C.
-                            </strong>
-
-                            SQL
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-6">
-
-                        <div class="border rounded p-3">
-
-                            <strong>
-                                D.
-                            </strong>
-
-                            XML
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div class="alert alert-success mt-3 mb-0">
-
-                    <i class="bi bi-check-circle-fill me-2"></i>
-
-                    <strong>
-                        Correct Answer:
-                    </strong>
-
-                    C. SQL
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- =================================================
-             MORE QUESTIONS
-        ================================================== -->
-
-        <div class="text-center py-3">
-
-            <span class="text-muted">
-
-                <i class="bi bi-three-dots me-2"></i>
-
-                More questions will appear here...
-
-            </span>
-
-        </div>
+        <%
+            }
+        %>
 
 
 
@@ -1038,38 +1146,27 @@
              ACTIONS
         ================================================== -->
 
-        <div
-            class="d-flex justify-content-between align-items-center
-                   border-top pt-4 mt-3">
+        <div class="d-flex justify-content-between align-items-center
+            border-top pt-4 mt-3">
 
-
-            <a
-                href="add-questions.jsp"
-                class="btn btn-outline-secondary">
-
-                <i class="bi bi-arrow-left me-1"></i>
-
-                Edit Questions
-
-            </a>
-
-
-            <div class="d-flex gap-2">
-
-
-                <button
-                    type="button"
-                    class="btn btn-outline-primary">
-
-                    <i class="bi bi-save me-1"></i>
-
-                    Save Draft
-
-                </button>
-
+            <div>
 
                 <a
-                    href="publish-quiz.jsp"
+                    href="add-questions.jsp?quizId=<%= quizId %>"
+                    class="btn btn-outline-primary">
+
+                    <i class="bi bi-plus-circle me-1"></i>
+
+                    Continue Adding
+
+                </a>
+
+            </div>
+
+            <div>
+
+                <a
+                    href="publish-quiz.jsp?quizId=<%= quizId %>"
                     class="btn btn-primary">
 
                     Publish Quiz
@@ -1078,10 +1175,10 @@
 
                 </a>
 
-
             </div>
 
         </div>
+        
 
 
     </div>
@@ -1129,11 +1226,14 @@
 
 </main>
 
+
+
 <!-- Bootstrap JavaScript -->
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
+
 
 </body>
 

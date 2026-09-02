@@ -18,10 +18,15 @@ import tz.udom.quiz.util.DBConnection;
 public class SaveQuestionServlet extends HttpServlet {
 
     @Override
-    protected void doPost( HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
 
-        // Get values from the form
+        // =========================================================
+        // GET FORM VALUES
+        // =========================================================
+
         String quizIdValue = request.getParameter("quizId");
         String questionNumberValue = request.getParameter("questionNumber");
         String questionText = request.getParameter("questionText");
@@ -33,8 +38,17 @@ public class SaveQuestionServlet extends HttpServlet {
 
         String correctAnswer = request.getParameter("correctAnswer");
 
-        // Check required fields
-        if (quizIdValue == null || questionNumberValue == null
+        // This tells us whether the teacher clicked:
+        // Save & Next OR Save & Review
+        String action = request.getParameter("action");
+
+
+        // =========================================================
+        // VALIDATE REQUIRED FIELDS
+        // =========================================================
+
+        if (quizIdValue == null
+                || questionNumberValue == null
                 || questionText == null
                 || answerA == null
                 || answerB == null
@@ -42,12 +56,19 @@ public class SaveQuestionServlet extends HttpServlet {
                 || answerD == null
                 || correctAnswer == null) {
 
-            response.sendError( HttpServletResponse.SC_BAD_REQUEST,  "Please provide all question and answer information."
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Please provide all question and answer information."
             );
+
             return;
         }
 
-        // Check empty fields
+
+        // =========================================================
+        // VALIDATE EMPTY FIELDS
+        // =========================================================
+
         if (questionText.trim().isEmpty()
                 || answerA.trim().isEmpty()
                 || answerB.trim().isEmpty()
@@ -55,28 +76,59 @@ public class SaveQuestionServlet extends HttpServlet {
                 || answerD.trim().isEmpty()
                 || correctAnswer.trim().isEmpty()) {
 
-            response.sendError( HttpServletResponse.SC_BAD_REQUEST, "Question and all four answers are required."
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Question and all four answers are required."
             );
+
             return;
         }
+
+
+        // =========================================================
+        // CONVERT IDS TO INTEGER
+        // =========================================================
 
         int quizId;
         int questionNumber;
 
         try {
+
             quizId = Integer.parseInt(quizIdValue);
             questionNumber = Integer.parseInt(questionNumberValue);
+
         } catch (NumberFormatException e) {
 
             response.sendError(
                     HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid quiz ID or question number."
             );
+
             return;
         }
 
-        // Only A, B, C or D are allowed
+
+        // =========================================================
+        // VALIDATE QUESTION NUMBER
+        // =========================================================
+
+        if (questionNumber < 1) {
+
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid question number."
+            );
+
+            return;
+        }
+
+
+        // =========================================================
+        // NORMALIZE CORRECT ANSWER
+        // =========================================================
+
         correctAnswer = correctAnswer.trim().toUpperCase();
+
 
         if (!correctAnswer.equals("A")
                 && !correctAnswer.equals("B")
@@ -87,36 +139,46 @@ public class SaveQuestionServlet extends HttpServlet {
                     HttpServletResponse.SC_BAD_REQUEST,
                     "Correct answer must be A, B, C or D."
             );
+
             return;
         }
 
+
         Connection connection = null;
+
 
         try {
 
+            // =====================================================
+            // CONNECT TO DATABASE
+            // =====================================================
+
             connection = DBConnection.getConnection();
 
-            // Start transaction
             connection.setAutoCommit(false);
 
-            /*
-             * ---------------------------------------------------------
-             * STEP 1:
-             * Check whether the quiz exists and get the allowed
-             * number of questions.
-             * ---------------------------------------------------------
-             */
+
+            // =====================================================
+            // STEP 1
+            // GET QUIZ QUESTION LIMIT
+            // =====================================================
+
             String quizSql =
-                    "SELECT question_count FROM quizzes WHERE id = ?";
+                    "SELECT question_count " +
+                    "FROM quizzes " +
+                    "WHERE id = ?";
 
             int allowedQuestions;
+
 
             try (PreparedStatement statement =
                          connection.prepareStatement(quizSql)) {
 
                 statement.setInt(1, quizId);
 
-                try (ResultSet resultSet = statement.executeQuery()) {
+
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
 
                     if (!resultSet.next()) {
 
@@ -126,73 +188,125 @@ public class SaveQuestionServlet extends HttpServlet {
                                 HttpServletResponse.SC_NOT_FOUND,
                                 "Quiz was not found."
                         );
+
                         return;
                     }
+
 
                     allowedQuestions =
                             resultSet.getInt("question_count");
                 }
             }
 
-            /*
-             * ---------------------------------------------------------
-             * STEP 2:
-             * Check how many questions already exist.
-             * ---------------------------------------------------------
-             */
+
+            // =====================================================
+            // STEP 2
+            // COUNT EXISTING QUESTIONS
+            // =====================================================
+
             String countSql =
-                    "SELECT COUNT(*) FROM questions WHERE quiz_id = ?";
+                    "SELECT COUNT(*) " +
+                    "FROM questions " +
+                    "WHERE quiz_id = ?";
 
             int existingQuestions;
+
 
             try (PreparedStatement statement =
                          connection.prepareStatement(countSql)) {
 
                 statement.setInt(1, quizId);
 
-                try (ResultSet resultSet = statement.executeQuery()) {
+
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
 
                     resultSet.next();
-                    existingQuestions = resultSet.getInt(1);
+
+                    existingQuestions =
+                            resultSet.getInt(1);
                 }
             }
 
-            /*
-             * Prevent adding more questions than specified
-             * when the quiz was created.
-             */
+
+            // =====================================================
+            // STEP 3
+            // PREVENT EXTRA QUESTIONS
+            // =====================================================
+
             if (existingQuestions >= allowedQuestions) {
 
                 connection.rollback();
 
-                response.sendError(
-                        HttpServletResponse.SC_BAD_REQUEST,
-                        "The quiz already has the maximum number of questions."
+                /*
+                 * The quiz already contains the required number
+                 * of questions.
+                 *
+                 * Instead of displaying HTTP 400, send the
+                 * teacher directly to the review page.
+                 */
+
+                response.sendRedirect(
+                        "teacher/review-quiz.jsp?quizId=" + quizId
                 );
+
                 return;
             }
 
+
+            // =====================================================
+            // STEP 4
+            // MAKE SURE QUESTION NUMBER IS CORRECT
+            // =====================================================
+
+            int correctQuestionNumber =
+                    existingQuestions + 1;
+
+
             /*
-             * ---------------------------------------------------------
-             * STEP 3:
-             * Insert the question.
-             * ---------------------------------------------------------
+             * We don't trust the hidden input completely.
+             *
+             * The database determines the next question number.
              */
+
+            questionNumber = correctQuestionNumber;
+
+
+            // =====================================================
+            // STEP 5
+            // INSERT QUESTION
+            // =====================================================
+
             String questionSql =
-                    "INSERT INTO questions "
-                    + "(quiz_id, question_text, question_number) "
-                    + "VALUES (?, ?, ?) RETURNING id";
+                    "INSERT INTO questions " +
+                    "(quiz_id, question_text, question_number) " +
+                    "VALUES (?, ?, ?) " +
+                    "RETURNING id";
 
             int questionId;
+
 
             try (PreparedStatement statement =
                          connection.prepareStatement(questionSql)) {
 
-                statement.setInt(1, quizId);
-                statement.setString(2, questionText.trim());
-                statement.setInt(3, questionNumber);
+                statement.setInt(
+                        1,
+                        quizId
+                );
 
-                try (ResultSet resultSet = statement.executeQuery()) {
+                statement.setString(
+                        2,
+                        questionText.trim()
+                );
+
+                statement.setInt(
+                        3,
+                        questionNumber
+                );
+
+
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
 
                     if (!resultSet.next()) {
 
@@ -202,116 +316,247 @@ public class SaveQuestionServlet extends HttpServlet {
                                 HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                                 "Question could not be saved."
                         );
+
                         return;
                     }
 
-                    questionId = resultSet.getInt("id");
+
+                    questionId =
+                            resultSet.getInt("id");
                 }
             }
 
-            /*
-             * ---------------------------------------------------------
-             * STEP 4:
-             * Insert the four answers.
-             * ---------------------------------------------------------
-             */
+
+            // =====================================================
+            // STEP 6
+            // INSERT ANSWERS
+            // =====================================================
+
             String answerSql =
-                    "INSERT INTO answers "
-                    + "(question_id, option_label, answer_text, is_correct) "
-                    + "VALUES (?, ?, ?, ?)";
+                    "INSERT INTO answers " +
+                    "(question_id, option_label, answer_text, is_correct) " +
+                    "VALUES (?, ?, ?, ?)";
+
 
             try (PreparedStatement statement =
                          connection.prepareStatement(answerSql)) {
 
-                // Answer A
-                statement.setInt(1, questionId);
-                statement.setString(2, "A");
-                statement.setString(3, answerA.trim());
+
+                // -------------------------------------------------
+                // ANSWER A
+                // -------------------------------------------------
+
+                statement.setInt(
+                        1,
+                        questionId
+                );
+
+                statement.setString(
+                        2,
+                        "A"
+                );
+
+                statement.setString(
+                        3,
+                        answerA.trim()
+                );
+
                 statement.setBoolean(
                         4,
                         correctAnswer.equals("A")
                 );
+
                 statement.executeUpdate();
 
-                // Answer B
-                statement.setInt(1, questionId);
-                statement.setString(2, "B");
-                statement.setString(3, answerB.trim());
+
+                // -------------------------------------------------
+                // ANSWER B
+                // -------------------------------------------------
+
+                statement.setInt(
+                        1,
+                        questionId
+                );
+
+                statement.setString(
+                        2,
+                        "B"
+                );
+
+                statement.setString(
+                        3,
+                        answerB.trim()
+                );
+
                 statement.setBoolean(
                         4,
                         correctAnswer.equals("B")
                 );
+
                 statement.executeUpdate();
 
-                // Answer C
-                statement.setInt(1, questionId);
-                statement.setString(2, "C");
-                statement.setString(3, answerC.trim());
+
+                // -------------------------------------------------
+                // ANSWER C
+                // -------------------------------------------------
+
+                statement.setInt(
+                        1,
+                        questionId
+                );
+
+                statement.setString(
+                        2,
+                        "C"
+                );
+
+                statement.setString(
+                        3,
+                        answerC.trim()
+                );
+
                 statement.setBoolean(
                         4,
                         correctAnswer.equals("C")
                 );
+
                 statement.executeUpdate();
 
-                // Answer D
-                statement.setInt(1, questionId);
-                statement.setString(2, "D");
-                statement.setString(3, answerD.trim());
+
+                // -------------------------------------------------
+                // ANSWER D
+                // -------------------------------------------------
+
+                statement.setInt(
+                        1,
+                        questionId
+                );
+
+                statement.setString(
+                        2,
+                        "D"
+                );
+
+                statement.setString(
+                        3,
+                        answerD.trim()
+                );
+
                 statement.setBoolean(
                         4,
                         correctAnswer.equals("D")
                 );
+
                 statement.executeUpdate();
             }
 
-            /*
-             * ---------------------------------------------------------
-             * STEP 5:
-             * Everything succeeded, so save the transaction.
-             * ---------------------------------------------------------
-             */
+
+            // =====================================================
+            // STEP 7
+            // COMMIT TRANSACTION
+            // =====================================================
+
             connection.commit();
 
+
+            // =====================================================
+            // STEP 8
+            // DETERMINE NEXT PAGE
+            // =====================================================
+
             /*
-             * Return to the Add Questions page.
-             * The next question number will be calculated there.
+             * After inserting this question:
+             *
+             * existingQuestions + 1
+             *
+             * represents the total number of saved questions.
              */
+
+            int totalQuestionsAfterSave =
+                    existingQuestions + 1;
+
+
+            // -----------------------------------------------------
+            // LAST QUESTION
+            // -----------------------------------------------------
+
+            if (totalQuestionsAfterSave >= allowedQuestions) {
+
+                /*
+                 * The quiz is now complete.
+                 *
+                 * Send the teacher directly to Review Quiz.
+                 */
+
+                response.sendRedirect(
+                        "teacher/review-quiz.jsp?quizId=" + quizId
+                );
+
+                return;
+            }
+
+
+            // -----------------------------------------------------
+            // MORE QUESTIONS REMAIN
+            // -----------------------------------------------------
+
+            /*
+             * There are still questions remaining.
+             *
+             * Go to the add-question page.
+             */
+
             response.sendRedirect(
                     "teacher/add-questions.jsp?quizId=" + quizId
             );
 
+
         } catch (SQLException e) {
 
-            /*
-             * If anything goes wrong, undo all database changes.
-             */
+
+            // =====================================================
+            // ROLLBACK ON DATABASE ERROR
+            // =====================================================
+
             if (connection != null) {
 
                 try {
+
                     connection.rollback();
+
                 } catch (SQLException rollbackError) {
+
                     rollbackError.printStackTrace();
                 }
             }
 
+
             e.printStackTrace();
+
 
             response.sendError(
                     HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Database error while saving the question."
             );
 
+
         } finally {
 
-            /*
-             * Close the database connection.
-             */
+
+            // =====================================================
+            // CLOSE DATABASE CONNECTION
+            // =====================================================
+
             if (connection != null) {
 
                 try {
+
                     connection.setAutoCommit(true);
+
                     connection.close();
+
                 } catch (SQLException e) {
+
                     e.printStackTrace();
                 }
             }

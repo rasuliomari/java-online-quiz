@@ -1,128 +1,222 @@
+
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+
 <%@ page import="java.sql.Connection" %>
 <%@ page import="java.sql.PreparedStatement" %>
 <%@ page import="java.sql.ResultSet" %>
+
 <%@ page import="tz.udom.quiz.util.DBConnection" %>
 
 <%
-// Get quiz ID from the URL
-String quizIdParam = request.getParameter("quizId");
+    // =========================================================
+    // GET IDs
+    // =========================================================
 
-if (quizIdParam == null || quizIdParam.trim().isEmpty()) {
-    response.sendError(400, "Quiz ID is missing.");
-    return;
-}
+    String quizIdParam = request.getParameter("quizId");
+    String questionIdParam = request.getParameter("questionId");
 
-int quizId;
+    if (quizIdParam == null || quizIdParam.trim().isEmpty()
+            || questionIdParam == null || questionIdParam.trim().isEmpty()) {
 
-try {
-    quizId = Integer.parseInt(quizIdParam);
-} catch (NumberFormatException e) {
-    response.sendError(400, "Invalid quiz ID.");
-    return;
-}
+        response.sendError(
+                400,
+                "Quiz ID and Question ID are required."
+        );
 
-// Quiz information
-String quizTitle = "";
-String course = "";
-String description = "";
-int duration = 0;
-int questionCount = 0;
-int passMark = 0;
-int existingQuestions = 0;
+        return;
+    }
 
-try (Connection connection = DBConnection.getConnection()) {
+    int quizId;
+    int questionId;
 
-    // Get quiz information
-    String quizSql =
-            "SELECT title, course, description, " +
-            "duration_minutes, question_count, pass_mark " +
-            "FROM quizzes WHERE id = ?";
+    try {
 
-    try (PreparedStatement statement =
-                 connection.prepareStatement(quizSql)) {
+        quizId = Integer.parseInt(quizIdParam);
+        questionId = Integer.parseInt(questionIdParam);
 
-        statement.setInt(1, quizId);
+    } catch (NumberFormatException e) {
+
+        response.sendError(
+                400,
+                "Invalid quiz ID or question ID."
+        );
+
+        return;
+    }
+
+
+    // =========================================================
+    // VARIABLES
+    // =========================================================
+
+    String quizTitle = "";
+    String course = "";
+
+    int questionNumber = 0;
+
+    String questionText = "";
+
+    String answerA = "";
+    String answerB = "";
+    String answerC = "";
+    String answerD = "";
+
+    String correctAnswer = "";
+
+
+    // =========================================================
+    // LOAD QUESTION
+    // =========================================================
+
+    String questionSql =
+            "SELECT q.question_number, q.question_text, " +
+            "a.option_label, a.answer_text, a.is_correct " +
+            "FROM questions q " +
+            "JOIN answers a ON q.id = a.question_id " +
+            "WHERE q.id = ? AND q.quiz_id = ? " +
+            "ORDER BY a.option_label";
+
+    try (
+        Connection connection = DBConnection.getConnection();
+        PreparedStatement statement =
+                connection.prepareStatement(questionSql)
+    ) {
+
+        statement.setInt(1, questionId);
+        statement.setInt(2, quizId);
 
         try (ResultSet resultSet = statement.executeQuery()) {
 
-            if (resultSet.next()) {
+            boolean questionFound = false;
 
-                quizTitle = resultSet.getString("title");
-                course = resultSet.getString("course");
-                description = resultSet.getString("description");
+            while (resultSet.next()) {
 
-                duration =
-                        resultSet.getInt("duration_minutes");
+                questionFound = true;
 
-                questionCount =
-                        resultSet.getInt("question_count");
+                questionNumber =
+                        resultSet.getInt("question_number");
 
-                passMark =
-                        resultSet.getInt("pass_mark");
+                questionText =
+                        resultSet.getString("question_text");
 
-            } else {
+                String option =
+                        resultSet.getString("option_label");
 
-                response.sendError(404, "Quiz not found.");
+                String answer =
+                        resultSet.getString("answer_text");
+
+                boolean isCorrect =
+                        resultSet.getBoolean("is_correct");
+
+
+                if ("A".equals(option)) {
+
+                    answerA = answer;
+
+                    if (isCorrect) {
+                        correctAnswer = "A";
+                    }
+
+                } else if ("B".equals(option)) {
+
+                    answerB = answer;
+
+                    if (isCorrect) {
+                        correctAnswer = "B";
+                    }
+
+                } else if ("C".equals(option)) {
+
+                    answerC = answer;
+
+                    if (isCorrect) {
+                        correctAnswer = "C";
+                    }
+
+                } else if ("D".equals(option)) {
+
+                    answerD = answer;
+
+                    if (isCorrect) {
+                        correctAnswer = "D";
+                    }
+                }
+            }
+
+            if (!questionFound) {
+
+                response.sendError(
+                        404,
+                        "Question was not found."
+                );
+
                 return;
             }
         }
+
+    } catch (Exception e) {
+
+        e.printStackTrace();
+
+        response.sendError(
+                500,
+                "Unable to load question information."
+        );
+
+        return;
     }
 
-    // Count questions already saved
-    String countSql =
-            "SELECT COUNT(*) FROM questions WHERE quiz_id = ?";
 
-    try (PreparedStatement statement =
-                 connection.prepareStatement(countSql)) {
+    // =========================================================
+    // LOAD QUIZ INFORMATION
+    // =========================================================
+
+    String quizSql =
+            "SELECT title, course " +
+            "FROM quizzes WHERE id = ?";
+
+    try (
+        Connection connection = DBConnection.getConnection();
+        PreparedStatement statement =
+                connection.prepareStatement(quizSql)
+    ) {
 
         statement.setInt(1, quizId);
 
         try (ResultSet resultSet = statement.executeQuery()) {
 
             if (resultSet.next()) {
-                existingQuestions = resultSet.getInt(1);
+
+                quizTitle =
+                        resultSet.getString("title");
+
+                course =
+                        resultSet.getString("course");
+
+            } else {
+
+                response.sendError(
+                        404,
+                        "Quiz was not found."
+                );
+
+                return;
             }
         }
+
+    } catch (Exception e) {
+
+        e.printStackTrace();
+
+        response.sendError(
+                500,
+                "Unable to load quiz information."
+        );
+
+        return;
     }
-
-} catch (Exception e) {
-
-    e.printStackTrace();
-
-    response.sendError(
-            500,
-            "Unable to retrieve quiz information."
-    );
-
-    return;
-}
-
-// Next question number
-int nextQuestionNumber = existingQuestions + 1;
-
-// Check whether this is the final question
-boolean lastQuestion =
-        nextQuestionNumber == questionCount;
-
-// Check whether all questions have already been saved
-boolean quizComplete =
-        existingQuestions >= questionCount;
-
-// If the quiz is already complete,
-// go directly to the review page.
-if (quizComplete) {
-
-    response.sendRedirect(
-            "review-quiz.jsp?quizId=" + quizId
-    );
-
-    return;
-}
-
-
-
 %>
+
 
 <!DOCTYPE html>
 
@@ -135,33 +229,45 @@ if (quizComplete) {
 <meta name="viewport"
       content="width=device-width, initial-scale=1.0">
 
-<title>Add Questions | UDOM Online Quiz System</title>
+<title>
+    Edit Question | UDOM Online Quiz System
+</title>
+
 
 <!-- Bootstrap -->
+
 <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     rel="stylesheet">
 
+
 <!-- Bootstrap Icons -->
+
 <link
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
     rel="stylesheet">
 
+
 <!-- Shared Dashboard CSS -->
+
 <link
     rel="stylesheet"
     href="../css/dashboard.css">
 
 </head>
 
+
 <body>
+
 
 <!-- =========================================================
      NAVBAR
 ========================================================= -->
 
 <nav class="navbar dashboard-navbar fixed-top">
+
 <div class="container-fluid">
+
 
     <button
         class="btn sidebar-toggle d-lg-none me-2"
@@ -179,12 +285,17 @@ if (quizComplete) {
         href="dashboard.jsp">
 
         <div class="brand-icon">
+
             <i class="bi bi-mortarboard-fill"></i>
+
         </div>
+
 
         <div class="brand-text">
 
-            <span>UDOM</span>
+            <span>
+                UDOM
+            </span>
 
             <small>
                 Online Quiz System
@@ -196,6 +307,7 @@ if (quizComplete) {
 
 
     <div class="d-flex align-items-center ms-auto">
+
 
         <button
             class="notification-btn me-3">
@@ -218,6 +330,7 @@ if (quizComplete) {
                 <div class="student-avatar">
                     RO
                 </div>
+
 
                 <div class="student-name d-none d-md-block">
 
@@ -243,6 +356,7 @@ if (quizComplete) {
                         href="#">
 
                         <i class="bi bi-person me-2"></i>
+
                         My Profile
 
                     </a>
@@ -257,6 +371,7 @@ if (quizComplete) {
                         href="#">
 
                         <i class="bi bi-gear me-2"></i>
+
                         Settings
 
                     </a>
@@ -265,7 +380,9 @@ if (quizComplete) {
 
 
                 <li>
+
                     <hr class="dropdown-divider">
+
                 </li>
 
 
@@ -276,6 +393,7 @@ if (quizComplete) {
                         href="../login.jsp">
 
                         <i class="bi bi-box-arrow-right me-2"></i>
+
                         Logout
 
                     </a>
@@ -292,6 +410,8 @@ if (quizComplete) {
 
 </nav>
 
+
+
 <!-- =========================================================
      SIDEBAR
 ========================================================= -->
@@ -301,185 +421,194 @@ if (quizComplete) {
     tabindex="-1"
     id="teacherSidebar">
 
-<div class="offcanvas-header d-lg-none">
 
-    <h5 class="offcanvas-title">
-        Lecturer Menu
-    </h5>
+    <div class="offcanvas-header d-lg-none">
 
-    <button
-        type="button"
-        class="btn-close"
-        data-bs-dismiss="offcanvas">
-    </button>
-
-</div>
+        <h5 class="offcanvas-title">
+            Lecturer Menu
+        </h5>
 
 
-<div class="sidebar-content">
+        <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="offcanvas">
+        </button>
 
-    <div class="sidebar-profile">
+    </div>
 
-        <div class="sidebar-avatar">
-            RO
+
+    <div class="sidebar-content">
+
+
+        <div class="sidebar-profile">
+
+            <div class="sidebar-avatar">
+                RO
+            </div>
+
+
+            <div>
+
+                <h6>
+                    Lecturer
+                </h6>
+
+                <span>
+                    Academic Staff
+                </span>
+
+            </div>
+
         </div>
 
-        <div>
 
-            <h6>
-                Lecturer
-            </h6>
 
-            <span>
-                Academic Staff
-            </span>
+        <div class="sidebar-menu">
+
+
+            <p class="menu-title">
+                MAIN MENU
+            </p>
+
+
+            <a
+                href="dashboard.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-grid-1x2-fill"></i>
+
+                <span>
+                    Dashboard
+                </span>
+
+            </a>
+
+
+            <a
+                href="create-quiz.jsp"
+                class="sidebar-link active">
+
+                <i class="bi bi-plus-circle-fill"></i>
+
+                <span>
+                    Create Quiz
+                </span>
+
+            </a>
+
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-journal-text"></i>
+
+                <span>
+                    My Quizzes
+                </span>
+
+                <span class="menu-badge">
+                    18
+                </span>
+
+            </a>
+
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-question-circle-fill"></i>
+
+                <span>
+                    Questions
+                </span>
+
+            </a>
+
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-bar-chart-fill"></i>
+
+                <span>
+                    Student Results
+                </span>
+
+            </a>
+
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-file-earmark-bar-graph-fill"></i>
+
+                <span>
+                    Quiz Reports
+                </span>
+
+            </a>
+
+
+            <p class="menu-title mt-4">
+                ACCOUNT
+            </p>
+
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-person-fill"></i>
+
+                <span>
+                    My Profile
+                </span>
+
+            </a>
+
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-gear-fill"></i>
+
+                <span>
+                    Settings
+                </span>
+
+            </a>
+
+        </div>
+
+
+
+        <div class="sidebar-bottom">
+
+            <a
+                href="../login.jsp"
+                class="logout-link">
+
+                <i class="bi bi-box-arrow-left"></i>
+
+                <span>
+                    Logout
+                </span>
+
+            </a>
 
         </div>
 
     </div>
 
-
-    <div class="sidebar-menu">
-
-        <p class="menu-title">
-            MAIN MENU
-        </p>
-
-
-        <a
-            href="dashboard.jsp"
-            class="sidebar-link">
-
-            <i class="bi bi-grid-1x2-fill"></i>
-
-            <span>
-                Dashboard
-            </span>
-
-        </a>
-
-
-        <a
-            href="create-quiz.jsp"
-            class="sidebar-link active">
-
-            <i class="bi bi-plus-circle-fill"></i>
-
-            <span>
-                Create Quiz
-            </span>
-
-        </a>
-
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-journal-text"></i>
-
-            <span>
-                My Quizzes
-            </span>
-
-            <span class="menu-badge">
-                18
-            </span>
-
-        </a>
-
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-question-circle-fill"></i>
-
-            <span>
-                Questions
-            </span>
-
-        </a>
-
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-bar-chart-fill"></i>
-
-            <span>
-                Student Results
-            </span>
-
-        </a>
-
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-file-earmark-bar-graph-fill"></i>
-
-            <span>
-                Quiz Reports
-            </span>
-
-        </a>
-
-
-        <p class="menu-title mt-4">
-            ACCOUNT
-        </p>
-
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-person-fill"></i>
-
-            <span>
-                My Profile
-            </span>
-
-        </a>
-
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-gear-fill"></i>
-
-            <span>
-                Settings
-            </span>
-
-        </a>
-
-    </div>
-
-
-    <div class="sidebar-bottom">
-
-        <a
-            href="../login.jsp"
-            class="logout-link">
-
-            <i class="bi bi-box-arrow-left"></i>
-
-            <span>
-                Logout
-            </span>
-
-        </a>
-
-    </div>
-
 </div>
 
-</div>
+
 
 <!-- =========================================================
      MAIN CONTENT
@@ -490,7 +619,7 @@ if (quizComplete) {
 <div class="container-fluid dashboard-container">
 
 
-    <!-- Welcome Section -->
+    <!-- PAGE HEADER -->
 
     <div class="welcome-section">
 
@@ -500,13 +629,14 @@ if (quizComplete) {
                 QUIZ MANAGEMENT
             </span>
 
+
             <h1>
-                Add Questions
+                Edit Question
             </h1>
 
+
             <p>
-                Create questions and define the correct
-                answers for your quiz.
+                Update the question and its answers.
             </p>
 
         </div>
@@ -514,14 +644,15 @@ if (quizComplete) {
 
         <div class="welcome-icon">
 
-            <i class="bi bi-question-circle-fill"></i>
+            <i class="bi bi-pencil-square"></i>
 
         </div>
 
     </div>
 
 
-    <!-- Quiz Header -->
+
+    <!-- QUIZ INFORMATION -->
 
     <div class="content-card mb-4">
 
@@ -534,36 +665,28 @@ if (quizComplete) {
                 </h4>
 
                 <p>
-                    Add questions for this quiz.
+                    <%= course %>
                 </p>
 
             </div>
 
 
-            <div class="quiz-status">
+            <span class="quiz-status">
 
-                <span>
+                Question <%= questionNumber %>
 
-                    Question
-                    <%= nextQuestionNumber %>
-                    of
-                    <%= questionCount %>
-
-                </span>
-
-            </div>
+            </span>
 
         </div>
 
     </div>
 
 
+
+    <!-- EDIT FORM -->
+
     <div class="row g-4">
 
-
-        <!-- =================================================
-             QUESTION FORM
-        ================================================= -->
 
         <div class="col-xl-8">
 
@@ -575,12 +698,11 @@ if (quizComplete) {
                     <div>
 
                         <h4>
-                            Question
-                            <%= nextQuestionNumber %>
+                            Question <%= questionNumber %>
                         </h4>
 
                         <p>
-                            Enter the question and its answers.
+                            Modify the question and answer options.
                         </p>
 
                     </div>
@@ -595,12 +717,13 @@ if (quizComplete) {
                 </div>
 
 
+
                 <form
-                    action="../saveQuestion"
+                    action="../updateQuestion"
                     method="post">
 
 
-                    <!-- Quiz ID -->
+                    <!-- IDs -->
 
                     <input
                         type="hidden"
@@ -608,12 +731,17 @@ if (quizComplete) {
                         value="<%= quizId %>">
 
 
-                    <!-- Question Number -->
+                    <input
+                        type="hidden"
+                        name="questionId"
+                        value="<%= questionId %>">
+
 
                     <input
                         type="hidden"
                         name="questionNumber"
-                        value="<%= nextQuestionNumber %>">
+                        value="<%= questionNumber %>">
+
 
 
                     <!-- Question -->
@@ -637,10 +765,10 @@ if (quizComplete) {
                             id="questionText"
                             name="questionText"
                             rows="4"
-                            placeholder="Enter your question here..."
-                            required></textarea>
+                            required><%= questionText %></textarea>
 
                     </div>
+
 
 
                     <!-- Answer A -->
@@ -665,17 +793,19 @@ if (quizComplete) {
                                 A
                             </span>
 
+
                             <input
                                 type="text"
                                 class="form-control"
                                 id="answerA"
                                 name="answerA"
-                                placeholder="Enter answer A"
+                                value="<%= answerA %>"
                                 required>
 
                         </div>
 
                     </div>
+
 
 
                     <!-- Answer B -->
@@ -700,17 +830,19 @@ if (quizComplete) {
                                 B
                             </span>
 
+
                             <input
                                 type="text"
                                 class="form-control"
                                 id="answerB"
                                 name="answerB"
-                                placeholder="Enter answer B"
+                                value="<%= answerB %>"
                                 required>
 
                         </div>
 
                     </div>
+
 
 
                     <!-- Answer C -->
@@ -735,17 +867,19 @@ if (quizComplete) {
                                 C
                             </span>
 
+
                             <input
                                 type="text"
                                 class="form-control"
                                 id="answerC"
                                 name="answerC"
-                                placeholder="Enter answer C"
+                                value="<%= answerC %>"
                                 required>
 
                         </div>
 
                     </div>
+
 
 
                     <!-- Answer D -->
@@ -770,12 +904,13 @@ if (quizComplete) {
                                 D
                             </span>
 
+
                             <input
                                 type="text"
                                 class="form-control"
                                 id="answerD"
                                 name="answerD"
-                                placeholder="Enter answer D"
+                                value="<%= answerD %>"
                                 required>
 
                         </div>
@@ -783,7 +918,8 @@ if (quizComplete) {
                     </div>
 
 
-                    <!-- Correct Answer -->
+
+                    <!-- CORRECT ANSWER -->
 
                     <div class="mb-4">
 
@@ -805,29 +941,49 @@ if (quizComplete) {
                             name="correctAnswer"
                             required>
 
+
                             <option
                                 value=""
-                                selected
                                 disabled>
 
                                 Select the correct answer
 
                             </option>
 
-                            <option value="A">
+
+                            <option
+                                value="A"
+                                <%= "A".equals(correctAnswer) ? "selected" : "" %>>
+
                                 Answer A
+
                             </option>
 
-                            <option value="B">
+
+                            <option
+                                value="B"
+                                <%= "B".equals(correctAnswer) ? "selected" : "" %>>
+
                                 Answer B
+
                             </option>
 
-                            <option value="C">
+
+                            <option
+                                value="C"
+                                <%= "C".equals(correctAnswer) ? "selected" : "" %>>
+
                                 Answer C
+
                             </option>
 
-                            <option value="D">
+
+                            <option
+                                value="D"
+                                <%= "D".equals(correctAnswer) ? "selected" : "" %>>
+
                                 Answer D
+
                             </option>
 
                         </select>
@@ -835,77 +991,34 @@ if (quizComplete) {
                     </div>
 
 
-                    <!-- Buttons -->
+
+                    <!-- BUTTONS -->
+
                     <div
                         class="d-flex justify-content-between
-                            align-items-center mt-4">
+                               align-items-center mt-4">
 
-                        <!-- Back -->
 
                         <a
-                            href="create-quiz.jsp"
+                            href="review-quiz.jsp?quizId=<%= quizId %>"
                             class="btn btn-outline-secondary">
 
                             <i class="bi bi-arrow-left me-1"></i>
 
-                            Back
+                            Cancel
 
                         </a>
 
 
-                        <div class="d-flex gap-2">
+                        <button
+                            type="submit"
+                            class="btn btn-primary">
 
-                            <% if (lastQuestion) { %>
+                            <i class="bi bi-check-circle me-1"></i>
 
-                                <!-- =========================================
-                                    LAST QUESTION
-                                    ========================================= -->
+                            Save Changes
 
-                                <button
-                                    type="submit"
-                                    name="action"
-                                    value="review"
-                                    class="btn btn-primary">
-
-                                    <i class="bi bi-check-circle-fill me-1"></i>
-
-                                    Save & Review
-
-                                </button>
-
-
-                            <% } else { %>
-
-                                <!-- =========================================
-                                    MORE QUESTIONS REMAIN
-                                    ========================================= -->
-
-                                <button
-                                    type="submit"
-                                    name="action"
-                                    value="add"
-                                    class="btn btn-outline-primary">
-
-                                    <i class="bi bi-plus-circle me-1"></i>
-
-                                    Save & Next
-
-                                </button>
-
-
-                                <a
-                                    href="review-quiz.jsp?quizId=<%= quizId %>"
-                                    class="btn btn-primary">
-
-                                    Review Quiz
-
-                                    <i class="bi bi-arrow-right ms-1"></i>
-
-                                </a>
-
-                            <% } %>
-
-                        </div>
+                        </button>
 
                     </div>
 
@@ -917,9 +1030,8 @@ if (quizComplete) {
         </div>
 
 
-        <!-- =================================================
-             QUIZ SUMMARY
-        ================================================= -->
+
+        <!-- SUMMARY -->
 
         <div class="col-xl-4">
 
@@ -931,11 +1043,11 @@ if (quizComplete) {
                     <div>
 
                         <h4>
-                            Quiz Summary
+                            Editing Question
                         </h4>
 
                         <p>
-                            Current quiz information.
+                            Question information.
                         </p>
 
                     </div>
@@ -943,11 +1055,40 @@ if (quizComplete) {
                 </div>
 
 
-                <!-- Course -->
 
                 <div class="quiz-item">
 
                     <div class="quiz-icon">
+
+                        <i class="bi bi-hash"></i>
+
+                    </div>
+
+
+                    <div class="quiz-information">
+
+                        <h5>
+                            Question Number
+                        </h5>
+
+
+                        <div class="quiz-meta">
+
+                            <span>
+                                Question <%= questionNumber %>
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="quiz-item">
+
+                    <div class="quiz-icon software-icon">
 
                         <i class="bi bi-book-fill"></i>
 
@@ -959,6 +1100,7 @@ if (quizComplete) {
                         <h5>
                             Course
                         </h5>
+
 
                         <div class="quiz-meta">
 
@@ -973,154 +1115,6 @@ if (quizComplete) {
                 </div>
 
 
-                <!-- Duration -->
-
-                <div class="quiz-item">
-
-                    <div class="quiz-icon software-icon">
-
-                        <i class="bi bi-clock-fill"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-                            Duration
-                        </h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-                                <%= duration %> Minutes
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Questions -->
-
-                <div class="quiz-item">
-
-                    <div class="quiz-icon network-icon">
-
-                        <i class="bi bi-list-ol"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-                            Questions
-                        </h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-
-                                <%= existingQuestions %>
-                                of
-                                <%= questionCount %>
-
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Pass Mark -->
-
-                <div class="quiz-item">
-
-                    <div class="quiz-icon security-icon">
-
-                        <i class="bi bi-percent"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-                            Pass Mark
-                        </h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-                                <%= passMark %>%
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- Instructions -->
-
-            <div class="content-card mt-4">
-
-                <div class="card-header-custom">
-
-                    <div>
-
-                        <h4>
-                            Instructions
-                        </h4>
-
-                        <p>
-                            Before adding questions
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div class="quiz-item">
-
-                    <div class="quiz-icon">
-
-                        <i class="bi bi-lightbulb-fill"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-                            Write Clear Questions
-                        </h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-
-                                Make each question simple
-                                and easy for students to
-                                understand.
-
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
 
                 <div class="quiz-item">
 
@@ -1134,16 +1128,14 @@ if (quizComplete) {
                     <div class="quiz-information">
 
                         <h5>
-                            Select Correct Answer
+                            Correct Answer
                         </h5>
+
 
                         <div class="quiz-meta">
 
                             <span>
-
-                                Always select one correct
-                                answer before continuing.
-
+                                Answer <%= correctAnswer %>
                             </span>
 
                         </div>
@@ -1152,6 +1144,7 @@ if (quizComplete) {
 
                 </div>
 
+
             </div>
 
         </div>
@@ -1159,9 +1152,8 @@ if (quizComplete) {
     </div>
 
 
-    <!-- =================================================
-         FOOTER
-    ================================================= -->
+
+    <!-- FOOTER -->
 
     <footer class="dashboard-footer">
 
@@ -1179,9 +1171,11 @@ if (quizComplete) {
                 Help
             </a>
 
+
             <a href="#">
                 Privacy
             </a>
+
 
             <a href="#">
                 Support
@@ -1195,11 +1189,12 @@ if (quizComplete) {
 
 </main>
 
-<!-- Bootstrap JavaScript -->
+
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
+
 
 </body>
 
