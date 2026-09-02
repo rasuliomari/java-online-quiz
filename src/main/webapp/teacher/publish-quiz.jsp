@@ -1,4 +1,173 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="java.sql.SQLException" %>
+<%@ page import="tz.udom.quiz.util.DBConnection" %>
+
+<%
+String quizIdValue = request.getParameter("quizId");
+
+if (quizIdValue == null || quizIdValue.trim().isEmpty()) {
+
+    response.sendError(
+            HttpServletResponse.SC_BAD_REQUEST,
+            "Quiz ID is required."
+    );
+
+    return;
+}
+
+int quizId;
+
+try {
+
+    quizId = Integer.parseInt(quizIdValue);
+
+} catch (NumberFormatException e) {
+
+    response.sendError(
+            HttpServletResponse.SC_BAD_REQUEST,
+            "Invalid quiz ID."
+    );
+
+    return;
+}
+
+
+String title = "";
+String course = "";
+String description = "";
+String status = "";
+
+int durationMinutes = 0;
+int requiredQuestionCount = 0;
+int passMark = 0;
+
+int savedQuestionCount = 0;
+
+boolean quizFound = false;
+
+
+try (Connection connection = DBConnection.getConnection()) {
+
+    /*
+     * =====================================================
+     * LOAD QUIZ
+     * =====================================================
+     */
+
+    String quizSql = """
+            SELECT
+                title,
+                course,
+                description,
+                duration_minutes,
+                question_count,
+                pass_mark,
+                status
+            FROM quizzes
+            WHERE id = ?
+            """;
+
+    try (PreparedStatement statement =
+                 connection.prepareStatement(quizSql)) {
+
+        statement.setInt(1, quizId);
+
+        try (ResultSet resultSet =
+                     statement.executeQuery()) {
+
+            if (resultSet.next()) {
+
+                quizFound = true;
+
+                title =
+                        resultSet.getString("title");
+
+                course =
+                        resultSet.getString("course");
+
+                description =
+                        resultSet.getString("description");
+
+                durationMinutes =
+                        resultSet.getInt("duration_minutes");
+
+                requiredQuestionCount =
+                        resultSet.getInt("question_count");
+
+                passMark =
+                        resultSet.getInt("pass_mark");
+
+                status =
+                        resultSet.getString("status");
+            }
+        }
+    }
+
+
+    if (!quizFound) {
+
+        response.sendError(
+                HttpServletResponse.SC_NOT_FOUND,
+                "Quiz not found."
+        );
+
+        return;
+    }
+
+
+    /*
+     * =====================================================
+     * COUNT SAVED QUESTIONS
+     * =====================================================
+     */
+
+    String countSql = """
+            SELECT COUNT(*)
+            FROM questions
+            WHERE quiz_id = ?
+            """;
+
+    try (PreparedStatement statement =
+                 connection.prepareStatement(countSql)) {
+
+        statement.setInt(1, quizId);
+
+        try (ResultSet resultSet =
+                     statement.executeQuery()) {
+
+            if (resultSet.next()) {
+
+                savedQuestionCount =
+                        resultSet.getInt(1);
+            }
+        }
+    }
+
+} catch (SQLException e) {
+
+    e.printStackTrace();
+
+    response.sendError(
+            HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+            "Database error while loading quiz information."
+    );
+
+    return;
+}
+
+
+boolean questionCountComplete =
+        savedQuestionCount == requiredQuestionCount;
+
+boolean isDraft =
+        "DRAFT".equalsIgnoreCase(status);
+
+boolean canPublish =
+        questionCountComplete && isDraft;
+
+%>
 
 <!DOCTYPE html>
 
@@ -6,40 +175,73 @@
 
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Publish Quiz | UDOM Online Quiz System</title>
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
 
-<!-- Bootstrap 5.3.3 -->
+<title>
+    Publish Quiz - UDOM Online Quiz System
+</title>
+
+
+<!-- Bootstrap CSS -->
 <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     rel="stylesheet">
 
+
 <!-- Bootstrap Icons -->
 <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+    rel="stylesheet">
 
-<!-- SAME Dashboard CSS -->
-<link rel="stylesheet" href="../css/dashboard.css">
+
+<!-- Dashboard CSS -->
+<link
+    rel="stylesheet"
+    href="../css/dashboard.css">
 
 </head>
 
 <body>
 
-<!-- =========================================================
-     TOP NAVBAR
-========================================================= -->
+<!-- ========================================================= -->
 
-<nav class="navbar dashboard-navbar fixed-top">
+<!-- NAVBAR -->
+
+<!-- ========================================================= -->
+
+<nav class="navbar navbar-expand-lg dashboard-navbar fixed-top">
 
 <div class="container-fluid">
 
 
-    <!-- Mobile menu -->
+    <!-- BRAND -->
+
+    <a
+        class="navbar-brand d-flex align-items-center"
+        href="dashboard.jsp">
+
+        <i class="bi bi-mortarboard-fill me-2"></i>
+
+        <span>
+
+            UDOM
+
+            <small class="d-block">
+                Online Quiz System
+            </small>
+
+        </span>
+
+    </a>
+
+
+    <!-- MOBILE MENU -->
 
     <button
-        class="btn sidebar-toggle d-lg-none me-2"
+        class="btn btn-outline-light d-lg-none"
         type="button"
         data-bs-toggle="offcanvas"
         data-bs-target="#teacherSidebar">
@@ -49,70 +251,59 @@
     </button>
 
 
-    <!-- Brand -->
+    <!-- RIGHT SIDE -->
 
-    <a
-        class="navbar-brand d-flex align-items-center"
-        href="dashboard.jsp">
-
-        <div class="brand-icon">
-
-            <i class="bi bi-mortarboard-fill"></i>
-
-        </div>
+    <div class="d-flex align-items-center">
 
 
-        <div class="brand-text">
+        <!-- NOTIFICATIONS -->
 
-            <span>UDOM</span>
+        <a
+            href="#"
+            class="text-white position-relative me-4">
 
-            <small>
-                Online Quiz System
-            </small>
+            <i class="bi bi-bell-fill fs-5"></i>
 
-        </div>
+            <span
+                class="position-absolute top-0 start-100
+                       translate-middle badge rounded-pill bg-danger">
 
-    </a>
-
-
-    <!-- Right side -->
-
-    <div class="d-flex align-items-center ms-auto">
-
-
-        <!-- Notification -->
-
-        <button class="notification-btn me-3">
-
-            <i class="bi bi-bell"></i>
-
-            <span class="notification-badge">
                 4
+
             </span>
 
-        </button>
+        </a>
 
 
-        <!-- Lecturer profile -->
+        <!-- PROFILE -->
 
         <div class="dropdown">
 
             <button
-                class="profile-button dropdown-toggle"
+                class="btn btn-transparent text-white dropdown-toggle
+                       d-flex align-items-center"
+                type="button"
                 data-bs-toggle="dropdown">
 
-                <div class="student-avatar">
+
+                <div
+                    class="rounded-circle bg-primary text-white
+                           d-flex align-items-center justify-content-center
+                           me-2"
+                    style="width:40px;height:40px;">
+
                     RO
+
                 </div>
 
 
-                <div class="student-name d-none d-md-block">
+                <div class="text-start d-none d-md-block">
 
                     <strong>
                         Lecturer
                     </strong>
 
-                    <small>
+                    <small class="d-block text-light">
                         Academic Staff
                     </small>
 
@@ -121,7 +312,7 @@
             </button>
 
 
-            <ul class="dropdown-menu dropdown-menu-end shadow">
+            <ul class="dropdown-menu dropdown-menu-end">
 
                 <li>
 
@@ -164,7 +355,7 @@
 
                     <a
                         class="dropdown-item text-danger"
-                        href="../login.jsp">
+                        href="#">
 
                         <i class="bi bi-box-arrow-right me-2"></i>
 
@@ -184,570 +375,269 @@
 
 </nav>
 
-<!-- =========================================================
-     SIDEBAR
-========================================================= -->
+<!-- ========================================================= -->
+
+<!-- SIDEBAR -->
+
+<!-- ========================================================= -->
 
 <div
     class="offcanvas-lg offcanvas-start student-sidebar"
     tabindex="-1"
     id="teacherSidebar">
 
-<!-- Mobile header -->
-
 <div class="offcanvas-header d-lg-none">
 
     <h5 class="offcanvas-title">
-        Lecturer Menu
+        Menu
     </h5>
-
 
     <button
         type="button"
         class="btn-close"
         data-bs-dismiss="offcanvas">
-
     </button>
 
 </div>
 
 
-
 <div class="sidebar-content">
 
 
-    <!-- Lecturer information -->
+    <a
+        href="dashboard.jsp"
+        class="sidebar-link">
 
-    <div class="sidebar-profile">
+        <i class="bi bi-speedometer2"></i>
 
-        <div class="sidebar-avatar">
-            RO
-        </div>
+        <span>
+            Dashboard
+        </span>
 
+    </a>
 
-        <div>
 
-            <h6>
-                Lecturer
-            </h6>
+    <a
+        href="create-quiz.jsp"
+        class="sidebar-link active">
 
-            <span>
-                Academic Staff
-            </span>
+        <i class="bi bi-plus-circle"></i>
 
-        </div>
+        <span>
+            Create Quiz
+        </span>
 
-    </div>
+    </a>
 
 
+    <a
+        href="#"
+        class="sidebar-link">
 
-    <!-- Navigation -->
+        <i class="bi bi-journal-text"></i>
 
-    <div class="sidebar-menu">
+        <span>
+            My Quizzes
+        </span>
 
+    </a>
 
-        <p class="menu-title">
-            MAIN MENU
-        </p>
 
+    <a
+        href="#"
+        class="sidebar-link">
 
-        <!-- Dashboard -->
+        <i class="bi bi-question-circle"></i>
 
-        <a
-            href="dashboard.jsp"
-            class="sidebar-link">
+        <span>
+            Questions
+        </span>
 
-            <i class="bi bi-grid-1x2-fill"></i>
+    </a>
 
-            <span>
-                Dashboard
-            </span>
 
-        </a>
+    <a
+        href="#"
+        class="sidebar-link">
 
+        <i class="bi bi-bar-chart-fill"></i>
 
-        <!-- Create Quiz -->
+        <span>
+            Student Results
+        </span>
 
-        <a
-            href="create-quiz.jsp"
-            class="sidebar-link active">
+    </a>
 
-            <i class="bi bi-plus-circle-fill"></i>
 
-            <span>
-                Create Quiz
-            </span>
+    <a
+        href="#"
+        class="sidebar-link">
 
-        </a>
+        <i class="bi bi-file-earmark-bar-graph"></i>
 
+        <span>
+            Quiz Reports
+        </span>
 
-        <!-- My Quizzes -->
+    </a>
 
-        <a
-            href="#"
-            class="sidebar-link">
 
-            <i class="bi bi-journal-text"></i>
+    <hr>
 
-            <span>
-                My Quizzes
-            </span>
 
-            <span class="menu-badge">
-                18
-            </span>
+    <a
+        href="#"
+        class="sidebar-link">
 
-        </a>
+        <i class="bi bi-person-circle"></i>
 
+        <span>
+            My Profile
+        </span>
 
-        <!-- Questions -->
+    </a>
 
-        <a
-            href="#"
-            class="sidebar-link">
 
-            <i class="bi bi-question-circle-fill"></i>
+    <a
+        href="#"
+        class="sidebar-link">
 
-            <span>
-                Questions
-            </span>
+        <i class="bi bi-gear"></i>
 
-        </a>
+        <span>
+            Settings
+        </span>
 
+    </a>
 
-        <!-- Results -->
 
-        <a
-            href="#"
-            class="sidebar-link">
+    <a
+        href="#"
+        class="sidebar-link text-danger">
 
-            <i class="bi bi-bar-chart-fill"></i>
+        <i class="bi bi-box-arrow-right"></i>
 
-            <span>
-                Student Results
-            </span>
+        <span>
+            Logout
+        </span>
 
-        </a>
-
-
-        <!-- Reports -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-file-earmark-bar-graph-fill"></i>
-
-            <span>
-                Quiz Reports
-            </span>
-
-        </a>
-
-
-        <p class="menu-title mt-4">
-            ACCOUNT
-        </p>
-
-
-        <!-- Profile -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-person-fill"></i>
-
-            <span>
-                My Profile
-            </span>
-
-        </a>
-
-
-        <!-- Settings -->
-
-        <a
-            href="#"
-            class="sidebar-link">
-
-            <i class="bi bi-gear-fill"></i>
-
-            <span>
-                Settings
-            </span>
-
-        </a>
-
-    </div>
-
-
-
-    <!-- Logout -->
-
-    <div class="sidebar-bottom">
-
-        <a
-            href="../login.jsp"
-            class="logout-link">
-
-            <i class="bi bi-box-arrow-left"></i>
-
-            <span>
-                Logout
-            </span>
-
-        </a>
-
-    </div>
+    </a>
 
 </div>
 
 </div>
 
-<!-- =========================================================
-     MAIN CONTENT
-========================================================= -->
+<!-- ========================================================= -->
+
+<!-- MAIN CONTENT -->
+
+<!-- ========================================================= -->
 
 <main class="dashboard-main">
+<div class="dashboard-container">
 
-<div class="container-fluid dashboard-container">
 
+    <!-- PAGE HEADER -->
 
-    <!-- =================================================
-         PAGE HEADER
-    ================================================== -->
-
-    <div class="welcome-section">
+    <div class="welcome-section mb-4">
 
         <div>
 
-            <span class="welcome-label">
-                QUIZ MANAGEMENT
-            </span>
-
-
             <h1>
+
+                <i class="bi bi-send-fill me-2"></i>
+
                 Publish Quiz
+
             </h1>
 
+            <p class="text-muted mb-0">
 
-            <p>
-                Your quiz is ready. Review the information below
-                before making it available to students.
+                Review the quiz information before publishing.
+
             </p>
 
         </div>
 
-
-        <div class="welcome-icon">
-
-            <i class="bi bi-send-fill"></i>
-
-        </div>
-
     </div>
 
 
+    <!-- ================================================= -->
+    <!-- QUIZ INFORMATION -->
+    <!-- ================================================= -->
 
-    <!-- =================================================
-         PUBLISH CONFIRMATION
-    ================================================== -->
+    <div class="content-card mb-4">
 
-    <div class="row justify-content-center">
-
-        <div class="col-xl-8">
-
-
-            <div class="content-card text-center">
+        <div class="card-body">
 
 
-                <!-- Success icon -->
+            <div
+                class="d-flex justify-content-between
+                       align-items-start flex-wrap gap-3">
 
-                <div class="mb-4">
 
-                    <div
-                        class="mx-auto d-flex align-items-center
-                               justify-content-center rounded-circle"
-                        style="
-                            width: 90px;
-                            height: 90px;
-                            background: rgba(25, 135, 84, 0.1);
-                        ">
+                <div>
 
-                        <i
-                            class="bi bi-check-circle-fill text-success"
-                            style="font-size: 3.5rem;">
-                        </i>
+                    <h3 class="mb-2">
 
-                    </div>
+                        <%= title %>
+
+                    </h3>
+
+
+                    <p class="text-muted mb-1">
+
+                        <i class="bi bi-book me-2"></i>
+
+                        <strong>
+                            Course:
+                        </strong>
+
+                        <%= course %>
+
+                    </p>
+
+
+                    <p class="text-muted mb-0">
+
+                        <i class="bi bi-clock me-2"></i>
+
+                        <strong>
+                            Duration:
+                        </strong>
+
+                        <%= durationMinutes %> minutes
+
+                    </p>
 
                 </div>
 
 
+                <div>
 
-                <h2 class="mb-3">
-                    Ready to Publish?
-                </h2>
+                    <% if ("PUBLISHED".equalsIgnoreCase(status)) { %>
 
+                        <span class="badge bg-success fs-6">
 
-                <p class="text-muted mb-4">
+                            <i class="bi bi-check-circle me-1"></i>
 
-                    Your quiz has been reviewed successfully.
-                    Once published, students will be able to see
-                    and attempt this quiz.
+                            PUBLISHED
 
-                </p>
-
-
-
-                <!-- =================================================
-                     QUIZ SUMMARY
-                ================================================== -->
-
-                <div class="content-card text-start mb-4">
-
-
-                    <div class="card-header-custom">
-
-                        <div>
-
-                            <h4>
-                                Quiz Summary
-                            </h4>
-
-                            <p>
-                                Final quiz information
-                            </p>
-
-                        </div>
-
-
-                        <span class="quiz-status">
-                            Ready
                         </span>
 
-                    </div>
+                    <% } else { %>
 
+                        <span class="badge bg-warning text-dark fs-6">
 
+                            <i class="bi bi-pencil-square me-1"></i>
 
-                    <div class="quiz-item">
+                            DRAFT
 
-                        <div class="quiz-icon">
+                        </span>
 
-                            <i class="bi bi-journal-text"></i>
-
-                        </div>
-
-
-                        <div class="quiz-information">
-
-                            <h5>
-                                Quiz Title
-                            </h5>
-
-                            <div class="quiz-meta">
-
-                                <span>
-                                    Database Management Systems
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <div class="quiz-item">
-
-                        <div class="quiz-icon software-icon">
-
-                            <i class="bi bi-book-fill"></i>
-
-                        </div>
-
-
-                        <div class="quiz-information">
-
-                            <h5>
-                                Course
-                            </h5>
-
-                            <div class="quiz-meta">
-
-                                <span>
-                                    Database Management Systems
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <div class="quiz-item">
-
-                        <div class="quiz-icon network-icon">
-
-                            <i class="bi bi-clock-fill"></i>
-
-                        </div>
-
-
-                        <div class="quiz-information">
-
-                            <h5>
-                                Duration
-                            </h5>
-
-                            <div class="quiz-meta">
-
-                                <span>
-                                    60 Minutes
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <div class="quiz-item">
-
-                        <div class="quiz-icon security-icon">
-
-                            <i class="bi bi-list-ol"></i>
-
-                        </div>
-
-
-                        <div class="quiz-information">
-
-                            <h5>
-                                Questions
-                            </h5>
-
-                            <div class="quiz-meta">
-
-                                <span>
-                                    20 Questions
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <div class="quiz-item">
-
-                        <div class="quiz-icon">
-
-                            <i class="bi bi-percent"></i>
-
-                        </div>
-
-
-                        <div class="quiz-information">
-
-                            <h5>
-                                Pass Mark
-                            </h5>
-
-                            <div class="quiz-meta">
-
-                                <span>
-                                    50%
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
+                    <% } %>
 
                 </div>
-
-
-
-                <!-- =================================================
-                     IMPORTANT WARNING
-                ================================================== -->
-
-                <div class="alert alert-warning text-start">
-
-
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-
-
-                    <strong>
-                        Important:
-                    </strong>
-
-
-                    After publishing, students will be able to
-                    access and attempt this quiz. Make sure all
-                    questions and answers are correct before
-                    publishing.
-
-                </div>
-
-
-
-                <!-- =================================================
-                     ACTION BUTTONS
-                ================================================== -->
-
-                <div
-                    class="d-flex justify-content-center
-                           flex-wrap gap-2 mt-4">
-
-
-                    <a
-                        href="review-quiz.jsp"
-                        class="btn btn-outline-secondary">
-
-                        <i class="bi bi-arrow-left me-1"></i>
-
-                        Back to Review
-
-                    </a>
-
-
-                    <button
-                        type="button"
-                        class="btn btn-outline-primary">
-
-                        <i class="bi bi-save me-1"></i>
-
-                        Save as Draft
-
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="btn btn-success"
-                        data-bs-toggle="modal"
-                        data-bs-target="#publishModal">
-
-                        <i class="bi bi-send-fill me-1"></i>
-
-                        Publish Quiz
-
-                    </button>
-
-                </div>
-
 
             </div>
 
@@ -756,146 +646,451 @@
     </div>
 
 
+    <!-- ================================================= -->
+    <!-- PUBLISH CHECKLIST -->
+    <!-- ================================================= -->
 
-    <!-- =================================================
-         FOOTER
-    ================================================== -->
+    <div class="content-card mb-4">
 
-    <footer class="dashboard-footer">
-
-
-        <p>
-
-            © 2026 UDOM Online Quiz System.
-            University of Dodoma.
-
-        </p>
+        <div class="card-body">
 
 
-        <div>
+            <h4 class="mb-4">
 
-            <a href="#">
-                Help
-            </a>
+                <i class="bi bi-check2-square me-2"></i>
 
+                Publication Checklist
 
-            <a href="#">
-                Privacy
-            </a>
+            </h4>
 
 
-            <a href="#">
-                Support
-            </a>
+            <!-- QUESTION COUNT -->
+
+            <div
+                class="d-flex align-items-center
+                       justify-content-between
+                       border-bottom py-3">
+
+                <div
+                    class="d-flex align-items-center">
+
+                    <% if (questionCountComplete) { %>
+
+                        <i
+                            class="bi bi-check-circle-fill
+                                   text-success fs-4 me-3">
+                        </i>
+
+                    <% } else { %>
+
+                        <i
+                            class="bi bi-exclamation-circle-fill
+                                   text-warning fs-4 me-3">
+                        </i>
+
+                    <% } %>
+
+
+                    <div>
+
+                        <strong>
+                            Required Questions
+                        </strong>
+
+                        <small class="d-block text-muted">
+
+                            Questions saved:
+
+                            <%= savedQuestionCount %>
+
+                            /
+
+                            <%= requiredQuestionCount %>
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <% if (questionCountComplete) { %>
+
+                    <span class="badge bg-success">
+                        Complete
+                    </span>
+
+                <% } else { %>
+
+                    <span class="badge bg-warning text-dark">
+                        Incomplete
+                    </span>
+
+                <% } %>
+
+            </div>
+
+
+            <!-- STATUS -->
+
+            <div
+                class="d-flex align-items-center
+                       justify-content-between
+                       border-bottom py-3">
+
+
+                <div
+                    class="d-flex align-items-center">
+
+                    <% if (isDraft) { %>
+
+                        <i
+                            class="bi bi-check-circle-fill
+                                   text-success fs-4 me-3">
+                        </i>
+
+                    <% } else { %>
+
+                        <i
+                            class="bi bi-info-circle-fill
+                                   text-primary fs-4 me-3">
+                        </i>
+
+                    <% } %>
+
+
+                    <div>
+
+                        <strong>
+                            Quiz Status
+                        </strong>
+
+                        <small class="d-block text-muted">
+
+                            Current status:
+                            <%= status %>
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <% if (isDraft) { %>
+
+                    <span class="badge bg-success">
+                        Ready
+                    </span>
+
+                <% } else { %>
+
+                    <span class="badge bg-primary">
+                        <%= status %>
+                    </span>
+
+                <% } %>
+
+            </div>
+
+
+            <!-- PASS MARK -->
+
+            <div
+                class="d-flex align-items-center
+                       justify-content-between
+                       py-3">
+
+
+                <div
+                    class="d-flex align-items-center">
+
+                    <i
+                        class="bi bi-award-fill
+                               text-primary fs-4 me-3">
+                    </i>
+
+
+                    <div>
+
+                        <strong>
+                            Pass Mark
+                        </strong>
+
+                        <small class="d-block text-muted">
+
+                            Students must achieve at least
+
+                            <%= passMark %>%
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <span class="badge bg-primary">
+
+                    <%= passMark %>%
+
+                </span>
+
+            </div>
 
         </div>
 
-
-    </footer>
-
-
-</div>
-
-</main>
-
-<!-- =========================================================
-     PUBLISH CONFIRMATION MODAL
-========================================================= -->
-
-<div
-    class="modal fade"
-    id="publishModal"
-    tabindex="-1"
-    aria-hidden="true">
-
-<div class="modal-dialog modal-dialog-centered">
+    </div>
 
 
-    <div class="modal-content">
+    <!-- ================================================= -->
+    <!-- DESCRIPTION -->
+    <!-- ================================================= -->
 
+    <div class="content-card mb-4">
 
-        <div class="modal-header">
+        <div class="card-body">
 
-            <h5 class="modal-title">
+            <h5>
 
-                <i class="bi bi-send-fill me-2"></i>
+                <i class="bi bi-card-text me-2"></i>
 
-                Publish Quiz
-
-            </h5>
-
-
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal">
-
-            </button>
-
-        </div>
-
-
-
-        <div class="modal-body text-center py-4">
-
-
-            <i
-                class="bi bi-question-circle-fill text-primary"
-                style="font-size: 3rem;">
-            </i>
-
-
-            <h5 class="mt-3">
-
-                Are you sure you want to publish this quiz?
+                Quiz Description
 
             </h5>
 
 
             <p class="text-muted mb-0">
 
-                Students will be able to access and attempt
-                the quiz after it is published.
+                <%
+                    if (description != null
+                            && !description.trim().isEmpty()) {
+                %>
+
+                    <%= description %>
+
+                <%
+                    } else {
+                %>
+
+                    No description provided.
+
+                <%
+                    }
+                %>
 
             </p>
 
         </div>
 
+    </div>
 
 
-        <div class="modal-footer">
+    <!-- ================================================= -->
+    <!-- WARNING -->
+    <!-- ================================================= -->
+
+    <% if (!questionCountComplete) { %>
+
+        <div
+            class="alert alert-warning
+                   d-flex align-items-start mb-4">
+
+            <i
+                class="bi bi-exclamation-triangle-fill
+                       fs-4 me-3">
+            </i>
 
 
-            <button
-                type="button"
-                class="btn btn-outline-secondary"
-                data-bs-dismiss="modal">
+            <div>
 
-                Cancel
+                <strong>
+                    Quiz is not ready to publish.
+                </strong>
 
-            </button>
+                <p class="mb-0 mt-1">
 
+                    You need to add all required questions
+                    before this quiz can be published.
 
-            <a
-                href="dashboard.jsp"
-                class="btn btn-success">
+                </p>
 
-                <i class="bi bi-send-fill me-1"></i>
-
-                Confirm Publish
-
-            </a>
+            </div>
 
         </div>
 
+    <% } %>
+
+
+    <!-- ================================================= -->
+    <!-- ALREADY PUBLISHED -->
+    <!-- ================================================= -->
+
+    <% if ("PUBLISHED".equalsIgnoreCase(status)) { %>
+
+        <div
+            class="alert alert-success
+                   d-flex align-items-center mb-4">
+
+            <i
+                class="bi bi-check-circle-fill
+                       fs-4 me-3">
+            </i>
+
+
+            <div>
+
+                <strong>
+                    This quiz has already been published.
+                </strong>
+
+                <p class="mb-0">
+                    The quiz is currently available as published.
+                </p>
+
+            </div>
+
+        </div>
+
+    <% } %>
+
+
+    <!-- ================================================= -->
+    <!-- ACTIONS -->
+    <!-- ================================================= -->
+
+    <div
+        class="content-card">
+
+        <div
+            class="card-body">
+
+            <div
+                class="d-flex justify-content-between
+                       align-items-center flex-wrap gap-3">
+
+
+                <!-- BACK -->
+
+                <a
+                    href="review-quiz.jsp?quizId=<%= quizId %>"
+                    class="btn btn-outline-secondary">
+
+                    <i class="bi bi-arrow-left me-1"></i>
+
+                    Back to Review
+
+                </a>
+
+
+                <div class="d-flex gap-2">
+
+
+                    <!-- ADD QUESTIONS -->
+
+                    <% if (!questionCountComplete
+                            && isDraft) { %>
+
+                        <a
+                            href="add-questions.jsp?quizId=<%= quizId %>"
+                            class="btn btn-outline-primary">
+
+                            <i class="bi bi-plus-circle me-1"></i>
+
+                            Add Questions
+
+                        </a>
+
+                    <% } %>
+
+
+                    <!-- PUBLISH -->
+
+                    <% if (canPublish) { %>
+
+                        <form
+                            action="../publishQuiz"
+                            method="post"
+                            class="d-inline">
+
+                            <input
+                                type="hidden"
+                                name="quizId"
+                                value="<%= quizId %>">
+
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                onclick="return confirm(
+                                    'Are you sure you want to publish this quiz?'
+                                );">
+
+                                <i
+                                    class="bi bi-send-fill me-1">
+                                </i>
+
+                                Confirm Publish
+
+                            </button>
+
+                        </form>
+
+                    <% } else if (!"PUBLISHED".equalsIgnoreCase(status)) { %>
+
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            disabled>
+
+                            <i
+                                class="bi bi-lock-fill me-1">
+                            </i>
+
+                            Publish Quiz
+
+                        </button>
+
+                    <% } %>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+</main>
+
+<!-- ========================================================= -->
+
+<!-- FOOTER -->
+
+<!-- ========================================================= -->
+
+<footer class="dashboard-footer">
+<div class="container-fluid">
+
+    <div class="text-center">
+
+        <small>
+
+            © 2026 University of Dodoma -
+            Online Quiz System
+
+        </small>
 
     </div>
 
 </div>
 
-</div>
+</footer>
 
-<!-- Bootstrap JavaScript -->
+<!-- Bootstrap JS -->
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
