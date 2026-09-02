@@ -1,168 +1,216 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
-<!DOCTYPE html>
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="java.sql.SQLException" %>
+<%@ page import="java.sql.Timestamp" %>
+<%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="tz.udom.quiz.util.DBConnection" %>
 
+<%
+    int totalQuizzes = 0;
+    int publishedQuizzes = 0;
+    int draftQuizzes = 0;
+    int totalQuestions = 0;
+
+    String successMessage = request.getParameter("published");
+
+    SimpleDateFormat dateFormat =
+            new SimpleDateFormat("dd MMM yyyy");
+
+    /*
+     * Load dashboard statistics
+     */
+    try (Connection connection = DBConnection.getConnection()) {
+
+        String statisticsSql =
+                "SELECT " +
+                "COUNT(*) AS total_quizzes, " +
+                "COUNT(*) FILTER (WHERE status = 'PUBLISHED') AS published_quizzes, " +
+                "COUNT(*) FILTER (WHERE status = 'DRAFT') AS draft_quizzes " +
+                "FROM quizzes";
+
+        try (PreparedStatement statement =
+                     connection.prepareStatement(statisticsSql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            if (resultSet.next()) {
+                totalQuizzes =
+                        resultSet.getInt("total_quizzes");
+
+                publishedQuizzes =
+                        resultSet.getInt("published_quizzes");
+
+                draftQuizzes =
+                        resultSet.getInt("draft_quizzes");
+            }
+        }
+
+        String questionsSql =
+                "SELECT COUNT(*) AS total_questions FROM questions";
+
+        try (PreparedStatement statement =
+                     connection.prepareStatement(questionsSql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            if (resultSet.next()) {
+                totalQuestions =
+                        resultSet.getInt("total_questions");
+            }
+        }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+%>
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Lecturer Dashboard | UDOM Online Quiz System</title>
+    <meta charset="UTF-8">
 
-<!-- Bootstrap 5.3.3 -->
-<link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-<!-- Bootstrap Icons -->
-<link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <title>Teacher Dashboard | UDOM Online Quiz System</title>
 
-<!-- Dashboard CSS -->
-<link rel="stylesheet" href="../css/dashboard.css">
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+        rel="stylesheet">
+
+    <!-- Dashboard CSS -->
+    <link rel="stylesheet" href="../css/dashboard.css">
 
 </head>
 
 <body>
 
 <!-- =========================================================
-     TOP NAVBAR
+     NAVBAR
 ========================================================= -->
 
 <nav class="navbar dashboard-navbar fixed-top">
 
-<div class="container-fluid">
+    <div class="container-fluid">
 
-    <!-- Mobile menu -->
-
-    <button
-        class="btn sidebar-toggle d-lg-none me-2"
-        type="button"
-        data-bs-toggle="offcanvas"
-        data-bs-target="#teacherSidebar">
-
-        <i class="bi bi-list"></i>
-
-    </button>
-
-
-    <!-- Brand -->
-
-    <a class="navbar-brand d-flex align-items-center" href="#">
-
-        <div class="brand-icon">
-            <i class="bi bi-mortarboard-fill"></i>
-        </div>
-
-        <div class="brand-text">
-
-            <span>UDOM</span>
-
-            <small>Online Quiz System</small>
-
-        </div>
-
-    </a>
-
-
-    <!-- Right side -->
-
-    <div class="d-flex align-items-center ms-auto">
-
-        <!-- Notification -->
-
-        <button class="notification-btn me-3">
-
-            <i class="bi bi-bell"></i>
-
-            <span class="notification-badge">4</span>
-
-        </button>
-
-
-        <!-- Lecturer profile -->
-
-        <div class="dropdown">
+        <div class="d-flex align-items-center">
 
             <button
-                class="profile-button dropdown-toggle"
-                data-bs-toggle="dropdown">
+                class="btn sidebar-toggle d-lg-none me-2"
+                type="button"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#teacherSidebar">
 
-                <div class="student-avatar">
-                    RO
+                <i class="bi bi-list"></i>
+
+            </button>
+
+            <a href="dashboard.jsp"
+               class="navbar-brand d-flex align-items-center">
+
+                <div class="brand-icon">
+                    <i class="bi bi-mortarboard-fill"></i>
                 </div>
 
-                <div class="student-name d-none d-md-block">
+                <div class="brand-text">
 
-                    <strong>Lecturer</strong>
+                    <span>UDOM</span>
 
-                    <small>Academic Staff</small>
+                    <small>Online Quiz System</small>
 
                 </div>
+
+            </a>
+
+        </div>
+
+
+        <div class="d-flex align-items-center gap-3">
+
+            <!-- Notifications -->
+
+            <button class="notification-btn">
+
+                <i class="bi bi-bell"></i>
+
+                <span class="notification-badge">
+                    4
+                </span>
 
             </button>
 
 
-            <ul class="dropdown-menu dropdown-menu-end shadow">
+            <!-- Profile -->
 
-                <li>
+            <div class="dropdown">
 
-                    <a class="dropdown-item" href="#">
+                <button
+                    class="profile-button dropdown-toggle"
+                    data-bs-toggle="dropdown">
 
-                        <i class="bi bi-person me-2"></i>
+                    <div class="student-avatar">
+                        RO
+                    </div>
 
-                        My Profile
+                    <div class="student-name">
 
-                    </a>
+                        <strong>Lecturer</strong>
 
-                </li>
+                        <small>Academic Staff</small>
 
+                    </div>
 
-                <li>
+                </button>
 
-                    <a class="dropdown-item" href="#">
+                <ul class="dropdown-menu dropdown-menu-end">
 
-                        <i class="bi bi-gear me-2"></i>
+                    <li>
+                        <a class="dropdown-item"
+                           href="#">
+                            <i class="bi bi-person me-2"></i>
+                            My Profile
+                        </a>
+                    </li>
 
-                        Settings
+                    <li>
+                        <a class="dropdown-item"
+                           href="#">
+                            <i class="bi bi-gear me-2"></i>
+                            Settings
+                        </a>
+                    </li>
 
-                    </a>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
 
-                </li>
+                    <li>
+                        <a class="dropdown-item text-danger"
+                           href="../login.jsp">
+                            <i class="bi bi-box-arrow-right me-2"></i>
+                            Logout
+                        </a>
+                    </li>
 
+                </ul>
 
-                <li>
-
-                    <hr class="dropdown-divider">
-
-                </li>
-
-
-                <li>
-
-                    <a
-                        class="dropdown-item text-danger"
-                        href="../login.jsp">
-
-                        <i class="bi bi-box-arrow-right me-2"></i>
-
-                        Logout
-
-                    </a>
-
-                </li>
-
-            </ul>
+            </div>
 
         </div>
 
     </div>
 
-</div>
-
 </nav>
+
 
 <!-- =========================================================
      SIDEBAR
@@ -173,66 +221,36 @@
     tabindex="-1"
     id="teacherSidebar">
 
-<!-- Mobile header -->
+    <div class="sidebar-content">
 
-<div class="offcanvas-header d-lg-none">
+        <!-- Sidebar Profile -->
 
-    <h5 class="offcanvas-title">
+        <div class="sidebar-profile">
 
-        Lecturer Menu
+            <div class="sidebar-avatar">
+                RO
+            </div>
 
-    </h5>
+            <div>
 
-    <button
-        type="button"
-        class="btn-close"
-        data-bs-dismiss="offcanvas">
+                <h6>Lecturer</h6>
 
-    </button>
+                <span>Academic Staff</span>
 
-</div>
-
-
-<div class="sidebar-content">
-
-
-    <!-- Lecturer information -->
-
-    <div class="sidebar-profile">
-
-        <div class="sidebar-avatar">
-
-            RO
+            </div>
 
         </div>
 
 
-        <div>
+        <!-- Main Menu -->
 
-            <h6>Lecturer</h6>
-
-            <span>Academic Staff</span>
-
-        </div>
-
-    </div>
-
-
-    <!-- Navigation -->
-
-    <div class="sidebar-menu">
-
-
-        <p class="menu-title">
-
+        <div class="menu-title">
             MAIN MENU
+        </div>
 
-        </p>
 
-
-        <!-- Dashboard -->
-
-        <a href="#" class="sidebar-link active">
+        <a href="dashboard.jsp"
+           class="sidebar-link active">
 
             <i class="bi bi-grid-1x2-fill"></i>
 
@@ -240,863 +258,886 @@
 
         </a>
 
-        <!-- Create Quiz -->
 
-        <a href="create-quiz.jsp" class="sidebar-link">
+        <a href="create-quiz.jsp"
+           class="sidebar-link">
 
-            <i class="bi bi-plus-circle-fill"></i>
+            <i class="bi bi-plus-square"></i>
 
             <span>Create Quiz</span>
 
         </a>
 
 
-        <!-- My Quizzes -->
-
-        <a href="#" class="sidebar-link">
+        <a href="#"
+           class="sidebar-link">
 
             <i class="bi bi-journal-text"></i>
 
             <span>My Quizzes</span>
 
-            <span class="menu-badge">18</span>
+            <span class="menu-badge">
+                <%= totalQuizzes %>
+            </span>
 
         </a>
 
 
-        <!-- Questions -->
+        <a href="#"
+           class="sidebar-link">
 
-        <a href="#" class="sidebar-link">
-
-            <i class="bi bi-question-circle-fill"></i>
+            <i class="bi bi-question-circle"></i>
 
             <span>Questions</span>
 
         </a>
 
 
-        <!-- Results -->
+        <a href="#"
+           class="sidebar-link">
 
-        <a href="#" class="sidebar-link">
-
-            <i class="bi bi-bar-chart-fill"></i>
+            <i class="bi bi-people"></i>
 
             <span>Student Results</span>
 
         </a>
 
 
-        <!-- Reports -->
+        <a href="#"
+           class="sidebar-link">
 
-        <a href="#" class="sidebar-link">
-
-            <i class="bi bi-file-earmark-bar-graph-fill"></i>
+            <i class="bi bi-bar-chart"></i>
 
             <span>Quiz Reports</span>
 
         </a>
 
 
-        <p class="menu-title mt-4">
+        <!-- Account -->
 
+        <div class="menu-title">
             ACCOUNT
+        </div>
 
-        </p>
 
+        <a href="#"
+           class="sidebar-link">
 
-        <!-- Profile -->
-
-        <a href="#" class="sidebar-link">
-
-            <i class="bi bi-person-fill"></i>
+            <i class="bi bi-person"></i>
 
             <span>My Profile</span>
 
         </a>
 
 
-        <!-- Settings -->
+        <a href="#"
+           class="sidebar-link">
 
-        <a href="#" class="sidebar-link">
-
-            <i class="bi bi-gear-fill"></i>
+            <i class="bi bi-gear"></i>
 
             <span>Settings</span>
 
         </a>
 
 
-    </div>
+        <div class="sidebar-bottom">
 
+            <a href="../login.jsp"
+               class="logout-link">
 
-    <!-- Logout -->
+                <i class="bi bi-box-arrow-right"></i>
 
-    <div class="sidebar-bottom">
+                <span>Logout</span>
 
-        <a href="../login.jsp" class="logout-link">
+            </a>
 
-            <i class="bi bi-box-arrow-left"></i>
-
-            <span>Logout</span>
-
-        </a>
+        </div>
 
     </div>
 
 </div>
 
-</div>
 
 <!-- =========================================================
      MAIN CONTENT
 ========================================================= -->
 
 <main class="dashboard-main">
-<div class="container-fluid dashboard-container">
+
+    <div class="dashboard-container">
 
 
-    <!-- =================================================
-         WELCOME
-    ================================================== -->
+        <!-- Success Message -->
 
-    <div class="welcome-section">
+        <% if ("success".equalsIgnoreCase(successMessage)) { %>
 
+            <div class="alert alert-success alert-dismissible fade show"
+                 role="alert">
 
-        <div>
+                <i class="bi bi-check-circle-fill me-2"></i>
 
-            <span class="welcome-label">
+                Quiz published successfully!
 
-                LECTURER DASHBOARD
-
-            </span>
-
-
-            <h1>
-
-                Welcome, Lecturer! 👋
-
-            </h1>
-
-
-            <p>
-
-                Manage your quizzes, create assessments,
-                monitor student performance and view quiz reports.
-
-            </p>
-
-        </div>
-
-
-        <div class="welcome-icon">
-
-            <i class="bi bi-person-workspace"></i>
-
-        </div>
-
-    </div>
-
-
-    <!-- =================================================
-         STATISTICS
-    ================================================== -->
-
-    <div class="row g-4 mb-4">
-
-
-        <!-- Total quizzes -->
-
-        <div class="col-xl-3 col-md-6">
-
-            <div class="stat-card">
-
-
-                <div class="stat-icon icon-blue">
-
-                    <i class="bi bi-journal-text"></i>
-
-                </div>
-
-
-                <div>
-
-                    <span>Total Quizzes</span>
-
-                    <h2>18</h2>
-
-                    <small>
-
-                        <i class="bi bi-arrow-up"></i>
-
-                        3 created this month
-
-                    </small>
-
-                </div>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert">
+                </button>
 
             </div>
 
-        </div>
+        <% } %>
 
 
-        <!-- Published -->
+        <!-- =====================================================
+             WELCOME
+        ====================================================== -->
 
-        <div class="col-xl-3 col-md-6">
+        <section class="welcome-section">
 
-            <div class="stat-card">
+            <div>
 
-
-                <div class="stat-icon icon-green">
-
-                    <i class="bi bi-check-circle-fill"></i>
-
+                <div class="welcome-label">
+                    LECTURER DASHBOARD
                 </div>
 
+                <h1>
+                    Welcome, Lecturer! 👋
+                </h1>
 
-                <div>
-
-                    <span>Published Quizzes</span>
-
-                    <h2>14</h2>
-
-                    <small>
-
-                        <i class="bi bi-check2"></i>
-
-                        Currently active
-
-                    </small>
-
-                </div>
+                <p>
+                    Manage your quizzes, questions and academic
+                    assessments from your dashboard.
+                </p>
 
             </div>
 
-        </div>
+            <div class="welcome-icon">
 
-
-        <!-- Draft -->
-
-        <div class="col-xl-3 col-md-6">
-
-            <div class="stat-card">
-
-
-                <div class="stat-icon icon-orange">
-
-                    <i class="bi bi-pencil-square"></i>
-
-                </div>
-
-
-                <div>
-
-                    <span>Draft Quizzes</span>
-
-                    <h2>4</h2>
-
-                    <small>
-
-                        <i class="bi bi-clock"></i>
-
-                        Awaiting publication
-
-                    </small>
-
-                </div>
+                <i class="bi bi-mortarboard-fill"></i>
 
             </div>
 
-        </div>
+        </section>
 
 
-        <!-- Students -->
+        <!-- =====================================================
+             STATISTICS
+        ====================================================== -->
 
-        <div class="col-xl-3 col-md-6">
-
-            <div class="stat-card">
-
-
-                <div class="stat-icon icon-purple">
-
-                    <i class="bi bi-people-fill"></i>
-
-                </div>
+        <div class="row g-3 mb-4">
 
 
-                <div>
+            <!-- Total Quizzes -->
 
-                    <span>Students Attempted</span>
+            <div class="col-12 col-md-6 col-xl-3">
 
-                    <h2>642</h2>
+                <div class="stat-card">
 
-                    <small>
+                    <div class="stat-icon icon-blue">
 
-                        <i class="bi bi-arrow-up"></i>
+                        <i class="bi bi-journal-text"></i>
 
-                        8% this month
-
-                    </small>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- =================================================
-         MAIN ROW
-    ================================================== -->
-
-    <div class="row g-4">
-
-
-        <!-- My quizzes -->
-
-        <div class="col-xl-8">
-
-
-            <div class="content-card">
-
-
-                <div class="card-header-custom">
-
+                    </div>
 
                     <div>
 
-                        <h4>My Quizzes</h4>
+                        <span>Total Quizzes</span>
 
-                        <p>
+                        <h2>
+                            <%= totalQuizzes %>
+                        </h2>
 
-                            Manage your recently created quizzes
+                        <small>
+                            All quizzes
+                        </small>
 
-                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Published -->
+
+            <div class="col-12 col-md-6 col-xl-3">
+
+                <div class="stat-card">
+
+                    <div class="stat-icon icon-green">
+
+                        <i class="bi bi-check-circle"></i>
+
+                    </div>
+
+                    <div>
+
+                        <span>Published Quizzes</span>
+
+                        <h2>
+                            <%= publishedQuizzes %>
+                        </h2>
+
+                        <small>
+                            Currently published
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Draft -->
+
+            <div class="col-12 col-md-6 col-xl-3">
+
+                <div class="stat-card">
+
+                    <div class="stat-icon icon-purple">
+
+                        <i class="bi bi-file-earmark"></i>
+
+                    </div>
+
+                    <div>
+
+                        <span>Draft Quizzes</span>
+
+                        <h2>
+                            <%= draftQuizzes %>
+                        </h2>
+
+                        <small>
+                            Awaiting publication
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Questions -->
+
+            <div class="col-12 col-md-6 col-xl-3">
+
+                <div class="stat-card">
+
+                    <div class="stat-icon icon-orange">
+
+                        <i class="bi bi-question-circle"></i>
+
+                    </div>
+
+                    <div>
+
+                        <span>Total Questions</span>
+
+                        <h2>
+                            <%= totalQuestions %>
+                        </h2>
+
+                        <small>
+                            Across all quizzes
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =====================================================
+             QUIZZES + QUICK ACTIONS
+        ====================================================== -->
+
+        <div class="row g-4">
+
+
+            <!-- MY QUIZZES -->
+
+            <div class="col-lg-8">
+
+                <div class="content-card">
+
+                    <div class="card-header-custom">
+
+                        <div>
+
+                            <h4>
+                                My Quizzes
+                            </h4>
+
+                            <p>
+                                Recently created quizzes
+                            </p>
+
+                        </div>
+
+                        <a href="#">
+                            View All
+                        </a>
 
                     </div>
 
 
-                    <a href="#">
+                    <%
+                        String quizSql =
+                                "SELECT q.id, q.title, q.course, " +
+                                "q.question_count, q.status, q.created_at, " +
+                                "(SELECT COUNT(*) FROM questions " +
+                                "WHERE quiz_id = q.id) AS saved_questions " +
+                                "FROM quizzes q " +
+                                "ORDER BY q.created_at DESC " +
+                                "LIMIT 5";
 
-                        View All
+                        try (Connection connection =
+                                     DBConnection.getConnection();
+                             PreparedStatement statement =
+                                     connection.prepareStatement(quizSql);
+                             ResultSet resultSet =
+                                     statement.executeQuery()) {
 
-                        <i class="bi bi-arrow-right"></i>
+                            boolean hasQuizzes = false;
+
+                            while (resultSet.next()) {
+
+                                hasQuizzes = true;
+
+                                int quizId =
+                                        resultSet.getInt("id");
+
+                                String title =
+                                        resultSet.getString("title");
+
+                                String course =
+                                        resultSet.getString("course");
+
+                                int requiredQuestions =
+                                        resultSet.getInt("question_count");
+
+                                int savedQuestions =
+                                        resultSet.getInt("saved_questions");
+
+                                String status =
+                                        resultSet.getString("status");
+
+                                Timestamp createdAt =
+                                        resultSet.getTimestamp("created_at");
+
+                                String formattedDate =
+                                        createdAt != null
+                                        ? dateFormat.format(createdAt)
+                                        : "-";
+
+                                boolean published =
+                                        "PUBLISHED".equalsIgnoreCase(status);
+
+                                String actionUrl =
+                                        published
+                                        ? "review-quiz.jsp?quizId=" + quizId
+                                        : "add-questions.jsp?quizId=" + quizId;
+
+                                String actionText =
+                                        published
+                                        ? "Manage"
+                                        : "Continue";
+
+                                String statusStyle =
+                                        published
+                                        ? "color:#10b981;"
+                                        : "color:#d97706;";
+                    %>
+
+
+                    <div class="quiz-item">
+
+
+                        <div class="quiz-icon">
+
+                            <i class="bi bi-journal-text"></i>
+
+                        </div>
+
+
+                        <div class="quiz-information">
+
+                            <h5>
+                                <%= title %>
+                            </h5>
+
+                            <div class="quiz-meta">
+
+                                <span>
+                                    <i class="bi bi-book"></i>
+                                    <%= course %>
+                                </span>
+
+                                <span>
+                                    <i class="bi bi-question-circle"></i>
+                                    <%= savedQuestions %>/<%= requiredQuestions %>
+                                    Questions
+                                </span>
+
+                                <span>
+                                    <i class="bi bi-calendar3"></i>
+                                    <%= formattedDate %>
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="quiz-action">
+
+                            <span class="quiz-status"
+                                  style="<%= statusStyle %>">
+
+                                <%= status %>
+
+                            </span>
+
+                            <a href="<%= actionUrl %>"
+                               class="start-quiz-btn">
+
+                                <%= actionText %>
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
+
+                    <%
+                            } // end while
+
+                            if (!hasQuizzes) {
+                    %>
+
+                        <div class="text-center py-4">
+
+                            <i class="bi bi-journal-x fs-2 text-muted"></i>
+
+                            <p class="text-muted mt-2 mb-2">
+                                No quizzes have been created yet.
+                            </p>
+
+                            <a href="create-quiz.jsp"
+                               class="btn btn-primary btn-sm">
+
+                                <i class="bi bi-plus-lg me-1"></i>
+                                Create Your First Quiz
+
+                            </a>
+
+                        </div>
+
+                    <%
+                            } // end if
+                        } catch (SQLException e) {
+                    %>
+
+                        <div class="alert alert-danger">
+
+                            Unable to load quizzes.
+
+                        </div>
+
+                    <%
+                        }
+                    %>
+
+                </div>
+
+            </div>
+
+
+            <!-- QUICK ACTIONS -->
+
+            <div class="col-lg-4">
+
+                <div class="content-card">
+
+                    <div class="card-header-custom">
+
+                        <div>
+
+                            <h4>
+                                Quick Actions
+                            </h4>
+
+                            <p>
+                                Frequently used actions
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <a href="create-quiz.jsp"
+                       class="quick-action">
+
+                        <div class="quick-action-icon icon-blue">
+
+                            <i class="bi bi-plus-circle"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6>
+                                Create New Quiz
+                            </h6>
+
+                            <span>
+                                Create a new assessment
+                            </span>
+
+                        </div>
+
+                        <i class="bi bi-chevron-right"></i>
+
+                    </a>
+
+
+                    <a href="#"
+                       class="quick-action">
+
+                        <div class="quick-action-icon icon-purple">
+
+                            <i class="bi bi-question-circle"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6>
+                                Manage Questions
+                            </h6>
+
+                            <span>
+                                Review quiz questions
+                            </span>
+
+                        </div>
+
+                        <i class="bi bi-chevron-right"></i>
+
+                    </a>
+
+
+                    <a href="#"
+                       class="quick-action">
+
+                        <div class="quick-action-icon icon-green">
+
+                            <i class="bi bi-people"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6>
+                                Student Results
+                            </h6>
+
+                            <span>
+                                View student performance
+                            </span>
+
+                        </div>
+
+                        <i class="bi bi-chevron-right"></i>
+
+                    </a>
+
+
+                    <a href="#"
+                       class="quick-action">
+
+                        <div class="quick-action-icon icon-orange">
+
+                            <i class="bi bi-bar-chart"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6>
+                                Generate Report
+                            </h6>
+
+                            <span>
+                                View quiz reports
+                            </span>
+
+                        </div>
+
+                        <i class="bi bi-chevron-right"></i>
 
                     </a>
 
                 </div>
 
-
-                <!-- Quiz 1 -->
-
-                <div class="quiz-item">
-
-
-                    <div class="quiz-icon">
-
-                        <i class="bi bi-database-fill"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-
-                            Database Management Systems
-
-                        </h5>
-
-
-                        <div class="quiz-meta">
-
-                            <span>
-
-                                <i class="bi bi-question-circle"></i>
-
-                                20 Questions
-
-                            </span>
-
-
-                            <span>
-
-                                <i class="bi bi-people"></i>
-
-                                126 Attempts
-
-                            </span>
-
-
-                            <span>
-
-                                <i class="bi bi-calendar3"></i>
-
-                                30 Aug 2026
-
-                            </span>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="quiz-action">
-
-
-                        <span class="quiz-status">
-
-                            Published
-
-                        </span>
-
-
-                        <button class="btn start-quiz-btn">
-
-                            Manage
-
-                            <i class="bi bi-arrow-right"></i>
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Quiz 2 -->
-
-                <div class="quiz-item">
-
-
-                    <div class="quiz-icon security-icon">
-
-                        <i class="bi bi-shield-lock-fill"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-
-                            Computer Security
-
-                        </h5>
-
-
-                        <div class="quiz-meta">
-
-                            <span>
-
-                                <i class="bi bi-question-circle"></i>
-
-                                25 Questions
-
-                            </span>
-
-
-                            <span>
-
-                                <i class="bi bi-people"></i>
-
-                                184 Attempts
-
-                            </span>
-
-
-                            <span>
-
-                                <i class="bi bi-calendar3"></i>
-
-                                28 Aug 2026
-
-                            </span>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="quiz-action">
-
-
-                        <span class="quiz-status">
-
-                            Published
-
-                        </span>
-
-
-                        <button class="btn start-quiz-btn">
-
-                            Manage
-
-                            <i class="bi bi-arrow-right"></i>
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Quiz 3 -->
-
-                <div class="quiz-item">
-
-
-                    <div class="quiz-icon software-icon">
-
-                        <i class="bi bi-code-slash"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-
-                            Software Engineering
-
-                        </h5>
-
-
-                        <div class="quiz-meta">
-
-                            <span>
-
-                                <i class="bi bi-question-circle"></i>
-
-                                30 Questions
-
-                            </span>
-
-
-                            <span>
-
-                                <i class="bi bi-people"></i>
-
-                                205 Attempts
-
-                            </span>
-
-
-                            <span>
-
-                                <i class="bi bi-calendar3"></i>
-
-                                25 Aug 2026
-
-                            </span>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="quiz-action">
-
-
-                        <span class="quiz-status">
-
-                            Published
-
-                        </span>
-
-
-                        <button class="btn start-quiz-btn">
-
-                            Manage
-
-                            <i class="bi bi-arrow-right"></i>
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Quiz 4 -->
-
-                <div class="quiz-item">
-
-
-                    <div class="quiz-icon network-icon">
-
-                        <i class="bi bi-diagram-3-fill"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-
-                            Computer Networks
-
-                        </h5>
-
-
-                        <div class="quiz-meta">
-
-                            <span>
-
-                                <i class="bi bi-question-circle"></i>
-
-                                20 Questions
-
-                            </span>
-
-
-                            <span>
-
-                                <i class="bi bi-people"></i>
-
-                                127 Attempts
-
-                            </span>
-
-
-                            <span>
-
-                                <i class="bi bi-calendar3"></i>
-
-                                22 Aug 2026
-
-                            </span>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="quiz-action">
-
-
-                        <span
-                            class="quiz-status"
-                            style="color:#d97706;">
-
-                            Draft
-
-                        </span>
-
-
-                        <button class="btn start-quiz-btn">
-
-                            Edit
-
-                            <i class="bi bi-pencil"></i>
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-
             </div>
 
         </div>
 
 
-        <!-- Quick actions -->
+        <!-- =====================================================
+             QUIZ STATUS OVERVIEW
+        ====================================================== -->
 
-        <div class="col-xl-4">
+        <div class="row g-4 mt-1">
 
 
-            <div class="content-card">
+            <div class="col-lg-6">
+
+                <div class="content-card performance-card">
+
+                    <div class="card-header-custom">
+
+                        <div class="text-start">
+
+                            <h4>
+                                Quiz Status Overview
+                            </h4>
+
+                            <p>
+                                Current quiz publication status
+                            </p>
+
+                        </div>
+
+                    </div>
 
 
-                <div class="card-header-custom">
+                    <div class="performance-circle">
 
-                    <div>
+                        <div class="circle-inner">
 
-                        <h4>Quick Actions</h4>
+                            <strong>
+                                <%= totalQuizzes %>
+                            </strong>
 
-                        <p>
+                            <span>
+                                Total Quizzes
+                            </span>
 
-                            Frequently used lecturer tools
+                        </div>
 
-                        </p>
+                    </div>
+
+
+                    <div class="performance-info">
+
+                        <div>
+
+                            <span>
+                                Published
+                            </span>
+
+                            <strong>
+                                <%= publishedQuizzes %>
+                            </strong>
+
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                Draft
+                            </span>
+
+                            <strong>
+                                <%= draftQuizzes %>
+                            </strong>
+
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                Questions
+                            </span>
+
+                            <strong>
+                                <%= totalQuestions %>
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="progress-section">
+
+                        <div class="d-flex justify-content-between">
+
+                            <span>
+                                Publication progress
+                            </span>
+
+                            <strong>
+
+                                <%
+                                    int publicationPercentage = 0;
+
+                                    if (totalQuizzes > 0) {
+                                        publicationPercentage =
+                                                (publishedQuizzes * 100)
+                                                / totalQuizzes;
+                                    }
+                                %>
+
+                                <%= publicationPercentage %>%
+
+                            </strong>
+
+                        </div>
+
+                        <div class="progress">
+
+                            <div
+                                class="progress-bar"
+                                role="progressbar"
+                                style="width: <%= publicationPercentage %>%;">
+                            </div>
+
+                        </div>
 
                     </div>
 
                 </div>
-
-                <!-- Create quiz -->
-
-                <a href="create-quiz.jsp" class="quick-action">
-
-                    <div class="quick-action-icon icon-blue">
-
-                        <i class="bi bi-plus-circle-fill"></i>
-
-                    </div>
-
-                    <div>
-
-                        <h6>Create New Quiz</h6>
-
-                        <span>
-                            Create a new assessment
-                        </span>
-
-                    </div>
-
-                    <i class="bi bi-chevron-right ms-auto"></i>
-
-                </a>
-
-
-                <!-- Questions -->
-
-                <a href="#" class="quick-action">
-
-                    <div class="quick-action-icon icon-purple">
-
-                        <i class="bi bi-question-circle-fill"></i>
-
-                    </div>
-
-
-                    <div>
-
-                        <h6>Manage Questions</h6>
-
-                        <span>
-
-                            Add or edit quiz questions
-
-                        </span>
-
-                    </div>
-
-
-                    <i class="bi bi-chevron-right ms-auto"></i>
-
-                </a>
-
-
-                <!-- Results -->
-
-                <a href="#" class="quick-action">
-
-                    <div class="quick-action-icon icon-green">
-
-                        <i class="bi bi-bar-chart-fill"></i>
-
-                    </div>
-
-
-                    <div>
-
-                        <h6>View Student Results</h6>
-
-                        <span>
-
-                            Monitor student performance
-
-                        </span>
-
-                    </div>
-
-
-                    <i class="bi bi-chevron-right ms-auto"></i>
-
-                </a>
-
-
-                <!-- Reports -->
-
-                <a href="#" class="quick-action">
-
-                    <div class="quick-action-icon icon-orange">
-
-                        <i class="bi bi-file-earmark-bar-graph-fill"></i>
-
-                    </div>
-
-
-                    <div>
-
-                        <h6>Generate Report</h6>
-
-                        <span>
-
-                            Generate quiz performance reports
-
-                        </span>
-
-                    </div>
-
-
-                    <i class="bi bi-chevron-right ms-auto"></i>
-
-                </a>
-
 
             </div>
 
 
-            <!-- Performance -->
+            <!-- System Information -->
 
-            <div class="content-card mt-4">
+            <div class="col-lg-6">
 
+                <div class="content-card">
 
-                <div class="card-header-custom">
+                    <div class="card-header-custom">
 
-                    <div>
+                        <div>
 
-                        <h4>Average Performance</h4>
+                            <h4>
+                                System Overview
+                            </h4>
 
-                        <p>
+                            <p>
+                                Your current quiz system activity
+                            </p>
 
-                            Student performance across quizzes
-
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div class="performance-circle">
-
-                    <div class="circle-inner">
-
-                        <strong>76%</strong>
-
-                        <span>Average Score</span>
-
-                    </div>
-
-                </div>
-
-
-                <div class="performance-info">
-
-
-                    <div>
-
-                        <span>Highest</span>
-
-                        <strong>94%</strong>
+                        </div>
 
                     </div>
 
 
-                    <div>
+                    <div class="upcoming-item">
 
-                        <span>Lowest</span>
+                        <div class="calendar-icon">
 
-                        <strong>51%</strong>
+                            <i class="bi bi-journal-check"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6>
+                                Published Quizzes
+                            </h6>
+
+                            <small>
+                                <%= publishedQuizzes %> quiz(es) available
+                            </small>
+
+                        </div>
 
                     </div>
 
+
+                    <div class="upcoming-item">
+
+                        <div class="calendar-icon">
+
+                            <i class="bi bi-pencil-square"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6>
+                                Draft Quizzes
+                            </h6>
+
+                            <small>
+                                <%= draftQuizzes %> quiz(es) need attention
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="upcoming-item">
+
+                        <div class="calendar-icon">
+
+                            <i class="bi bi-question-circle"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6>
+                                Question Bank
+                            </h6>
+
+                            <small>
+                                <%= totalQuestions %> question(s) created
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="upcoming-item">
+
+                        <div class="calendar-icon">
+
+                            <i class="bi bi-database-check"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6>
+                                Database Status
+                            </h6>
+
+                            <small>
+                                Connected to PostgreSQL
+                            </small>
+
+                        </div>
+
+                    </div>
 
                 </div>
 
@@ -1104,312 +1145,43 @@
 
         </div>
 
-    </div>
 
+        <!-- =====================================================
+             FOOTER
+        ====================================================== -->
 
-    <!-- =================================================
-         RECENT STUDENT RESULTS
-    ================================================== -->
+        <footer class="dashboard-footer">
 
-    <div class="content-card mt-4">
-
-
-        <div class="card-header-custom">
-
+            <p>
+                © 2026 University of Dodoma.
+                Online Quiz System.
+            </p>
 
             <div>
 
-                <h4>Recent Student Results</h4>
+                <a href="#">
+                    Help
+                </a>
 
-                <p>
+                <a href="#">
+                    Privacy
+                </a>
 
-                    Latest quiz submissions from students
-
-                </p>
+                <a href="#">
+                    Support
+                </a>
 
             </div>
 
+        </footer>
 
-            <a href="#">
-
-                View All
-
-                <i class="bi bi-arrow-right"></i>
-
-            </a>
-
-        </div>
-
-
-        <div class="table-responsive">
-
-
-            <table class="table result-table align-middle">
-
-
-                <thead>
-
-                    <tr>
-
-                        <th>Student</th>
-
-                        <th>Quiz</th>
-
-                        <th>Date</th>
-
-                        <th>Score</th>
-
-                        <th>Percentage</th>
-
-                        <th>Result</th>
-
-                        <th></th>
-
-                    </tr>
-
-                </thead>
-
-
-                <tbody>
-
-
-                    <tr>
-
-                        <td>
-
-                            <strong>
-
-                                Student One
-
-                            </strong>
-
-                        </td>
-
-
-                        <td>
-
-                            Database Systems
-
-                        </td>
-
-
-                        <td>
-
-                            30 Aug 2026
-
-                        </td>
-
-
-                        <td>
-
-                            <strong>18 / 20</strong>
-
-                        </td>
-
-
-                        <td>
-
-                            <strong>90%</strong>
-
-                        </td>
-
-
-                        <td>
-
-                            <span class="result-pass">
-
-                                Passed
-
-                            </span>
-
-                        </td>
-
-
-                        <td>
-
-                            <button class="btn result-btn">
-
-                                View
-
-                            </button>
-
-                        </td>
-
-                    </tr>
-
-
-                    <tr>
-
-                        <td>
-
-                            <strong>
-
-                                Student Two
-
-                            </strong>
-
-                        </td>
-
-
-                        <td>
-
-                            Computer Security
-
-                        </td>
-
-
-                        <td>
-
-                            29 Aug 2026
-
-                        </td>
-
-
-                        <td>
-
-                            <strong>21 / 25</strong>
-
-                        </td>
-
-
-                        <td>
-
-                            <strong>84%</strong>
-
-                        </td>
-
-
-                        <td>
-
-                            <span class="result-pass">
-
-                                Passed
-
-                            </span>
-
-                        </td>
-
-
-                        <td>
-
-                            <button class="btn result-btn">
-
-                                View
-
-                            </button>
-
-                        </td>
-
-                    </tr>
-
-
-                    <tr>
-
-                        <td>
-
-                            <strong>
-
-                                Student Three
-
-                            </strong>
-
-                        </td>
-
-
-                        <td>
-
-                            Software Engineering
-
-                        </td>
-
-
-                        <td>
-
-                            28 Aug 2026
-
-                        </td>
-
-
-                        <td>
-
-                            <strong>14 / 30</strong>
-
-                        </td>
-
-
-                        <td>
-
-                            <strong>47%</strong>
-
-                        </td>
-
-
-                        <td>
-
-                            <span class="result-warning">
-
-                                Failed
-
-                            </span>
-
-                        </td>
-
-
-                        <td>
-
-                            <button class="btn result-btn">
-
-                                View
-
-                            </button>
-
-                        </td>
-
-                    </tr>
-
-
-                </tbody>
-
-            </table>
-
-        </div>
 
     </div>
 
-
-    <!-- =================================================
-         FOOTER
-    ================================================== -->
-
-    <footer class="dashboard-footer">
-
-
-        <p>
-
-            © 2026 UDOM Online Quiz System.
-            University of Dodoma.
-
-        </p>
-
-
-        <div>
-
-            <a href="#">Help</a>
-
-            <a href="#">Privacy</a>
-
-            <a href="#">Support</a>
-
-        </div>
-
-    </footer>
-
-
-</div>
-
 </main>
 
-<!-- Bootstrap JavaScript -->
+
+<!-- Bootstrap JS -->
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
@@ -1418,3 +1190,4 @@
 </body>
 
 </html>
+
