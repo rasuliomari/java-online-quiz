@@ -1,4 +1,5 @@
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateQuizServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/PublishQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/SaveQuestionServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateQuestionServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/util/DBConnection.java

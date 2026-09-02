@@ -56,18 +56,10 @@ try (Connection connection = DBConnection.getConnection()) {
      * =====================================================
      */
 
-    String quizSql = """
-            SELECT
-                title,
-                course,
-                description,
-                duration_minutes,
-                question_count,
-                pass_mark,
-                status
-            FROM quizzes
-            WHERE id = ?
-            """;
+    String quizSql =
+        "SELECT title, course, description, duration_minutes, " +
+        "question_count, pass_mark, status " +
+        "FROM quizzes WHERE id = ?";
 
     try (PreparedStatement statement =
                  connection.prepareStatement(quizSql)) {
@@ -123,11 +115,8 @@ try (Connection connection = DBConnection.getConnection()) {
      * =====================================================
      */
 
-    String countSql = """
-            SELECT COUNT(*)
-            FROM questions
-            WHERE quiz_id = ?
-            """;
+   String countSql =
+        "SELECT COUNT(*) FROM questions WHERE quiz_id = ?";
 
     try (PreparedStatement statement =
                  connection.prepareStatement(countSql)) {
