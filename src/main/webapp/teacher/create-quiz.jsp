@@ -531,16 +531,10 @@
 
             <!-- FORM -->
 
-            <form
-                action="../createQuiz"
-                method="post">
-
-
+            <form action="../createQuiz" method="post">
                 <!-- Quiz title -->
 
                 <div class="mb-3">
-
-
                     <label
                         for="quizTitle"
                         class="form-label">
@@ -834,29 +828,12 @@
                         class="btn btn-primary">
 
                         <!-- Continue -->
-                        <a href="add-questions.jsp"
-                            class="btn btn-primary">
-
                             Continue
-
-                            <i class="bi bi-arrow-right ms-1"></i>
-
-                        </a>
-
                         <i class="bi bi-arrow-right ms-1"></i>
-
                     </button>
-
-
                 </div>
-
-
             </form>
-
-
         </div>
-
-
     </div>
 
 
