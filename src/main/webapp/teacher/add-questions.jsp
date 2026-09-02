@@ -1,42 +1,146 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="tz.udom.quiz.util.DBConnection" %>
+
+<%
+// Get quiz ID from the URL
+String quizIdParam = request.getParameter("quizId");
+
+if (quizIdParam == null || quizIdParam.trim().isEmpty()) {
+    response.sendError(400, "Quiz ID is missing.");
+    return;
+}
+
+int quizId;
+
+try {
+    quizId = Integer.parseInt(quizIdParam);
+} catch (NumberFormatException e) {
+    response.sendError(400, "Invalid quiz ID.");
+    return;
+}
+
+// Quiz information
+String quizTitle = "";
+String course = "";
+String description = "";
+int duration = 0;
+int questionCount = 0;
+int passMark = 0;
+int existingQuestions = 0;
+
+try (Connection connection = DBConnection.getConnection()) {
+
+    // Get quiz information
+    String quizSql =
+            "SELECT title, course, description, " +
+            "duration_minutes, question_count, pass_mark " +
+            "FROM quizzes WHERE id = ?";
+
+    try (PreparedStatement statement =
+                 connection.prepareStatement(quizSql)) {
+
+        statement.setInt(1, quizId);
+
+        try (ResultSet resultSet = statement.executeQuery()) {
+
+            if (resultSet.next()) {
+
+                quizTitle = resultSet.getString("title");
+                course = resultSet.getString("course");
+                description = resultSet.getString("description");
+
+                duration =
+                        resultSet.getInt("duration_minutes");
+
+                questionCount =
+                        resultSet.getInt("question_count");
+
+                passMark =
+                        resultSet.getInt("pass_mark");
+
+            } else {
+
+                response.sendError(404, "Quiz not found.");
+                return;
+            }
+        }
+    }
+
+    // Count questions already saved
+    String countSql =
+            "SELECT COUNT(*) FROM questions WHERE quiz_id = ?";
+
+    try (PreparedStatement statement =
+                 connection.prepareStatement(countSql)) {
+
+        statement.setInt(1, quizId);
+
+        try (ResultSet resultSet = statement.executeQuery()) {
+
+            if (resultSet.next()) {
+                existingQuestions = resultSet.getInt(1);
+            }
+        }
+    }
+
+} catch (Exception e) {
+
+    e.printStackTrace();
+
+    response.sendError(
+            500,
+            "Unable to retrieve quiz information."
+    );
+
+    return;
+}
+
+// Next question number
+int nextQuestionNumber = existingQuestions + 1;
+
+%>
 
 <!DOCTYPE html>
 
 <html lang="en">
 
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
 <title>Add Questions | UDOM Online Quiz System</title>
 
-<!-- Bootstrap 5.3.3 -->
+<!-- Bootstrap -->
 <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     rel="stylesheet">
 
 <!-- Bootstrap Icons -->
 <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    rel="stylesheet">
 
-<!-- SAME Dashboard CSS -->
-<link rel="stylesheet" href="../css/dashboard.css">
+<!-- Shared Dashboard CSS -->
+<link
+    rel="stylesheet"
+    href="../css/dashboard.css">
 
 </head>
 
 <body>
 
 <!-- =========================================================
-     TOP NAVBAR
+     NAVBAR
 ========================================================= -->
 
 <nav class="navbar dashboard-navbar fixed-top">
-
 <div class="container-fluid">
-
-
-    <!-- Mobile menu -->
 
     <button
         class="btn sidebar-toggle d-lg-none me-2"
@@ -49,16 +153,12 @@
     </button>
 
 
-    <!-- Brand -->
-
     <a
         class="navbar-brand d-flex align-items-center"
         href="dashboard.jsp">
 
         <div class="brand-icon">
-
             <i class="bi bi-mortarboard-fill"></i>
-
         </div>
 
         <div class="brand-text">
@@ -74,14 +174,10 @@
     </a>
 
 
-    <!-- Right side -->
-
     <div class="d-flex align-items-center ms-auto">
 
-
-        <!-- Notification -->
-
-        <button class="notification-btn me-3">
+        <button
+            class="notification-btn me-3">
 
             <i class="bi bi-bell"></i>
 
@@ -91,8 +187,6 @@
 
         </button>
 
-
-        <!-- Lecturer profile -->
 
         <div class="dropdown">
 
@@ -128,7 +222,6 @@
                         href="#">
 
                         <i class="bi bi-person me-2"></i>
-
                         My Profile
 
                     </a>
@@ -143,7 +236,6 @@
                         href="#">
 
                         <i class="bi bi-gear me-2"></i>
-
                         Settings
 
                     </a>
@@ -152,9 +244,7 @@
 
 
                 <li>
-
                     <hr class="dropdown-divider">
-
                 </li>
 
 
@@ -165,7 +255,6 @@
                         href="../login.jsp">
 
                         <i class="bi bi-box-arrow-right me-2"></i>
-
                         Logout
 
                     </a>
@@ -191,8 +280,6 @@
     tabindex="-1"
     id="teacherSidebar">
 
-<!-- Mobile header -->
-
 <div class="offcanvas-header d-lg-none">
 
     <h5 class="offcanvas-title">
@@ -209,9 +296,6 @@
 
 
 <div class="sidebar-content">
-
-
-    <!-- Lecturer information -->
 
     <div class="sidebar-profile">
 
@@ -234,18 +318,12 @@
     </div>
 
 
-
-    <!-- Navigation -->
-
     <div class="sidebar-menu">
-
 
         <p class="menu-title">
             MAIN MENU
         </p>
 
-
-        <!-- Dashboard -->
 
         <a
             href="dashboard.jsp"
@@ -260,8 +338,6 @@
         </a>
 
 
-        <!-- Create Quiz -->
-
         <a
             href="create-quiz.jsp"
             class="sidebar-link active">
@@ -274,8 +350,6 @@
 
         </a>
 
-
-        <!-- My Quizzes -->
 
         <a
             href="#"
@@ -294,8 +368,6 @@
         </a>
 
 
-        <!-- Questions -->
-
         <a
             href="#"
             class="sidebar-link">
@@ -309,8 +381,6 @@
         </a>
 
 
-        <!-- Results -->
-
         <a
             href="#"
             class="sidebar-link">
@@ -323,8 +393,6 @@
 
         </a>
 
-
-        <!-- Reports -->
 
         <a
             href="#"
@@ -344,8 +412,6 @@
         </p>
 
 
-        <!-- Profile -->
-
         <a
             href="#"
             class="sidebar-link">
@@ -358,8 +424,6 @@
 
         </a>
 
-
-        <!-- Settings -->
 
         <a
             href="#"
@@ -375,8 +439,6 @@
 
     </div>
 
-
-    <!-- Logout -->
 
     <div class="sidebar-bottom">
 
@@ -407,9 +469,7 @@
 <div class="container-fluid dashboard-container">
 
 
-    <!-- =================================================
-         PAGE HEADER
-    ================================================== -->
+    <!-- Welcome Section -->
 
     <div class="welcome-section">
 
@@ -424,8 +484,8 @@
             </h1>
 
             <p>
-                Create questions and define the correct answers
-                for your quiz.
+                Create questions and define the correct
+                answers for your quiz.
             </p>
 
         </div>
@@ -440,10 +500,7 @@
     </div>
 
 
-
-    <!-- =================================================
-         QUIZ PROGRESS
-    ================================================== -->
+    <!-- Quiz Header -->
 
     <div class="content-card mb-4">
 
@@ -452,7 +509,7 @@
             <div>
 
                 <h4>
-                    Database Management Systems
+                    <%= quizTitle %>
                 </h4>
 
                 <p>
@@ -465,7 +522,12 @@
             <div class="quiz-status">
 
                 <span>
-                    Question 1
+
+                    Question
+                    <%= nextQuestionNumber %>
+                    of
+                    <%= questionCount %>
+
                 </span>
 
             </div>
@@ -475,15 +537,12 @@
     </div>
 
 
-
-    <!-- =================================================
-         QUESTION FORM
-    ================================================== -->
-
     <div class="row g-4">
 
 
-        <!-- LEFT SIDE -->
+        <!-- =================================================
+             QUESTION FORM
+        ================================================= -->
 
         <div class="col-xl-8">
 
@@ -495,7 +554,8 @@
                     <div>
 
                         <h4>
-                            Question 1
+                            Question
+                            <%= nextQuestionNumber %>
                         </h4>
 
                         <p>
@@ -514,8 +574,25 @@
                 </div>
 
 
+                <form
+                    action="../saveQuestion"
+                    method="post">
 
-                <form action="../saveQuestion" method="post">
+
+                    <!-- Quiz ID -->
+
+                    <input
+                        type="hidden"
+                        name="quizId"
+                        value="<%= quizId %>">
+
+
+                    <!-- Question Number -->
+
+                    <input
+                        type="hidden"
+                        name="questionNumber"
+                        value="<%= nextQuestionNumber %>">
 
 
                     <!-- Question -->
@@ -527,7 +604,6 @@
                             class="form-label">
 
                             Question
-
                             <span class="text-danger">
                                 *
                             </span>
@@ -546,7 +622,6 @@
                     </div>
 
 
-
                     <!-- Answer A -->
 
                     <div class="mb-3">
@@ -556,7 +631,6 @@
                             class="form-label">
 
                             Answer A
-
                             <span class="text-danger">
                                 *
                             </span>
@@ -583,7 +657,6 @@
                     </div>
 
 
-
                     <!-- Answer B -->
 
                     <div class="mb-3">
@@ -593,7 +666,6 @@
                             class="form-label">
 
                             Answer B
-
                             <span class="text-danger">
                                 *
                             </span>
@@ -620,7 +692,6 @@
                     </div>
 
 
-
                     <!-- Answer C -->
 
                     <div class="mb-3">
@@ -630,7 +701,6 @@
                             class="form-label">
 
                             Answer C
-
                             <span class="text-danger">
                                 *
                             </span>
@@ -657,7 +727,6 @@
                     </div>
 
 
-
                     <!-- Answer D -->
 
                     <div class="mb-4">
@@ -667,7 +736,6 @@
                             class="form-label">
 
                             Answer D
-
                             <span class="text-danger">
                                 *
                             </span>
@@ -694,8 +762,7 @@
                     </div>
 
 
-
-                    <!-- Correct answer -->
+                    <!-- Correct Answer -->
 
                     <div class="mb-4">
 
@@ -704,7 +771,6 @@
                             class="form-label">
 
                             Correct Answer
-
                             <span class="text-danger">
                                 *
                             </span>
@@ -748,11 +814,11 @@
                     </div>
 
 
-
                     <!-- Buttons -->
 
                     <div
-                        class="d-flex justify-content-between align-items-center mt-4">
+                        class="d-flex justify-content-between
+                               align-items-center mt-4">
 
 
                         <a
@@ -768,6 +834,7 @@
 
                         <div class="d-flex gap-2">
 
+
                             <button
                                 type="submit"
                                 name="action"
@@ -781,30 +848,19 @@
                             </button>
 
 
-                            <button
-                                type="submit"
-                                name="action"
-                                value="review"
+                            <a
+                                href="review-quiz.jsp?quizId=<%= quizId %>"
                                 class="btn btn-primary">
 
-                                <!-- Review Quiz -->
-                                <a href="review-quiz.jsp"
-                                    class="btn btn-primary">
-
-                                     Review Quiz
-
-                                     <i class="bi bi-arrow-right ms-1"></i>
-
-                                </a>
+                                Review Quiz
 
                                 <i class="bi bi-arrow-right ms-1"></i>
 
-                            </button>
+                            </a>
 
                         </div>
 
                     </div>
-
 
                 </form>
 
@@ -813,15 +869,11 @@
         </div>
 
 
-
         <!-- =================================================
-             RIGHT SIDE
-        ================================================== -->
+             QUIZ SUMMARY
+        ================================================= -->
 
         <div class="col-xl-4">
-
-
-            <!-- Quiz summary -->
 
             <div class="content-card">
 
@@ -843,6 +895,8 @@
                 </div>
 
 
+                <!-- Course -->
+
                 <div class="quiz-item">
 
                     <div class="quiz-icon">
@@ -850,6 +904,7 @@
                         <i class="bi bi-book-fill"></i>
 
                     </div>
+
 
                     <div class="quiz-information">
 
@@ -860,7 +915,7 @@
                         <div class="quiz-meta">
 
                             <span>
-                                Database Management Systems
+                                <%= course %>
                             </span>
 
                         </div>
@@ -870,6 +925,7 @@
                 </div>
 
 
+                <!-- Duration -->
 
                 <div class="quiz-item">
 
@@ -878,6 +934,7 @@
                         <i class="bi bi-clock-fill"></i>
 
                     </div>
+
 
                     <div class="quiz-information">
 
@@ -888,7 +945,7 @@
                         <div class="quiz-meta">
 
                             <span>
-                                60 Minutes
+                                <%= duration %> Minutes
                             </span>
 
                         </div>
@@ -898,6 +955,7 @@
                 </div>
 
 
+                <!-- Questions -->
 
                 <div class="quiz-item">
 
@@ -906,6 +964,7 @@
                         <i class="bi bi-list-ol"></i>
 
                     </div>
+
 
                     <div class="quiz-information">
 
@@ -916,7 +975,11 @@
                         <div class="quiz-meta">
 
                             <span>
-                                1 of 20
+
+                                <%= existingQuestions %>
+                                of
+                                <%= questionCount %>
+
                             </span>
 
                         </div>
@@ -926,6 +989,7 @@
                 </div>
 
 
+                <!-- Pass Mark -->
 
                 <div class="quiz-item">
 
@@ -934,6 +998,7 @@
                         <i class="bi bi-percent"></i>
 
                     </div>
+
 
                     <div class="quiz-information">
 
@@ -944,7 +1009,7 @@
                         <div class="quiz-meta">
 
                             <span>
-                                50%
+                                <%= passMark %>%
                             </span>
 
                         </div>
@@ -953,15 +1018,12 @@
 
                 </div>
 
-
             </div>
-
 
 
             <!-- Instructions -->
 
             <div class="content-card mt-4">
-
 
                 <div class="card-header-custom">
 
@@ -988,6 +1050,7 @@
 
                     </div>
 
+
                     <div class="quiz-information">
 
                         <h5>
@@ -997,8 +1060,11 @@
                         <div class="quiz-meta">
 
                             <span>
-                                Make each question simple and easy
-                                for students to understand.
+
+                                Make each question simple
+                                and easy for students to
+                                understand.
+
                             </span>
 
                         </div>
@@ -1016,6 +1082,7 @@
 
                     </div>
 
+
                     <div class="quiz-information">
 
                         <h5>
@@ -1025,8 +1092,10 @@
                         <div class="quiz-meta">
 
                             <span>
-                                Always select one correct answer
-                                before continuing.
+
+                                Always select one correct
+                                answer before continuing.
+
                             </span>
 
                         </div>
@@ -1035,7 +1104,6 @@
 
                 </div>
 
-
             </div>
 
         </div>
@@ -1043,10 +1111,9 @@
     </div>
 
 
-
     <!-- =================================================
          FOOTER
-    ================================================== -->
+    ================================================= -->
 
     <footer class="dashboard-footer">
 
@@ -1075,7 +1142,6 @@
         </div>
 
     </footer>
-
 
 </div>
 
