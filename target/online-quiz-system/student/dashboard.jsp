@@ -6,30 +6,74 @@
 <%@ page import="java.sql.SQLException" %>
 <%@ page import="tz.udom.quiz.util.DBConnection" %>
 
+<%@ page import="java.util.List" %>
+<%@ page import="java.util.Map" %>
+<%@ page import="java.util.ArrayList" %>
+
 <%
-int availableQuizzes = 0;
+    int availableQuizzes = 0;
 
-try (Connection connection = DBConnection.getConnection()) {
+    List<Map<String, Object>> resultHistory =
+            (List<Map<String, Object>>) session.getAttribute(
+                    "quizResultHistory"
+            );
 
-    String countSql =
-            "SELECT COUNT(*) " +
-            "FROM quizzes " +
-            "WHERE status = 'PUBLISHED'";
-
-    try (PreparedStatement statement =
-                 connection.prepareStatement(countSql);
-         ResultSet resultSet =
-                 statement.executeQuery()) {
-
-        if (resultSet.next()) {
-            availableQuizzes = resultSet.getInt(1);
-        }
+    if (resultHistory == null) {
+        resultHistory = new ArrayList<>();
     }
 
-} catch (SQLException e) {
-    e.printStackTrace();
-}
+    int completedQuizzes = resultHistory.size();
 
+    double averageScore = 0.0;
+    double highestScore = 0.0;
+    double lowestScore = 0.0;
+
+    if (!resultHistory.isEmpty()) {
+
+        double totalPercentage = 0.0;
+
+        for (Map<String, Object> result : resultHistory) {
+
+            double percentage =
+                    ((Number) result.get("percentage"))
+                            .doubleValue();
+
+            totalPercentage += percentage;
+
+            if (percentage > highestScore) {
+                highestScore = percentage;
+            }
+
+            if (lowestScore == 0.0 ||
+                    percentage < lowestScore) {
+                lowestScore = percentage;
+            }
+        }
+
+        averageScore =
+                totalPercentage / resultHistory.size();
+    }
+
+    try (Connection connection = DBConnection.getConnection()) {
+
+        String countSql =
+                "SELECT COUNT(*) " +
+                "FROM quizzes " +
+                "WHERE status = 'PUBLISHED'";
+
+        try (PreparedStatement statement =
+                    connection.prepareStatement(countSql);
+            ResultSet resultSet =
+                    statement.executeQuery()) {
+
+            if (resultSet.next()) {
+                availableQuizzes = resultSet.getInt(1);
+            }
+        }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
 %>
 
 
@@ -381,11 +425,13 @@ try (Connection connection = DBConnection.getConnection()) {
 
                     <span>Completed Quizzes</span>
 
-                    <h2>8</h2>
+                    <h2><%= completedQuizzes %></h2>
 
                     <small>
                         <i class="bi bi-check2"></i>
-                        Good progress
+                        <%= completedQuizzes > 0
+                                ? "Keep up the good work"
+                                : "No quizzes completed yet" %>
                     </small>
 
                 </div>
@@ -411,11 +457,11 @@ try (Connection connection = DBConnection.getConnection()) {
 
                     <span>Average Score</span>
 
-                    <h2>78%</h2>
+                    <h2><%= Math.round(averageScore) %>%</h2>
 
                     <small>
-                        <i class="bi bi-arrow-up"></i>
-                        5% improvement
+                        <i class="bi bi-bar-chart"></i>
+                        Based on completed quizzes
                     </small>
 
                 </div>
@@ -441,11 +487,11 @@ try (Connection connection = DBConnection.getConnection()) {
 
                     <span>Class Ranking</span>
 
-                    <h2>#14</h2>
+                    <h2>—</h2>
 
                     <small>
-                        <i class="bi bi-arrow-up"></i>
-                        Improved by 4
+                        <i class="bi bi-info-circle"></i>
+                        Ranking not available
                     </small>
 
                 </div>
@@ -672,7 +718,7 @@ try (Connection connection = DBConnection.getConnection()) {
 
                     <div class="circle-inner">
 
-                        <strong>78%</strong>
+                        <strong><%= Math.round(averageScore) %>%</strong>
 
                         <span>Average</span>
 
@@ -687,7 +733,7 @@ try (Connection connection = DBConnection.getConnection()) {
 
                         <span>Highest Score</span>
 
-                        <strong>95%</strong>
+                        <strong><%= Math.round(highestScore) %>%</strong>
 
                     </div>
 
@@ -695,7 +741,7 @@ try (Connection connection = DBConnection.getConnection()) {
 
                         <span>Lowest Score</span>
 
-                        <strong>62%</strong>
+                        <strong><%= Math.round(lowestScore) %>%</strong>
 
                     </div>
 
@@ -708,7 +754,7 @@ try (Connection connection = DBConnection.getConnection()) {
 
                         <span>Overall Progress</span>
 
-                        <strong>78%</strong>
+                        <strong><%= Math.round(averageScore) %>%</strong>
 
                     </div>
 
@@ -716,7 +762,7 @@ try (Connection connection = DBConnection.getConnection()) {
 
                         <div
                             class="progress-bar"
-                            style="width: 78%">
+                            style="width: <%= Math.round(averageScore) %>%"
                         </div>
 
                     </div>
@@ -847,109 +893,119 @@ try (Connection connection = DBConnection.getConnection()) {
 
                 <tbody>
 
-                    <tr>
 
-                        <td>
-                            <strong>
-                                Database Management Systems
-                            </strong>
-                        </td>
-
-                        <td>
-                            30 Aug 2026
-                        </td>
-
-                        <td>
-                            20
-                        </td>
-
-                        <td>
-                            <strong>18 / 20</strong>
-                        </td>
-
-                        <td>
-                            <span class="result-pass">
-                                Passed
-                            </span>
-                        </td>
-
-                        <td>
-                            <button class="btn result-btn">
-                                View
-                            </button>
-                        </td>
-
-                    </tr>
-
+                    <%
+                    if (resultHistory.isEmpty()) {
+                    %>
 
                     <tr>
+                        <td colspan="6" class="text-center py-5">
 
-                        <td>
-                            <strong>
-                                Software Engineering
-                            </strong>
+                            <i
+                                class="bi bi-clipboard-x"
+                                style="font-size: 2.5rem; color: #94a3b8;">
+                            </i>
+
+                            <h6 class="mt-3">
+                                No Quiz Results Yet
+                            </h6>
+
+                            <p class="text-muted mb-0">
+                                Complete a quiz to see your results here.
+                            </p>
+
                         </td>
-
-                        <td>
-                            27 Aug 2026
-                        </td>
-
-                        <td>
-                            30
-                        </td>
-
-                        <td>
-                            <strong>24 / 30</strong>
-                        </td>
-
-                        <td>
-                            <span class="result-pass">
-                                Passed
-                            </span>
-                        </td>
-
-                        <td>
-                            <button class="btn result-btn">
-                                View
-                            </button>
-                        </td>
-
                     </tr>
 
+                    <%
+                    } else {
+
+                        for (Map<String, Object> result : resultHistory) {
+
+                            int resultQuizId =
+                                    ((Number) result.get("quizId")).intValue();
+
+                            String resultTitle =
+                                    (String) result.get("title");
+
+                            int resultScore =
+                                    ((Number) result.get("score")).intValue();
+
+                            int resultTotal =
+                                    ((Number) result.get("total")).intValue();
+
+                            double resultPercentage =
+                                    ((Number) result.get("percentage"))
+                                            .doubleValue();
+
+                            boolean resultPassed =
+                                    (Boolean) result.get("passed");
+
+                    %>
 
                     <tr>
 
                         <td>
                             <strong>
-                                Computer Networks
+                                <%= resultTitle %>
                             </strong>
                         </td>
 
                         <td>
-                            24 Aug 2026
+                            Today
                         </td>
 
                         <td>
-                            20
+                            <%= resultTotal %>
                         </td>
 
                         <td>
-                            <strong>12 / 20</strong>
+                            <strong>
+                                <%= resultScore %> /
+                                <%= resultTotal %>
+                            </strong>
+                            <small class="text-muted">
+                                (<%= Math.round(resultPercentage) %>%)
+                            </small>
                         </td>
 
                         <td>
-                            <span class="result-warning">
-                                Needs Improvement
-                            </span>
+
+                            <% if (resultPassed) { %>
+
+                                <span class="result-pass">
+                                    Passed
+                                </span>
+
+                            <% } else { %>
+
+                                <span class="result-warning">
+                                    Needs Improvement
+                                </span>
+
+                            <% } %>
+
                         </td>
 
                         <td>
-                            <button class="btn result-btn">
+
+                            <a
+                                href="quiz-result.jsp"
+                                class="btn result-btn">
+
                                 View
-                            </button>
+
+                            </a>
+
                         </td>
 
                     </tr>
+
+                    <%
+                        }
+                    }
+                    %>
+
 
                 </tbody>
 

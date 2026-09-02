@@ -5,7 +5,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import jakarta.servlet.ServletException;
@@ -315,6 +318,43 @@ public class SubmitQuizServlet extends HttpServlet {
             session.setAttribute(
                     "quizSubmittedAnswers_" + quizId,
                     submittedAnswers
+            );
+
+            // ================= STORE RESULT HISTORY =================
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> resultHistory =
+                    (List<Map<String, Object>>) session.getAttribute(
+                            "quizResultHistory"
+                    );
+
+            if (resultHistory == null) {
+                resultHistory = new ArrayList<>();
+            }
+
+            Map<String, Object> result = new HashMap<>();
+
+            result.put("quizId", quizId);
+            result.put("title", quizTitle);
+            result.put("score", score);
+            result.put("total", totalQuestions);
+            result.put("percentage", percentage);
+            result.put("passed", passed);
+            result.put("passMark", passMark);
+
+            resultHistory.add(0, result);
+
+            // Keep only the latest 10 results
+            if (resultHistory.size() > 10) {
+                resultHistory =
+                        new ArrayList<>(
+                                resultHistory.subList(0, 10)
+                        );
+            }
+
+            session.setAttribute(
+                    "quizResultHistory",
+                    resultHistory
             );
 
 
