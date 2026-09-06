@@ -112,6 +112,90 @@
     }
 %>
 
+<%
+    Boolean studentLoggedIn =
+            (Boolean) session.getAttribute("studentLoggedIn");
+
+    if (studentLoggedIn == null || !studentLoggedIn) {
+        response.sendRedirect(
+                request.getContextPath() + "/login.jsp"
+        );
+        return;
+    }
+
+    String firstName =
+            (String) session.getAttribute("studentFirstName");
+
+    String middleName =
+            (String) session.getAttribute("studentMiddleName");
+
+    String lastName =
+            (String) session.getAttribute("studentLastName");
+
+    String registrationNumber =
+            (String) session.getAttribute(
+                    "studentRegistrationNumber"
+            );
+
+    String email =
+            (String) session.getAttribute("studentEmail");
+
+    String college =
+            (String) session.getAttribute("studentCollege");
+
+    String programme =
+            (String) session.getAttribute("studentProgramme");
+
+    Integer yearOfStudy =
+            (Integer) session.getAttribute(
+                    "studentYearOfStudy"
+            );
+
+    if (firstName == null) {
+        firstName = "Student";
+    }
+
+    if (lastName == null) {
+        lastName = "";
+    }
+
+    if (registrationNumber == null) {
+        registrationNumber = "";
+    }
+
+    if (email == null) {
+        email = "";
+    }
+
+    if (college == null) {
+        college = "";
+    }
+
+    if (programme == null) {
+        programme = "";
+    }
+
+    if (yearOfStudy == null) {
+        yearOfStudy = 0;
+    }
+
+    String fullName =
+            firstName +
+            (middleName != null && !middleName.trim().isEmpty()
+                    ? " " + middleName
+                    : "") +
+            (lastName.isEmpty() ? "" : " " + lastName);
+
+    String initials =
+            firstName.substring(0, 1).toUpperCase();
+
+    if (!lastName.isEmpty()) {
+        initials +=
+                lastName.substring(0, 1).toUpperCase();
+    }
+%>
+
+
 <!DOCTYPE html>
 
 <html lang="en">
