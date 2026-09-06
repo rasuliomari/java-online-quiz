@@ -35,7 +35,10 @@ public class StudentRegisterServlet extends HttpServlet {
 
         request.setCharacterEncoding("UTF-8");
 
-        // Get form values
+        // =========================================================
+        // GET FORM VALUES
+        // =========================================================
+
         String firstName = request.getParameter("firstName");
         String middleName = request.getParameter("middleName");
         String lastName = request.getParameter("lastName");
@@ -49,91 +52,309 @@ public class StudentRegisterServlet extends HttpServlet {
         String phone = request.getParameter("phone");
         String password = request.getParameter("password");
         String confirmPassword = request.getParameter("confirmPassword");
+        String terms = request.getParameter("terms");
 
-        // Validate required fields
-        if (isEmpty(firstName)
-                || isEmpty(lastName)
-                || isEmpty(gender)
-                || isEmpty(dateOfBirth)
-                || isEmpty(registrationNumber)
-                || isEmpty(college)
-                || isEmpty(programme)
-                || isEmpty(yearOfStudy)
-                || isEmpty(email)
-                || isEmpty(phone)
-                || isEmpty(password)
-                || isEmpty(confirmPassword)) {
+        // =========================================================
+        // PRESERVE ENTERED VALUES
+        // =========================================================
 
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/student-registration.jsp?error=missing"
+        request.setAttribute("firstName", firstName);
+        request.setAttribute("middleName", middleName);
+        request.setAttribute("lastName", lastName);
+        request.setAttribute("gender", gender);
+        request.setAttribute("dateOfBirth", dateOfBirth);
+        request.setAttribute("registrationNumber", registrationNumber);
+        request.setAttribute("college", college);
+        request.setAttribute("programme", programme);
+        request.setAttribute("yearOfStudy", yearOfStudy);
+        request.setAttribute("email", email);
+        request.setAttribute("phone", phone);
+
+        // =========================================================
+        // REQUIRED FIELD VALIDATION
+        // =========================================================
+
+        if (isEmpty(firstName)) {
+            returnError(
+                    request,
+                    response,
+                    "firstNameError",
+                    "First name is required."
             );
             return;
         }
 
-        // Validate password length
+        if (isEmpty(lastName)) {
+            returnError(
+                    request,
+                    response,
+                    "lastNameError",
+                    "Last name is required."
+            );
+            return;
+        }
+
+        if (isEmpty(gender)) {
+            returnError(
+                    request,
+                    response,
+                    "genderError",
+                    "Please select your gender."
+            );
+            return;
+        }
+
+        if (isEmpty(dateOfBirth)) {
+            returnError(
+                    request,
+                    response,
+                    "dateOfBirthError",
+                    "Date of birth is required."
+            );
+            return;
+        }
+
+        if (isEmpty(registrationNumber)) {
+            returnError(
+                    request,
+                    response,
+                    "registrationNumberError",
+                    "Registration number is required."
+            );
+            return;
+        }
+
+        if (isEmpty(college)) {
+            returnError(
+                    request,
+                    response,
+                    "collegeError",
+                    "Please select your college or school."
+            );
+            return;
+        }
+
+        if (isEmpty(programme)) {
+            returnError(
+                    request,
+                    response,
+                    "programmeError",
+                    "Programme is required."
+            );
+            return;
+        }
+
+        if (isEmpty(yearOfStudy)) {
+            returnError(
+                    request,
+                    response,
+                    "yearOfStudyError",
+                    "Please select your year of study."
+            );
+            return;
+        }
+
+        if (isEmpty(email)) {
+            returnError(
+                    request,
+                    response,
+                    "emailError",
+                    "Email address is required."
+            );
+            return;
+        }
+
+        if (isEmpty(phone)) {
+            returnError(
+                    request,
+                    response,
+                    "phoneError",
+                    "Phone number is required."
+            );
+            return;
+        }
+
+        if (isEmpty(password)) {
+            returnError(
+                    request,
+                    response,
+                    "passwordError",
+                    "Password is required."
+            );
+            return;
+        }
+
+        if (isEmpty(confirmPassword)) {
+            returnError(
+                    request,
+                    response,
+                    "confirmPasswordError",
+                    "Please confirm your password."
+            );
+            return;
+        }
+
+        // =========================================================
+        // TERMS VALIDATION
+        // =========================================================
+
+        if (terms == null) {
+            returnError(
+                    request,
+                    response,
+                    "termsError",
+                    "You must confirm that the information provided is accurate."
+            );
+            return;
+        }
+
+        // =========================================================
+        // PASSWORD VALIDATION
+        // =========================================================
+
         if (password.length() < 8) {
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/student/student-registration.jsp?error=password_length"
+
+            returnError(
+                    request,
+                    response,
+                    "passwordError",
+                    "Password must be at least 8 characters long."
             );
+
             return;
         }
 
-        // Validate password confirmation
         if (!password.equals(confirmPassword)) {
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/student/student-registration.jsp?error=password_mismatch"
+
+            returnError(
+                    request,
+                    response,
+                    "confirmPasswordError",
+                    "Passwords do not match."
             );
+
             return;
         }
 
-        // Validate gender
+        // =========================================================
+        // GENDER VALIDATION
+        // =========================================================
+
         if (!gender.equals("MALE") && !gender.equals("FEMALE")) {
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/student/student-registration.jsp?error=gender"
+
+            returnError(
+                    request,
+                    response,
+                    "genderError",
+                    "Please select a valid gender."
             );
+
             return;
         }
 
-        // Validate year of study
+        // =========================================================
+        // YEAR VALIDATION
+        // =========================================================
+
         int year;
 
         try {
+
             year = Integer.parseInt(yearOfStudy);
 
             if (year < 1 || year > 4) {
-                throw new NumberFormatException();
+
+                returnError(
+                        request,
+                        response,
+                        "yearOfStudyError",
+                        "Please select a valid year of study."
+                );
+
+                return;
             }
 
         } catch (NumberFormatException e) {
 
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/student/student-registration.jsp?error=year"
+            returnError(
+                    request,
+                    response,
+                    "yearOfStudyError",
+                    "Please select a valid year of study."
             );
+
             return;
         }
 
-        // Hash password
+        // =========================================================
+        // DATE VALIDATION
+        // =========================================================
+
+        java.sql.Date sqlDate;
+
+        try {
+
+            sqlDate = java.sql.Date.valueOf(dateOfBirth);
+
+        } catch (IllegalArgumentException e) {
+
+            returnError(
+                    request,
+                    response,
+                    "dateOfBirthError",
+                    "Please enter a valid date of birth."
+            );
+
+            return;
+        }
+
+        // =========================================================
+        // EMAIL FORMAT VALIDATION
+        // =========================================================
+
+        String cleanEmail = email.trim().toLowerCase();
+
+        if (!cleanEmail.matches(
+                "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+
+            returnError(
+                    request,
+                    response,
+                    "emailError",
+                    "Please enter a valid email address."
+            );
+
+            return;
+        }
+
+        // =========================================================
+        // HASH PASSWORD
+        // =========================================================
+
         String passwordHash;
 
         try {
+
             passwordHash = hashPassword(password);
+
         } catch (Exception e) {
 
             e.printStackTrace();
 
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/student/student-registration.jsp?error=server"
+            request.setAttribute(
+                    "generalError",
+                    "Unable to process registration. Please try again."
             );
+
+            forwardToRegistration(request, response);
+
             return;
         }
 
-        // Insert student
+        // =========================================================
+        // INSERT STUDENT
+        // =========================================================
+
         String sql = """
                 INSERT INTO students (
                     first_name,
@@ -154,34 +375,87 @@ public class StudentRegisterServlet extends HttpServlet {
 
         try (
                 Connection connection = DBConnection.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)
+                PreparedStatement statement =
+                        connection.prepareStatement(sql)
         ) {
 
-            statement.setString(1, firstName.trim());
+            statement.setString(
+                    1,
+                    firstName.trim()
+            );
 
-            if (middleName == null || middleName.trim().isEmpty()) {
-                statement.setNull(2, java.sql.Types.VARCHAR);
+            if (middleName == null
+                    || middleName.trim().isEmpty()) {
+
+                statement.setNull(
+                        2,
+                        java.sql.Types.VARCHAR
+                );
+
             } else {
-                statement.setString(2, middleName.trim());
+
+                statement.setString(
+                        2,
+                        middleName.trim()
+                );
             }
 
-            statement.setString(3, lastName.trim());
-            statement.setString(4, gender);
+            statement.setString(
+                    3,
+                    lastName.trim()
+            );
+
+            statement.setString(
+                    4,
+                    gender
+            );
+
             statement.setDate(
                     5,
-                    java.sql.Date.valueOf(dateOfBirth)
+                    sqlDate
             );
-            statement.setString(6, registrationNumber.trim());
-            statement.setString(7, college.trim());
-            statement.setString(8, programme.trim());
-            statement.setInt(9, year);
-            statement.setString(10, email.trim().toLowerCase());
-            statement.setString(11, phone.trim());
-            statement.setString(12, passwordHash);
+
+            statement.setString(
+                    6,
+                    registrationNumber.trim()
+            );
+
+            statement.setString(
+                    7,
+                    college.trim()
+            );
+
+            statement.setString(
+                    8,
+                    programme.trim()
+            );
+
+            statement.setInt(
+                    9,
+                    year
+            );
+
+            statement.setString(
+                    10,
+                    cleanEmail
+            );
+
+            statement.setString(
+                    11,
+                    phone.trim()
+            );
+
+            statement.setString(
+                    12,
+                    passwordHash
+            );
 
             statement.executeUpdate();
 
-            // Registration successful
+            // =====================================================
+            // SUCCESS
+            // =====================================================
+
             response.sendRedirect(
                     request.getContextPath()
                             + "/login.jsp?registered=success"
@@ -191,87 +465,150 @@ public class StudentRegisterServlet extends HttpServlet {
 
             e.printStackTrace();
 
-            // PostgreSQL unique constraint violation
+            // PostgreSQL unique constraint
             if ("23505".equals(e.getSQLState())) {
 
-                String message = "duplicate";
+                String errorMessage =
+                        e.getMessage() == null
+                                ? ""
+                                : e.getMessage().toLowerCase();
 
-                if (e.getMessage() != null) {
+                if (errorMessage.contains(
+                        "students_email_key")) {
 
-                    String errorMessage =
-                            e.getMessage().toLowerCase();
+                    request.setAttribute(
+                            "emailError",
+                            "This email address is already registered."
+                    );
 
-                    if (errorMessage.contains("students_email_key")) {
-                        message = "email_exists";
-                    } else if (
-                            errorMessage.contains(
-                                    "students_registration_number_key")) {
-                        message = "registration_exists";
-                    }
+                } else if (errorMessage.contains(
+                        "students_registration_number_key")) {
+
+                    request.setAttribute(
+                            "registrationNumberError",
+                            "This registration number is already registered."
+                    );
+
+                } else {
+
+                    request.setAttribute(
+                            "generalError",
+                            "The email or registration number is already registered."
+                    );
                 }
 
-                response.sendRedirect(
-                        request.getContextPath()
-                                + "/student/student-registration.jsp?error="
-                                + message
+                forwardToRegistration(
+                        request,
+                        response
                 );
 
-            } else {
-
-                response.sendRedirect(
-                        request.getContextPath()
-                                + "/student/student-registration.jsp?error=database"
-                );
+                return;
             }
 
-        } catch (IllegalArgumentException e) {
+            // =====================================================
+            // OTHER DATABASE ERROR
+            // =====================================================
 
-            // Invalid date format
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/student/student-registration.jsp?error=date"
+            request.setAttribute(
+                    "generalError",
+                    "A database error occurred. Please try again."
+            );
+
+            forwardToRegistration(
+                    request,
+                    response
             );
         }
     }
 
-    private boolean isEmpty(String value) {
-        return value == null || value.trim().isEmpty();
+    // =============================================================
+    // DISPLAY FIELD ERROR
+    // =============================================================
+
+    private void returnError(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String attributeName,
+            String message)
+            throws ServletException, IOException {
+
+        request.setAttribute(
+                attributeName,
+                message
+        );
+
+        forwardToRegistration(
+                request,
+                response
+        );
     }
 
-    /**
-     * Creates a secure PBKDF2 password hash.
-     *
-     * Stored format:
-     * iterations:salt:hash
-     */
+    // =============================================================
+    // FORWARD BACK TO REGISTRATION PAGE
+    // =============================================================
+
+    private void forwardToRegistration(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        request.getRequestDispatcher(
+                "/student-registration.jsp"
+        ).forward(
+                request,
+                response
+        );
+    }
+
+    // =============================================================
+    // EMPTY CHECK
+    // =============================================================
+
+    private boolean isEmpty(String value) {
+
+        return value == null
+                || value.trim().isEmpty();
+    }
+
+    // =============================================================
+    // PASSWORD HASHING
+    // =============================================================
+
     private String hashPassword(String password)
             throws NoSuchAlgorithmException,
             InvalidKeySpecException {
 
-        SecureRandom random = new SecureRandom();
+        SecureRandom random =
+                new SecureRandom();
 
-        byte[] salt = new byte[SALT_LENGTH];
+        byte[] salt =
+                new byte[SALT_LENGTH];
+
         random.nextBytes(salt);
 
-        KeySpec spec = new PBEKeySpec(
-                password.toCharArray(),
-                salt,
-                ITERATIONS,
-                KEY_LENGTH
-        );
+        KeySpec spec =
+                new PBEKeySpec(
+                        password.toCharArray(),
+                        salt,
+                        ITERATIONS,
+                        KEY_LENGTH
+                );
 
         SecretKeyFactory factory =
                 SecretKeyFactory.getInstance(
                         "PBKDF2WithHmacSHA256"
                 );
 
-        byte[] hash = factory.generateSecret(spec)
-                .getEncoded();
+        byte[] hash =
+                factory.generateSecret(spec)
+                        .getEncoded();
 
         return ITERATIONS
                 + ":"
-                + Base64.getEncoder().encodeToString(salt)
+                + Base64.getEncoder()
+                        .encodeToString(salt)
                 + ":"
-                + Base64.getEncoder().encodeToString(hash);
+                + Base64.getEncoder()
+                        .encodeToString(hash);
     }
 }
