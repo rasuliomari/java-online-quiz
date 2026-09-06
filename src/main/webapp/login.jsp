@@ -318,6 +318,20 @@
 
                     <% } %>
 
+                    <% if ("teacherLoginRequired".equals(error)) { %>
+                        <div class="alert alert-warning mt-3" role="alert">
+                            <i class="bi bi-shield-lock-fill me-2"></i>
+                            Please sign in as a teacher to access the teacher portal.
+                        </div>
+                        <% } %>
+
+                        <% if ("adminLoginRequired".equals(error)) { %>
+                        <div class="alert alert-warning mt-3" role="alert">
+                            <i class="bi bi-shield-lock-fill me-2"></i>
+                            Please sign in as an administrator to access the admin portal.
+                        </div>
+                    <% } %>
+
                 </div>
 
 
