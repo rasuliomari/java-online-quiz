@@ -36,208 +36,347 @@ public class LoginServlet extends HttpServlet {
         String email = request.getParameter("email");
         String password = request.getParameter("password");
 
-        // Preserve email when returning to the login page
         request.setAttribute("email", email);
 
-        // Validate email
+        // -----------------------------
+        // Validate input
+        // -----------------------------
+
         if (email == null || email.trim().isEmpty()) {
             request.setAttribute(
                     "loginError",
                     "Please enter your email address."
             );
-
             forwardToLogin(request, response);
             return;
         }
 
-        // Validate password
         if (password == null || password.isEmpty()) {
             request.setAttribute(
                     "loginError",
                     "Please enter your password."
             );
-
             forwardToLogin(request, response);
             return;
         }
 
         String cleanEmail = email.trim().toLowerCase();
 
-        String sql = """
-                SELECT
-                    id,
-                    first_name,
-                    middle_name,
-                    last_name,
-                    registration_number,
-                    college,
-                    programme,
-                    year_of_study,
-                    email,
-                    password_hash
-                FROM students
-                WHERE email = ?
-                """;
+        try (Connection connection = DBConnection.getConnection()) {
 
-        try (
-                Connection connection = DBConnection.getConnection();
-                PreparedStatement statement =
-                        connection.prepareStatement(sql)
-        ) {
+            // =====================================================
+            // 1. CHECK STUDENT
+            // =====================================================
 
-            statement.setString(1, cleanEmail);
+            String studentSql = """
+                    SELECT
+                        id,
+                        first_name,
+                        middle_name,
+                        last_name,
+                        registration_number,
+                        college,
+                        programme,
+                        year_of_study,
+                        email,
+                        password_hash
+                    FROM students
+                    WHERE email = ?
+                    """;
 
-            try (ResultSet resultSet = statement.executeQuery()) {
+            try (PreparedStatement statement =
+                         connection.prepareStatement(studentSql)) {
 
-                // Student does not exist
-                if (!resultSet.next()) {
+                statement.setString(1, cleanEmail);
 
-                    request.setAttribute(
-                            "loginError",
-                            "Invalid email or password."
-                    );
+                try (ResultSet resultSet = statement.executeQuery()) {
 
-                    forwardToLogin(request, response);
-                    return;
-                }
+                    if (resultSet.next()) {
 
-                int studentId = resultSet.getInt("id");
+                        String storedPasswordHash =
+                                resultSet.getString("password_hash");
 
-                String firstName =
-                        resultSet.getString("first_name");
+                        if (verifyPassword(password, storedPasswordHash)) {
 
-                String middleName =
-                        resultSet.getString("middle_name");
+                            HttpSession session =
+                                    request.getSession(true);
 
-                String lastName =
-                        resultSet.getString("last_name");
+                            request.changeSessionId();
 
-                String registrationNumber =
-                        resultSet.getString("registration_number");
+                            clearRoleAttributes(session);
 
-                String college =
-                        resultSet.getString("college");
-
-                String programme =
-                        resultSet.getString("programme");
-
-                int yearOfStudy =
-                        resultSet.getInt("year_of_study");
-
-                String studentEmail =
-                        resultSet.getString("email");
-
-                String storedPasswordHash =
-                        resultSet.getString("password_hash");
-
-                // Verify PBKDF2 password
-                boolean passwordValid;
-
-                try {
-
-                    passwordValid =
-                            verifyPassword(
-                                    password,
-                                    storedPasswordHash
+                            session.setAttribute(
+                                    "studentId",
+                                    resultSet.getInt("id")
                             );
 
-                } catch (Exception e) {
+                            session.setAttribute(
+                                    "studentRegistrationNumber",
+                                    resultSet.getString("registration_number")
+                            );
 
-                    e.printStackTrace();
+                            session.setAttribute(
+                                    "studentFirstName",
+                                    resultSet.getString("first_name")
+                            );
 
-                    request.setAttribute(
-                            "generalError",
-                            "Unable to process login. Please try again."
-                    );
+                            session.setAttribute(
+                                    "studentMiddleName",
+                                    resultSet.getString("middle_name")
+                            );
 
-                    forwardToLogin(request, response);
-                    return;
+                            session.setAttribute(
+                                    "studentLastName",
+                                    resultSet.getString("last_name")
+                            );
+
+                            session.setAttribute(
+                                    "studentEmail",
+                                    resultSet.getString("email")
+                            );
+
+                            session.setAttribute(
+                                    "studentCollege",
+                                    resultSet.getString("college")
+                            );
+
+                            session.setAttribute(
+                                    "studentProgramme",
+                                    resultSet.getString("programme")
+                            );
+
+                            session.setAttribute(
+                                    "studentYearOfStudy",
+                                    resultSet.getInt("year_of_study")
+                            );
+
+                            session.setAttribute(
+                                    "studentLoggedIn",
+                                    true
+                            );
+
+                            session.setAttribute(
+                                    "userRole",
+                                    "STUDENT"
+                            );
+
+                            response.sendRedirect(
+                                    request.getContextPath()
+                                    + "/student/dashboard.jsp"
+                            );
+
+                            return;
+                        }
+                    }
                 }
-
-                // Wrong password
-                if (!passwordValid) {
-
-                    request.setAttribute(
-                            "loginError",
-                            "Invalid email or password."
-                    );
-
-                    forwardToLogin(request, response);
-                    return;
-                }
-
-                /*
-                 * Login successful
-                 */
-
-                HttpSession session =
-                        request.getSession(true);
-
-                // Prevent session fixation
-                request.changeSessionId();
-
-                // Store student information in session
-                session.setAttribute(
-                        "studentId",
-                        studentId
-                );
-
-                session.setAttribute(
-                        "studentRegistrationNumber",
-                        registrationNumber
-                );
-
-                session.setAttribute(
-                        "studentFirstName",
-                        firstName
-                );
-
-                session.setAttribute(
-                        "studentMiddleName",
-                        middleName
-                );
-
-                session.setAttribute(
-                        "studentLastName",
-                        lastName
-                );
-
-                session.setAttribute(
-                        "studentEmail",
-                        studentEmail
-                );
-
-                session.setAttribute(
-                        "studentCollege",
-                        college
-                );
-
-                session.setAttribute(
-                        "studentProgramme",
-                        programme
-                );
-
-                session.setAttribute(
-                        "studentYearOfStudy",
-                        yearOfStudy
-                );
-
-                session.setAttribute(
-                        "studentLoggedIn",
-                        true
-                );
-
-                session.setAttribute(
-                        "userRole",
-                        "STUDENT"
-                );
-
-                // Redirect to student dashboard
-                response.sendRedirect(
-                        request.getContextPath()
-                                + "/student/dashboard.jsp"
-                );
             }
+
+            // =====================================================
+            // 2. CHECK TEACHER
+            // =====================================================
+
+            String teacherSql = """
+                    SELECT
+                        id,
+                        first_name,
+                        middle_name,
+                        last_name,
+                        staff_number,
+                        college,
+                        department,
+                        email,
+                        phone,
+                        password_hash
+                    FROM teachers
+                    WHERE email = ?
+                    """;
+
+            try (PreparedStatement statement =
+                         connection.prepareStatement(teacherSql)) {
+
+                statement.setString(1, cleanEmail);
+
+                try (ResultSet resultSet = statement.executeQuery()) {
+
+                    if (resultSet.next()) {
+
+                        String storedPasswordHash =
+                                resultSet.getString("password_hash");
+
+                        if (verifyPassword(password, storedPasswordHash)) {
+
+                            HttpSession session =
+                                    request.getSession(true);
+
+                            request.changeSessionId();
+
+                            clearRoleAttributes(session);
+
+                            session.setAttribute(
+                                    "teacherId",
+                                    resultSet.getInt("id")
+                            );
+
+                            session.setAttribute(
+                                    "teacherStaffNumber",
+                                    resultSet.getString("staff_number")
+                            );
+
+                            session.setAttribute(
+                                    "teacherFirstName",
+                                    resultSet.getString("first_name")
+                            );
+
+                            session.setAttribute(
+                                    "teacherMiddleName",
+                                    resultSet.getString("middle_name")
+                            );
+
+                            session.setAttribute(
+                                    "teacherLastName",
+                                    resultSet.getString("last_name")
+                            );
+
+                            session.setAttribute(
+                                    "teacherEmail",
+                                    resultSet.getString("email")
+                            );
+
+                            session.setAttribute(
+                                    "teacherCollege",
+                                    resultSet.getString("college")
+                            );
+
+                            session.setAttribute(
+                                    "teacherDepartment",
+                                    resultSet.getString("department")
+                            );
+
+                            session.setAttribute(
+                                    "teacherPhone",
+                                    resultSet.getString("phone")
+                            );
+
+                            session.setAttribute(
+                                    "teacherLoggedIn",
+                                    true
+                            );
+
+                            session.setAttribute(
+                                    "userRole",
+                                    "TEACHER"
+                            );
+
+                            response.sendRedirect(
+                                    request.getContextPath()
+                                    + "/teacher/dashboard.jsp"
+                            );
+
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // =====================================================
+            // 3. CHECK ADMIN
+            // =====================================================
+
+            String adminSql = """
+                    SELECT
+                        id,
+                        first_name,
+                        middle_name,
+                        last_name,
+                        username,
+                        email,
+                        password_hash
+                    FROM admins
+                    WHERE email = ?
+                    """;
+
+            try (PreparedStatement statement =
+                         connection.prepareStatement(adminSql)) {
+
+                statement.setString(1, cleanEmail);
+
+                try (ResultSet resultSet = statement.executeQuery()) {
+
+                    if (resultSet.next()) {
+
+                        String storedPasswordHash =
+                                resultSet.getString("password_hash");
+
+                        if (verifyPassword(password, storedPasswordHash)) {
+
+                            HttpSession session =
+                                    request.getSession(true);
+
+                            request.changeSessionId();
+
+                            clearRoleAttributes(session);
+
+                            session.setAttribute(
+                                    "adminId",
+                                    resultSet.getInt("id")
+                            );
+
+                            session.setAttribute(
+                                    "adminUsername",
+                                    resultSet.getString("username")
+                            );
+
+                            session.setAttribute(
+                                    "adminFirstName",
+                                    resultSet.getString("first_name")
+                            );
+
+                            session.setAttribute(
+                                    "adminMiddleName",
+                                    resultSet.getString("middle_name")
+                            );
+
+                            session.setAttribute(
+                                    "adminLastName",
+                                    resultSet.getString("last_name")
+                            );
+
+                            session.setAttribute(
+                                    "adminEmail",
+                                    resultSet.getString("email")
+                            );
+
+                            session.setAttribute(
+                                    "adminLoggedIn",
+                                    true
+                            );
+
+                            session.setAttribute(
+                                    "userRole",
+                                    "ADMIN"
+                            );
+
+                            response.sendRedirect(
+                                    request.getContextPath()
+                                    + "/admin/dashboard.jsp"
+                            );
+
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // =====================================================
+            // INVALID LOGIN
+            // =====================================================
+
+            request.setAttribute(
+                    "loginError",
+                    "Invalid email or password."
+            );
+
+            forwardToLogin(request, response);
 
         } catch (SQLException e) {
 
@@ -249,12 +388,24 @@ public class LoginServlet extends HttpServlet {
             );
 
             forwardToLogin(request, response);
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            request.setAttribute(
+                    "generalError",
+                    "Unable to process login. Please try again."
+            );
+
+            forwardToLogin(request, response);
         }
     }
 
-    /**
-     * Return to login page while preserving validation errors.
-     */
+    // =============================================================
+    // FORWARD TO LOGIN PAGE
+    // =============================================================
+
     private void forwardToLogin(
             HttpServletRequest request,
             HttpServletResponse response)
@@ -265,13 +416,52 @@ public class LoginServlet extends HttpServlet {
         ).forward(request, response);
     }
 
-    /**
-     * Verify a PBKDF2-HMAC-SHA256 password.
-     *
-     * Stored format:
-     *
-     * iterations:salt:hash
-     */
+    // =============================================================
+    // CLEAR PREVIOUS ROLE SESSION ATTRIBUTES
+    // =============================================================
+
+    private void clearRoleAttributes(HttpSession session) {
+
+        // Student
+        session.removeAttribute("studentId");
+        session.removeAttribute("studentRegistrationNumber");
+        session.removeAttribute("studentFirstName");
+        session.removeAttribute("studentMiddleName");
+        session.removeAttribute("studentLastName");
+        session.removeAttribute("studentEmail");
+        session.removeAttribute("studentCollege");
+        session.removeAttribute("studentProgramme");
+        session.removeAttribute("studentYearOfStudy");
+        session.removeAttribute("studentLoggedIn");
+
+        // Teacher
+        session.removeAttribute("teacherId");
+        session.removeAttribute("teacherStaffNumber");
+        session.removeAttribute("teacherFirstName");
+        session.removeAttribute("teacherMiddleName");
+        session.removeAttribute("teacherLastName");
+        session.removeAttribute("teacherEmail");
+        session.removeAttribute("teacherCollege");
+        session.removeAttribute("teacherDepartment");
+        session.removeAttribute("teacherPhone");
+        session.removeAttribute("teacherLoggedIn");
+
+        // Admin
+        session.removeAttribute("adminId");
+        session.removeAttribute("adminUsername");
+        session.removeAttribute("adminFirstName");
+        session.removeAttribute("adminMiddleName");
+        session.removeAttribute("adminLastName");
+        session.removeAttribute("adminEmail");
+        session.removeAttribute("adminLoggedIn");
+
+        session.removeAttribute("userRole");
+    }
+
+    // =============================================================
+    // PBKDF2 PASSWORD VERIFICATION
+    // =============================================================
+
     private boolean verifyPassword(
             String password,
             String storedPassword)
@@ -284,11 +474,8 @@ public class LoginServlet extends HttpServlet {
             return false;
         }
 
-        String[] parts =
-                storedPassword.split(":");
+        String[] parts = storedPassword.split(":");
 
-        // Expected:
-        // iterations:salt:hash
         if (parts.length != 3) {
             return false;
         }
@@ -296,9 +483,7 @@ public class LoginServlet extends HttpServlet {
         int iterations;
 
         try {
-
-            iterations =
-                    Integer.parseInt(parts[0]);
+            iterations = Integer.parseInt(parts[0]);
 
         } catch (NumberFormatException e) {
 
@@ -314,26 +499,20 @@ public class LoginServlet extends HttpServlet {
 
         try {
 
-            salt =
-                    Base64.getDecoder()
-                            .decode(parts[1]);
-
-            expectedHash =
-                    Base64.getDecoder()
-                            .decode(parts[2]);
+            salt = Base64.getDecoder().decode(parts[1]);
+            expectedHash = Base64.getDecoder().decode(parts[2]);
 
         } catch (IllegalArgumentException e) {
 
             return false;
         }
 
-        KeySpec spec =
-                new PBEKeySpec(
-                        password.toCharArray(),
-                        salt,
-                        iterations,
-                        expectedHash.length * 8
-                );
+        KeySpec spec = new PBEKeySpec(
+                password.toCharArray(),
+                salt,
+                iterations,
+                expectedHash.length * 8
+        );
 
         SecretKeyFactory factory =
                 SecretKeyFactory.getInstance(
@@ -341,13 +520,8 @@ public class LoginServlet extends HttpServlet {
                 );
 
         byte[] actualHash =
-                factory.generateSecret(spec)
-                        .getEncoded();
+                factory.generateSecret(spec).getEncoded();
 
-        /*
-         * Constant-time comparison prevents
-         * timing-based password comparison attacks.
-         */
         return MessageDigest.isEqual(
                 actualHash,
                 expectedHash
