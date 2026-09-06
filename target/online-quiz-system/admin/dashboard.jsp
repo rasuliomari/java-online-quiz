@@ -1,130 +1,118 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
-<%
-    // =========================================================
-    // ADMIN SESSION
-    // =========================================================
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="tz.udom.quiz.util.DBConnection" %>
 
-    String firstName =
+<%
+    /*
+     * =========================================================
+     * ADMIN SESSION
+     * =========================================================
+     */
+
+    String adminFirstName =
             (String) session.getAttribute("adminFirstName");
 
-    String middleName =
-            (String) session.getAttribute("adminMiddleName");
-
-    String lastName =
+    String adminLastName =
             (String) session.getAttribute("adminLastName");
 
-    String username =
+    String adminUsername =
             (String) session.getAttribute("adminUsername");
 
-    String email =
-            (String) session.getAttribute("adminEmail");
-
-    if (firstName == null || firstName.trim().isEmpty()) {
-        firstName = "Administrator";
+    if (adminFirstName == null) {
+        adminFirstName = "Administrator";
     }
 
-    if (lastName == null) {
-        lastName = "";
+    if (adminLastName == null) {
+        adminLastName = "";
     }
 
-    if (username == null) {
-        username = "admin";
+    if (adminUsername == null) {
+        adminUsername = "Administrator";
     }
 
-    String fullName = firstName + " " + lastName;
+    String adminFullName =
+            (adminFirstName + " " + adminLastName).trim();
 
-    // =========================================================
-    // DATABASE STATISTICS
-    // =========================================================
+    /*
+     * =========================================================
+     * INITIAL STATISTICS
+     * =========================================================
+     */
 
     int totalStudents = 0;
     int totalTeachers = 0;
     int totalQuizzes = 0;
     int publishedQuizzes = 0;
 
-    try {
-        Class.forName("org.postgresql.Driver");
+    /*
+     * =========================================================
+     * DATABASE STATISTICS
+     * =========================================================
+     */
 
-        String url =
-                "jdbc:postgresql://localhost:5432/online_quiz_db";
+    try (Connection connection = DBConnection.getConnection()) {
 
-        String dbUser = "admin";
-        String dbPassword = "admin";
+        String studentSql =
+                "SELECT COUNT(*) FROM students";
 
         try (
-            java.sql.Connection connection =
-                    java.sql.DriverManager.getConnection(
-                            url,
-                            dbUser,
-                            dbPassword
-                    )
+            PreparedStatement statement =
+                    connection.prepareStatement(studentSql);
+            ResultSet resultSet =
+                    statement.executeQuery()
         ) {
-
-            // Total students
-            String studentSql =
-                    "SELECT COUNT(*) FROM students";
-
-            try (
-                java.sql.PreparedStatement statement =
-                        connection.prepareStatement(studentSql);
-                java.sql.ResultSet resultSet =
-                        statement.executeQuery()
-            ) {
-
-                if (resultSet.next()) {
-                    totalStudents = resultSet.getInt(1);
-                }
+            if (resultSet.next()) {
+                totalStudents = resultSet.getInt(1);
             }
+        }
 
-            // Total teachers
-            String teacherSql =
-                    "SELECT COUNT(*) FROM teachers";
 
-            try (
-                java.sql.PreparedStatement statement =
-                        connection.prepareStatement(teacherSql);
-                java.sql.ResultSet resultSet =
-                        statement.executeQuery()
-            ) {
+        String teacherSql =
+                "SELECT COUNT(*) FROM teachers";
 
-                if (resultSet.next()) {
-                    totalTeachers = resultSet.getInt(1);
-                }
+        try (
+            PreparedStatement statement =
+                    connection.prepareStatement(teacherSql);
+            ResultSet resultSet =
+                    statement.executeQuery()
+        ) {
+            if (resultSet.next()) {
+                totalTeachers = resultSet.getInt(1);
             }
+        }
 
-            // Total quizzes
-            String quizSql =
-                    "SELECT COUNT(*) FROM quizzes";
 
-            try (
-                java.sql.PreparedStatement statement =
-                        connection.prepareStatement(quizSql);
-                java.sql.ResultSet resultSet =
-                        statement.executeQuery()
-            ) {
+        String quizSql =
+                "SELECT COUNT(*) FROM quizzes";
 
-                if (resultSet.next()) {
-                    totalQuizzes = resultSet.getInt(1);
-                }
+        try (
+            PreparedStatement statement =
+                    connection.prepareStatement(quizSql);
+            ResultSet resultSet =
+                    statement.executeQuery()
+        ) {
+            if (resultSet.next()) {
+                totalQuizzes = resultSet.getInt(1);
             }
+        }
 
-            // Published quizzes
-            String publishedSql =
-                    SELECT COUNT(*)
-                    FROM quizzes
-                    WHERE status = 'PUBLISHED';
 
-            try (
-                java.sql.PreparedStatement statement =
-                        connection.prepareStatement(publishedSql);
-                java.sql.ResultSet resultSet =
-                        statement.executeQuery()
-            ) {
+        String publishedSql =
+                "SELECT COUNT(*) " +
+                "FROM quizzes " +
+                "WHERE status = 'PUBLISHED'";
 
-                if (resultSet.next()) {
-                    publishedQuizzes = resultSet.getInt(1);
-                }
+        try (
+            PreparedStatement statement =
+                    connection.prepareStatement(publishedSql);
+            ResultSet resultSet =
+                    statement.executeQuery()
+        ) {
+            if (resultSet.next()) {
+                publishedQuizzes = resultSet.getInt(1);
             }
         }
 
@@ -134,218 +122,139 @@
 %>
 
 <!DOCTYPE html>
+
 <html lang="en">
 
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-    <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0">
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
 
-    <title>Admin Dashboard | UDOM Online Quiz System</title>
+<title>
+    Admin Dashboard | UDOM Online Quiz System
+</title>
 
-    <!-- Bootstrap 5.3.3 -->
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-            rel="stylesheet">
 
-    <!-- Bootstrap Icons -->
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
-            rel="stylesheet">
+<!-- Bootstrap 5.3.3 -->
 
-    <!-- Shared Dashboard CSS -->
-    <link
-            rel="stylesheet"
-            href="<%= request.getContextPath() %>/css/dashboard.css">
+<link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet">
+
+
+<!-- Bootstrap Icons -->
+
+<link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+
+<!-- SAME DASHBOARD CSS -->
+
+<link
+    rel="stylesheet"
+    href="../css/dashboard.css">
 
 </head>
 
+
 <body>
 
-<div class="dashboard-wrapper">
 
-    <!-- =====================================================
-         SIDEBAR
-         ===================================================== -->
+<!-- =========================================================
+     TOP NAVBAR
+========================================================= -->
 
-    <aside class="sidebar">
+<nav class="navbar dashboard-navbar fixed-top">
 
-        <div class="sidebar-header">
-
-            <div class="brand-logo">
-                <span>UDOM</span>
-            </div>
-
-            <div class="brand-text">
-                <h5>Online Quiz</h5>
-                <small>Administration</small>
-            </div>
-
-        </div>
+<div class="container-fluid">
 
 
-        <!-- Navigation -->
+    <!-- Mobile Menu -->
 
-        <nav class="sidebar-nav">
+    <button
+        class="btn sidebar-toggle d-lg-none me-2"
+        type="button"
+        data-bs-toggle="offcanvas"
+        data-bs-target="#adminSidebar">
 
-            <a
-                    href="dashboard.jsp"
-                    class="nav-item active">
+        <i class="bi bi-list"></i>
 
-                <i class="bi bi-speedometer2"></i>
-
-                <span>Dashboard</span>
-
-            </a>
+    </button>
 
 
-            <a
-                    href="create-teacher.jsp"
-                    class="nav-item">
+    <!-- Brand -->
 
-                <i class="bi bi-person-plus"></i>
+    <a
+        class="navbar-brand d-flex align-items-center"
+        href="dashboard.jsp">
 
-                <span>Create Teacher</span>
+        <div class="brand-icon">
 
-            </a>
-
-
-            <a
-                    href="#"
-                    class="nav-item">
-
-                <i class="bi bi-people"></i>
-
-                <span>Manage Teachers</span>
-
-            </a>
-
-
-            <a
-                    href="#"
-                    class="nav-item">
-
-                <i class="bi bi-mortarboard"></i>
-
-                <span>Manage Students</span>
-
-            </a>
-
-
-            <a
-                    href="#"
-                    class="nav-item">
-
-                <i class="bi bi-journal-text"></i>
-
-                <span>Manage Quizzes</span>
-
-            </a>
-
-
-            <a
-                    href="#"
-                    class="nav-item">
-
-                <i class="bi bi-bar-chart"></i>
-
-                <span>Student Results</span>
-
-            </a>
-
-
-            <a
-                    href="#"
-                    class="nav-item">
-
-                <i class="bi bi-file-earmark-bar-graph"></i>
-
-                <span>Reports</span>
-
-            </a>
-
-
-            <div class="sidebar-divider"></div>
-
-
-            <a
-                    href="#"
-                    class="nav-item">
-
-                <i class="bi bi-person-circle"></i>
-
-                <span>My Profile</span>
-
-            </a>
-
-
-            <a
-                    href="#"
-                    class="nav-item">
-
-                <i class="bi bi-gear"></i>
-
-                <span>Settings</span>
-
-            </a>
-
-        </nav>
-
-
-        <!-- Logout -->
-
-        <div class="sidebar-footer">
-
-            <a
-                    href="<%= request.getContextPath() %>/logout"
-                    class="nav-item logout-item">
-
-                <i class="bi bi-box-arrow-right"></i>
-
-                <span>Logout</span>
-
-            </a>
+            <i class="bi bi-mortarboard-fill"></i>
 
         </div>
 
-    </aside>
+
+        <div class="brand-text">
+
+            <span>
+                UDOM
+            </span>
+
+            <small>
+                Online Quiz System
+            </small>
+
+        </div>
+
+    </a>
 
 
-    <!-- =====================================================
-         MAIN CONTENT
-         ===================================================== -->
+    <!-- Right Side -->
 
-    <main class="main-content">
+    <div class="d-flex align-items-center ms-auto">
 
 
-        <!-- =================================================
-             TOP NAVBAR
-             ================================================= -->
+        <!-- Notification -->
 
-        <header class="top-navbar">
+        <button
+            class="notification-btn me-3"
+            type="button">
 
-            <div>
+            <i class="bi bi-bell"></i>
 
-                <h4 class="page-title">
-                    Administration Dashboard
-                </h4>
+            <span class="notification-badge">
+                4
+            </span>
 
-                <p class="page-subtitle">
-                    Manage the UDOM Online Quiz System
-                </p>
-
-            </div>
+        </button>
 
 
-            <div class="profile-section">
+        <!-- Admin Profile -->
 
-                <div class="profile-info">
+        <div class="dropdown">
+
+            <button
+                class="profile-button dropdown-toggle"
+                type="button"
+                data-bs-toggle="dropdown">
+
+
+                <div class="student-avatar">
+
+                    <%= adminFirstName.substring(0, 1).toUpperCase() %>
+
+                </div>
+
+
+                <div class="student-name d-none d-md-block">
 
                     <strong>
-                        <%= fullName %>
+                        <%= adminFullName %>
                     </strong>
 
                     <small>
@@ -355,521 +264,404 @@
                 </div>
 
 
-                <div class="profile-avatar">
+            </button>
 
-                    <%= firstName.substring(0, 1).toUpperCase() %>
 
-                </div>
+            <ul
+                class="dropdown-menu dropdown-menu-end shadow">
+
+
+                <li>
+
+                    <a
+                        class="dropdown-item"
+                        href="#">
+
+                        <i class="bi bi-person me-2"></i>
+
+                        My Profile
+
+                    </a>
+
+                </li>
+
+
+                <li>
+
+                    <a
+                        class="dropdown-item"
+                        href="#">
+
+                        <i class="bi bi-gear me-2"></i>
+
+                        Settings
+
+                    </a>
+
+                </li>
+
+
+                <li>
+
+                    <hr class="dropdown-divider">
+
+                </li>
+
+
+                <li>
+
+                    <a
+                        class="dropdown-item text-danger"
+                        href="../logout">
+
+                        <i class="bi bi-box-arrow-right me-2"></i>
+
+                        Logout
+
+                    </a>
+
+                </li>
+
+
+            </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+</nav>
+
+
+
+<!-- =========================================================
+     SIDEBAR
+========================================================= -->
+
+<div
+    class="offcanvas-lg offcanvas-start student-sidebar"
+    tabindex="-1"
+    id="adminSidebar">
+
+
+    <!-- Mobile Header -->
+
+    <div class="offcanvas-header d-lg-none">
+
+        <h5 class="offcanvas-title">
+            Administrator Menu
+        </h5>
+
+
+        <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="offcanvas">
+        </button>
+
+    </div>
+
+
+
+    <div class="sidebar-content">
+
+
+        <!-- Administrator Information -->
+
+        <div class="sidebar-profile">
+
+            <div class="sidebar-avatar">
+
+                <%= adminFirstName.substring(0, 1).toUpperCase() %>
 
             </div>
 
-        </header>
+
+            <div>
+
+                <h6>
+                    <%= adminFullName %>
+                </h6>
+
+                <span>
+                    System Administrator
+                </span>
+
+            </div>
+
+        </div>
 
 
-        <!-- =================================================
-             CONTENT
-             ================================================= -->
 
-        <div class="content-container">
+        <!-- Navigation -->
+
+        <div class="sidebar-menu">
 
 
-            <!-- Welcome -->
+            <p class="menu-title">
+                MAIN MENU
+            </p>
 
-            <div class="welcome-card">
+
+            <!-- Dashboard -->
+
+            <a
+                href="dashboard.jsp"
+                class="sidebar-link active">
+
+                <i class="bi bi-grid-1x2-fill"></i>
+
+                <span>
+                    Dashboard
+                </span>
+
+            </a>
+
+
+            <!-- Create Teacher -->
+
+            <a
+                href="create-teacher.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-person-plus-fill"></i>
+
+                <span>
+                    Create Teacher
+                </span>
+
+            </a>
+
+
+            <!-- Manage Teachers -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-people-fill"></i>
+
+                <span>
+                    Manage Teachers
+                </span>
+
+            </a>
+
+
+            <!-- Manage Students -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-mortarboard-fill"></i>
+
+                <span>
+                    Manage Students
+                </span>
+
+            </a>
+
+
+            <!-- Manage Quizzes -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-journal-text"></i>
+
+                <span>
+                    Manage Quizzes
+                </span>
+
+            </a>
+
+
+            <!-- Student Results -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-bar-chart-fill"></i>
+
+                <span>
+                    Student Results
+                </span>
+
+            </a>
+
+
+            <!-- Reports -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-file-earmark-bar-graph-fill"></i>
+
+                <span>
+                    Reports
+                </span>
+
+            </a>
+
+
+
+            <p class="menu-title mt-4">
+                ACCOUNT
+            </p>
+
+
+            <!-- Profile -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-person-fill"></i>
+
+                <span>
+                    My Profile
+                </span>
+
+            </a>
+
+
+            <!-- Settings -->
+
+            <a
+                href="#"
+                class="sidebar-link">
+
+                <i class="bi bi-gear-fill"></i>
+
+                <span>
+                    Settings
+                </span>
+
+            </a>
+
+
+        </div>
+
+
+
+        <!-- Logout -->
+
+        <div class="sidebar-bottom">
+
+            <a
+                href="../logout"
+                class="logout-link">
+
+                <i class="bi bi-box-arrow-left"></i>
+
+                <span>
+                    Logout
+                </span>
+
+            </a>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     MAIN CONTENT
+========================================================= -->
+
+<main class="dashboard-main">
+
+<div class="container-fluid dashboard-container">
+
+
+    <!-- =====================================================
+         PAGE HEADER
+    ====================================================== -->
+
+    <div class="welcome-section">
+
+
+        <div>
+
+            <span class="welcome-label">
+                ADMINISTRATION
+            </span>
+
+
+            <h1>
+                Welcome, <%= adminFirstName %>
+            </h1>
+
+
+            <p>
+                Manage the UDOM Online Quiz System from your
+                administrator dashboard.
+            </p>
+
+        </div>
+
+
+        <div>
+
+            <a
+                href="create-teacher.jsp"
+                class="btn btn-primary">
+
+                <i class="bi bi-person-plus-fill me-2"></i>
+
+                Create Teacher
+
+            </a>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =====================================================
+         STATISTICS
+    ====================================================== -->
+
+    <div class="row g-4 mb-4">
+
+
+        <!-- Students -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+
+                    <i class="bi bi-mortarboard-fill"></i>
+
+                </div>
+
 
                 <div>
 
-                    <h3>
-                        Welcome, <%= firstName %>!
-                    </h3>
-
                     <p>
-                        Monitor and manage the UDOM Online Quiz
-                        System from your administration panel.
+                        Total Students
                     </p>
 
-                </div>
-
-                <div class="welcome-icon">
-
-                    <i class="bi bi-shield-check"></i>
-
-                </div>
-
-            </div>
-
-
-            <!-- =================================================
-                 STATISTICS
-                 ================================================= -->
-
-            <div class="row g-4 mt-1">
-
-
-                <!-- Students -->
-
-                <div class="col-md-6 col-xl-3">
-
-                    <div class="stat-card">
-
-                        <div class="stat-icon">
-
-                            <i class="bi bi-mortarboard-fill"></i>
-
-                        </div>
-
-                        <div>
-
-                            <h6>Total Students</h6>
-
-                            <h3>
-                                <%= totalStudents %>
-                            </h3>
-
-                            <small>
-                                Registered students
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Teachers -->
-
-                <div class="col-md-6 col-xl-3">
-
-                    <div class="stat-card">
-
-                        <div class="stat-icon">
-
-                            <i class="bi bi-person-workspace"></i>
-
-                        </div>
-
-                        <div>
-
-                            <h6>Total Teachers</h6>
-
-                            <h3>
-                                <%= totalTeachers %>
-                            </h3>
-
-                            <small>
-                                Teaching staff
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Quizzes -->
-
-                <div class="col-md-6 col-xl-3">
-
-                    <div class="stat-card">
-
-                        <div class="stat-icon">
-
-                            <i class="bi bi-journal-check"></i>
-
-                        </div>
-
-                        <div>
-
-                            <h6>Total Quizzes</h6>
-
-                            <h3>
-                                <%= totalQuizzes %>
-                            </h3>
-
-                            <small>
-                                Created quizzes
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Published -->
-
-                <div class="col-md-6 col-xl-3">
-
-                    <div class="stat-card">
-
-                        <div class="stat-icon">
-
-                            <i class="bi bi-check-circle-fill"></i>
-
-                        </div>
-
-                        <div>
-
-                            <h6>Published Quizzes</h6>
-
-                            <h3>
-                                <%= publishedQuizzes %>
-                            </h3>
-
-                            <small>
-                                Available to students
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- =================================================
-                 ADMIN QUICK ACTIONS
-                 ================================================= -->
-
-            <div class="row g-4 mt-2">
-
-
-                <div class="col-lg-8">
-
-                    <div class="dashboard-card">
-
-                        <div class="card-header">
-
-                            <div>
-
-                                <h5>
-                                    Administration
-                                </h5>
-
-                                <p>
-                                    Common administrative actions
-                                </p>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="row g-3 mt-1">
-
-
-                            <!-- Create Teacher -->
-
-                            <div class="col-md-6">
-
-                                <a
-                                        href="create-teacher.jsp"
-                                        class="quick-action">
-
-                                    <div class="quick-action-icon">
-
-                                        <i class="bi bi-person-plus-fill"></i>
-
-                                    </div>
-
-                                    <div>
-
-                                        <h6>
-                                            Create Teacher
-                                        </h6>
-
-                                        <p>
-                                            Create a teacher account
-                                        </p>
-
-                                    </div>
-
-                                    <i class="bi bi-arrow-right"></i>
-
-                                </a>
-
-                            </div>
-
-
-                            <!-- Manage Teachers -->
-
-                            <div class="col-md-6">
-
-                                <a
-                                        href="#"
-                                        class="quick-action">
-
-                                    <div class="quick-action-icon">
-
-                                        <i class="bi bi-people-fill"></i>
-
-                                    </div>
-
-                                    <div>
-
-                                        <h6>
-                                            Manage Teachers
-                                        </h6>
-
-                                        <p>
-                                            View and manage teachers
-                                        </p>
-
-                                    </div>
-
-                                    <i class="bi bi-arrow-right"></i>
-
-                                </a>
-
-                            </div>
-
-
-                            <!-- Manage Students -->
-
-                            <div class="col-md-6">
-
-                                <a
-                                        href="#"
-                                        class="quick-action">
-
-                                    <div class="quick-action-icon">
-
-                                        <i class="bi bi-mortarboard-fill"></i>
-
-                                    </div>
-
-                                    <div>
-
-                                        <h6>
-                                            Manage Students
-                                        </h6>
-
-                                        <p>
-                                            View registered students
-                                        </p>
-
-                                    </div>
-
-                                    <i class="bi bi-arrow-right"></i>
-
-                                </a>
-
-                            </div>
-
-
-                            <!-- Reports -->
-
-                            <div class="col-md-6">
-
-                                <a
-                                        href="#"
-                                        class="quick-action">
-
-                                    <div class="quick-action-icon">
-
-                                        <i class="bi bi-file-earmark-bar-graph-fill"></i>
-
-                                    </div>
-
-                                    <div>
-
-                                        <h6>
-                                            System Reports
-                                        </h6>
-
-                                        <p>
-                                            View system reports
-                                        </p>
-
-                                    </div>
-
-                                    <i class="bi bi-arrow-right"></i>
-
-                                </a>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- =================================================
-                     SYSTEM OVERVIEW
-                     ================================================= -->
-
-                <div class="col-lg-4">
-
-                    <div class="dashboard-card">
-
-                        <div class="card-header">
-
-                            <div>
-
-                                <h5>
-                                    System Overview
-                                </h5>
-
-                                <p>
-                                    Current platform status
-                                </p>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="overview-list">
-
-                            <div class="overview-item">
-
-                                <span>
-                                    <i class="bi bi-circle-fill text-success"></i>
-                                    System Status
-                                </span>
-
-                                <strong>
-                                    Active
-                                </strong>
-
-                            </div>
-
-
-                            <div class="overview-item">
-
-                                <span>
-                                    <i class="bi bi-database-check"></i>
-                                    Database
-                                </span>
-
-                                <strong>
-                                    Connected
-                                </strong>
-
-                            </div>
-
-
-                            <div class="overview-item">
-
-                                <span>
-                                    <i class="bi bi-person-workspace"></i>
-                                    Teachers
-                                </span>
-
-                                <strong>
-                                    <%= totalTeachers %>
-                                </strong>
-
-                            </div>
-
-
-                            <div class="overview-item">
-
-                                <span>
-                                    <i class="bi bi-mortarboard"></i>
-                                    Students
-                                </span>
-
-                                <strong>
-                                    <%= totalStudents %>
-                                </strong>
-
-                            </div>
-
-
-                            <div class="overview-item">
-
-                                <span>
-                                    <i class="bi bi-journal-check"></i>
-                                    Published
-                                </span>
-
-                                <strong>
-                                    <%= publishedQuizzes %>
-                                </strong>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- =================================================
-                 ADMIN ACCOUNT INFORMATION
-                 ================================================= -->
-
-            <div class="dashboard-card mt-4">
-
-                <div class="card-header">
-
-                    <div>
-
-                        <h5>
-                            Administrator Account
-                        </h5>
-
-                        <p>
-                            Currently signed-in administrator
-                        </p>
-
-                    </div>
-
-                    <i class="bi bi-shield-lock-fill fs-4"></i>
-
-                </div>
-
-
-                <div class="row mt-2">
-
-                    <div class="col-md-4">
-
-                        <small class="text-muted">
-                            Name
-                        </small>
-
-                        <p class="fw-semibold mb-3">
-                            <%= fullName %>
-                        </p>
-
-                    </div>
-
-
-                    <div class="col-md-4">
-
-                        <small class="text-muted">
-                            Username
-                        </small>
-
-                        <p class="fw-semibold mb-3">
-                            <%= username %>
-                        </p>
-
-                    </div>
-
-
-                    <div class="col-md-4">
-
-                        <small class="text-muted">
-                            Email
-                        </small>
-
-                        <p class="fw-semibold mb-3">
-                            <%= email != null ? email : "—" %>
-                        </p>
-
-                    </div>
+                    <h3>
+                        <%= totalStudents %>
+                    </h3>
+
+                    <span>
+                        Registered students
+                    </span>
 
                 </div>
 
@@ -878,34 +670,635 @@
         </div>
 
 
-        <!-- =================================================
-             FOOTER
-             ================================================= -->
 
-        <footer class="dashboard-footer">
+        <!-- Teachers -->
 
-            <p>
-                © <%= java.time.Year.now() %>
-                University of Dodoma —
-                Online Quiz System
-            </p>
+        <div class="col-xl-3 col-md-6">
 
-            <span>
-                Administration Portal
-            </span>
+            <div class="stat-card">
 
-        </footer>
+                <div class="stat-icon">
 
-    </main>
+                    <i class="bi bi-person-workspace"></i>
+
+                </div>
+
+
+                <div>
+
+                    <p>
+                        Total Teachers
+                    </p>
+
+                    <h3>
+                        <%= totalTeachers %>
+                    </h3>
+
+                    <span>
+                        Academic staff
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Quizzes -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+
+                    <i class="bi bi-journal-text"></i>
+
+                </div>
+
+
+                <div>
+
+                    <p>
+                        Total Quizzes
+                    </p>
+
+                    <h3>
+                        <%= totalQuizzes %>
+                    </h3>
+
+                    <span>
+                        Created quizzes
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Published -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+
+                    <i class="bi bi-check-circle-fill"></i>
+
+                </div>
+
+
+                <div>
+
+                    <p>
+                        Published Quizzes
+                    </p>
+
+                    <h3>
+                        <%= publishedQuizzes %>
+                    </h3>
+
+                    <span>
+                        Available to students
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =====================================================
+         ADMINISTRATION CONTENT
+    ====================================================== -->
+
+    <div class="row g-4">
+
+
+        <!-- Quick Actions -->
+
+        <div class="col-xl-8">
+
+            <div class="content-card">
+
+
+                <div class="card-header-custom">
+
+                    <div>
+
+                        <h4>
+                            Administration
+                        </h4>
+
+                        <p>
+                            Manage users and quiz activities
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="row g-4">
+
+
+                    <!-- Create Teacher -->
+
+                    <div class="col-md-6">
+
+                        <a
+                            href="create-teacher.jsp"
+                            class="text-decoration-none">
+
+                            <div class="quiz-item">
+
+
+                                <div class="quiz-icon">
+
+                                    <i class="bi bi-person-plus-fill"></i>
+
+                                </div>
+
+
+                                <div class="quiz-information">
+
+                                    <h5>
+                                        Create Teacher
+                                    </h5>
+
+                                    <div class="quiz-meta">
+
+                                        <span>
+                                            Add a new academic staff account
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+
+                        </a>
+
+                    </div>
+
+
+
+                    <!-- Manage Teachers -->
+
+                    <div class="col-md-6">
+
+                        <a
+                            href="#"
+                            class="text-decoration-none">
+
+                            <div class="quiz-item">
+
+
+                                <div class="quiz-icon software-icon">
+
+                                    <i class="bi bi-people-fill"></i>
+
+                                </div>
+
+
+                                <div class="quiz-information">
+
+                                    <h5>
+                                        Manage Teachers
+                                    </h5>
+
+                                    <div class="quiz-meta">
+
+                                        <span>
+                                            View and manage teacher accounts
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+
+                        </a>
+
+                    </div>
+
+
+
+                    <!-- Manage Students -->
+
+                    <div class="col-md-6">
+
+                        <a
+                            href="#"
+                            class="text-decoration-none">
+
+                            <div class="quiz-item">
+
+
+                                <div class="quiz-icon network-icon">
+
+                                    <i class="bi bi-mortarboard-fill"></i>
+
+                                </div>
+
+
+                                <div class="quiz-information">
+
+                                    <h5>
+                                        Manage Students
+                                    </h5>
+
+                                    <div class="quiz-meta">
+
+                                        <span>
+                                            View registered students
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+
+                        </a>
+
+                    </div>
+
+
+
+                    <!-- Manage Quizzes -->
+
+                    <div class="col-md-6">
+
+                        <a
+                            href="#"
+                            class="text-decoration-none">
+
+                            <div class="quiz-item">
+
+
+                                <div class="quiz-icon security-icon">
+
+                                    <i class="bi bi-journal-check"></i>
+
+                                </div>
+
+
+                                <div class="quiz-information">
+
+                                    <h5>
+                                        Manage Quizzes
+                                    </h5>
+
+                                    <div class="quiz-meta">
+
+                                        <span>
+                                            Monitor quiz activities
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+
+                        </a>
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+
+
+        <!-- System Overview -->
+
+        <div class="col-xl-4">
+
+
+            <div class="content-card">
+
+
+                <div class="card-header-custom">
+
+                    <div>
+
+                        <h4>
+                            System Overview
+                        </h4>
+
+                        <p>
+                            Current platform status
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="quiz-item">
+
+                    <div class="quiz-icon">
+
+                        <i class="bi bi-people-fill"></i>
+
+                    </div>
+
+
+                    <div class="quiz-information">
+
+                        <h5>
+                            Users
+                        </h5>
+
+                        <div class="quiz-meta">
+
+                            <span>
+                                <%= totalStudents + totalTeachers %>
+                                registered users
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="quiz-item">
+
+                    <div class="quiz-icon software-icon">
+
+                        <i class="bi bi-journal-text"></i>
+
+                    </div>
+
+
+                    <div class="quiz-information">
+
+                        <h5>
+                            Quizzes
+                        </h5>
+
+                        <div class="quiz-meta">
+
+                            <span>
+                                <%= totalQuizzes %>
+                                quizzes in the system
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="quiz-item">
+
+                    <div class="quiz-icon security-icon">
+
+                        <i class="bi bi-broadcast-pin"></i>
+
+                    </div>
+
+
+                    <div class="quiz-information">
+
+                        <h5>
+                            Published
+                        </h5>
+
+                        <div class="quiz-meta">
+
+                            <span>
+                                <%= publishedQuizzes %>
+                                quizzes available
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =====================================================
+         ADMINISTRATOR RESPONSIBILITIES
+    ====================================================== -->
+
+    <div class="content-card mt-4">
+
+
+        <div class="card-header-custom">
+
+            <div>
+
+                <h4>
+                    Administrator Responsibilities
+                </h4>
+
+                <p>
+                    Main functions available to system administrators
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="row g-3">
+
+
+            <div class="col-md-4">
+
+                <div class="quiz-item">
+
+                    <div class="quiz-icon">
+
+                        <i class="bi bi-person-check-fill"></i>
+
+                    </div>
+
+
+                    <div class="quiz-information">
+
+                        <h5>
+                            User Management
+                        </h5>
+
+                        <div class="quiz-meta">
+
+                            <span>
+                                Manage students and academic staff.
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="col-md-4">
+
+                <div class="quiz-item">
+
+                    <div class="quiz-icon software-icon">
+
+                        <i class="bi bi-shield-check"></i>
+
+                    </div>
+
+
+                    <div class="quiz-information">
+
+                        <h5>
+                            System Control
+                        </h5>
+
+                        <div class="quiz-meta">
+
+                            <span>
+                                Monitor system activities and access.
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="col-md-4">
+
+                <div class="quiz-item">
+
+                    <div class="quiz-icon network-icon">
+
+                        <i class="bi bi-bar-chart-line-fill"></i>
+
+                    </div>
+
+
+                    <div class="quiz-information">
+
+                        <h5>
+                            Reports
+                        </h5>
+
+                        <div class="quiz-meta">
+
+                            <span>
+                                Monitor quiz and student performance.
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
 
 </div>
 
 
-<!-- Bootstrap JS -->
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer class="dashboard-footer">
+
+<p>
+
+    © 2026 UDOM Online Quiz System.
+    University of Dodoma.
+
+</p>
+
+
+<div>
+
+    <a href="#">
+        Help
+    </a>
+
+    <a href="#">
+        Privacy
+    </a>
+
+    <a href="#">
+        Support
+    </a>
+
+</div>
+
+</footer>
+
+
+</main>
+
+
+
+<!-- Bootstrap JavaScript -->
 
 <script
-        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
+
 
 </body>
 
