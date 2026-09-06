@@ -1,4 +1,13 @@
+
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+
+<%
+    String email = (String) request.getAttribute("email");
+    String loginError = (String) request.getAttribute("loginError");
+    String generalError = (String) request.getAttribute("generalError");
+
+    String registered = request.getParameter("registered");
+%>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -199,6 +208,55 @@
                         Sign in to continue to your dashboard.
                     </p>
 
+
+                    <!-- REGISTRATION SUCCESS -->
+
+                    <% if ("success".equals(registered)) { %>
+
+                        <div class="alert alert-success mt-3"
+                             role="alert">
+
+                            <i class="bi bi-check-circle-fill me-2"></i>
+
+                            Registration successful.
+                            You can now log in to your account.
+
+                        </div>
+
+                    <% } %>
+
+
+                    <!-- LOGIN ERROR -->
+
+                    <% if (loginError != null) { %>
+
+                        <div class="alert alert-danger mt-3"
+                             role="alert">
+
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
+                            <%= loginError %>
+
+                        </div>
+
+                    <% } %>
+
+
+                    <!-- GENERAL ERROR -->
+
+                    <% if (generalError != null) { %>
+
+                        <div class="alert alert-danger mt-3"
+                             role="alert">
+
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
+                            <%= generalError %>
+
+                        </div>
+
+                    <% } %>
+
                 </div>
 
 
@@ -230,10 +288,11 @@
 
                             <input
                                 type="email"
-                                class="form-control"
+                                class="form-control <%= loginError != null ? "is-invalid" : "" %>"
                                 id="email"
                                 name="email"
                                 placeholder="Enter your email"
+                                value="<%= email != null ? email : "" %>"
                                 required>
 
                         </div>
@@ -482,3 +541,4 @@ function toggleLoginPassword() {
 
 </body>
 </html>
+
