@@ -776,14 +776,14 @@
 
                             <div class="d-flex gap-2">
 
-                                <a
-                                    href="edit-teacher.jsp?id=<%= teacherId %>"
+                                <button
+                                    type="button"
                                     class="btn btn-sm btn-outline-primary"
-                                    title="Edit Teacher">
+                                    disabled>
 
                                     <i class="bi bi-pencil"></i>
 
-                                </a>
+                                </button>
 
 
                                 <button
