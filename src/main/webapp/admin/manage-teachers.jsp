@@ -776,6 +776,8 @@
 
                             <div class="d-flex gap-2">
 
+                                <!-- EDIT -->
+
                                 <a
                                     href="edit-teacher.jsp?id=<%= teacherId %>"
                                     class="btn btn-sm btn-outline-primary"
@@ -786,14 +788,35 @@
                                 </a>
 
 
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-outline-danger"
-                                    disabled>
+                                 <!-- DELETE -->
 
-                                    <i class="bi bi-trash"></i>
+                                 <form
+                                    action="<%= request.getContextPath() %>/deleteTeacher"
+                                    method="post"
+                                    class="d-inline delete-teacher-form">
 
-                                </button>
+                                    <input
+                                        type="hidden"
+                                        name="teacherId"
+                                        value="<%= teacherId %>">
+
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Delete Teacher"
+                                        onclick="openDeleteModal(
+                                            '<%= teacherId %>',
+                                            '<%= firstName %> <%= lastName %>'
+                                        )">
+
+                                        <i class="bi bi-trash"></i>
+
+                                    </button>
+
+                                </form>
+
+
+                               
 
                             </div>
 
@@ -1022,6 +1045,241 @@
 
 </main>
 
+<!-- ==========================================================
+     DELETE TEACHER CONFIRMATION MODAL
+     ========================================================== -->
+
+<div
+    class="modal fade"
+    id="deleteTeacherModal"
+    tabindex="-1"
+    aria-labelledby="deleteTeacherModalLabel"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content delete-modal">
+
+            <!-- HEADER -->
+            <div class="modal-header border-0">
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close">
+                </button>
+
+            </div>
+
+
+            <!-- BODY -->
+            <div class="modal-body text-center px-4 pb-4">
+
+                <div class="delete-icon">
+
+                    <i class="bi bi-trash3"></i>
+
+                </div>
+
+
+                <h4 class="delete-title mt-3">
+                    Delete Teacher?
+                </h4>
+
+
+                <p class="delete-message">
+
+                    Are you sure you want to permanently
+                    delete
+
+                    <strong id="deleteTeacherName">
+                        this teacher
+                    </strong>?
+
+                </p>
+
+
+                <div class="delete-warning">
+
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+
+                    <span>
+                        This action cannot be undone.
+                    </span>
+
+                </div>
+
+
+                <!-- CONFIRM FORM -->
+                <form
+                    id="deleteConfirmForm"
+                    method="post"
+                    action="<%= request.getContextPath() %>/deleteTeacher">
+
+                    <input
+                        type="hidden"
+                        name="teacherId"
+                        id="deleteTeacherId">
+
+
+                    <div class="d-flex justify-content-center gap-2 mt-4">
+
+                        <button
+                            type="button"
+                            class="btn btn-light delete-cancel-btn"
+                            data-bs-dismiss="modal">
+
+                            Cancel
+
+                        </button>
+
+
+                        <button
+                            type="submit"
+                            class="btn btn-danger delete-confirm-btn">
+
+                            <i class="bi bi-trash3 me-1"></i>
+
+                            Delete Permanently
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+    /* ==========================================================
+   DELETE TEACHER MODAL
+   ========================================================== */
+
+.delete-modal {
+    border: none;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.20);
+}
+
+
+.delete-icon {
+    width: 72px;
+    height: 72px;
+
+    margin: 0 auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #fff1f2;
+    color: #dc3545;
+
+    font-size: 30px;
+}
+
+
+.delete-title {
+    font-weight: 700;
+    color: #212529;
+}
+
+
+.delete-message {
+    color: #6c757d;
+    font-size: 15px;
+    line-height: 1.6;
+
+    max-width: 420px;
+    margin: 10px auto 0;
+}
+
+
+.delete-message strong {
+    color: #212529;
+}
+
+
+.delete-warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    margin: 18px auto 0;
+
+    padding: 12px 16px;
+
+    max-width: 390px;
+
+    border-radius: 10px;
+
+    background: #fff8e1;
+    color: #856404;
+
+    font-size: 13px;
+    font-weight: 500;
+}
+
+
+.delete-warning i {
+    font-size: 15px;
+}
+
+
+.delete-cancel-btn {
+    min-width: 100px;
+
+    border: 1px solid #dee2e6;
+
+    font-weight: 500;
+}
+
+
+.delete-confirm-btn {
+    min-width: 180px;
+
+    font-weight: 600;
+
+    border-radius: 8px;
+}
+
+
+.delete-confirm-btn:hover {
+    transform: translateY(-1px);
+}
+</style>
+
+<script>
+
+    function openDeleteModal(teacherId, teacherName) {
+
+        document.getElementById("deleteTeacherId").value =
+            teacherId;
+
+        document.getElementById("deleteTeacherName").textContent =
+            teacherName;
+
+        const modalElement =
+            document.getElementById("deleteTeacherModal");
+
+        const modal =
+            bootstrap.Modal.getOrCreateInstance(modalElement);
+
+        modal.show();
+    }
+
+</script>
 
 
 <!-- Bootstrap JavaScript -->

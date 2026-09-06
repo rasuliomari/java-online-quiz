@@ -3,6 +3,7 @@
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/filter/TeacherAuthFilter.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateTeacherServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/DeleteTeacherServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/LoginServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/LogoutServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/PublishQuizServlet.java
@@ -10,6 +11,7 @@
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/StudentRegisterServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/SubmitQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateQuestionServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateTeacherServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/util/AdminPasswordGenerator.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/util/DBConnection.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/util/DatabaseTest.java
