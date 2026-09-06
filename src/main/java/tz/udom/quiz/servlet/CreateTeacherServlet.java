@@ -14,7 +14,9 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import tz.udom.quiz.util.DBConnection;
+
 
 @WebServlet("/createTeacher")
 public class CreateTeacherServlet extends HttpServlet {
@@ -31,6 +33,38 @@ public class CreateTeacherServlet extends HttpServlet {
 
         request.setCharacterEncoding("UTF-8");
 
+
+    /*
+     * ==========================================================
+     * ADMIN AUTHORIZATION
+     * ==========================================================
+     */
+
+    HttpSession session =
+            request.getSession(false);
+
+
+    boolean adminLoggedIn =
+            session != null
+            && Boolean.TRUE.equals(
+                    session.getAttribute("adminLoggedIn")
+            )
+            && "ADMIN".equals(
+                    session.getAttribute("userRole")
+            );
+
+
+    if (!adminLoggedIn) {
+
+        response.sendRedirect(
+                request.getContextPath()
+                + "/login.jsp?error=adminLoginRequired"
+        );
+
+        return;
+    }
+
+    
         String firstName = request.getParameter("firstName");
         String middleName = request.getParameter("middleName");
         String lastName = request.getParameter("lastName");
