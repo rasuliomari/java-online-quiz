@@ -1,200 +1,254 @@
-
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
 <%@ page import="java.sql.Connection" %>
 <%@ page import="java.sql.PreparedStatement" %>
 <%@ page import="java.sql.ResultSet" %>
 <%@ page import="java.sql.SQLException" %>
-
 <%@ page import="tz.udom.quiz.util.DBConnection" %>
 
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.ArrayList" %>
 
-<%@ page import="java.time.LocalDateTime" %>
-<%@ page import="java.time.format.DateTimeFormatter" %>
-
 <%
-    /*
-     * ============================================================
-     * STUDENT DASHBOARD DATA
-     * ============================================================
-     */
+/*
+* ============================================================
+* STUDENT SESSION CHECK
+* ============================================================
+*/
 
-    DateTimeFormatter resultDateFormatter =
-            DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
 
-    int availableQuizzes = 0;
+Boolean studentLoggedIn =
+        (Boolean) session.getAttribute("studentLoggedIn");
 
-    /*
-     * Get quiz result history from the current session.
-     */
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> resultHistory =
-            (List<Map<String, Object>>) session.getAttribute(
-                    "quizResultHistory"
-            );
+if (studentLoggedIn == null || !studentLoggedIn) {
 
-    if (resultHistory == null) {
-        resultHistory = new ArrayList<>();
-    }
+    response.sendRedirect(
+            request.getContextPath() + "/login.jsp"
+    );
 
-    /*
-     * Number of quizzes completed by this student
-     * in the current session.
-     */
-    int completedQuizzes = resultHistory.size();
+    return;
+}
 
-    /*
-     * Performance calculations.
-     */
-    double averageScore = 0.0;
-    double highestScore = 0.0;
-    double lowestScore = 0.0;
 
-    if (!resultHistory.isEmpty()) {
+/*
+ * ============================================================
+ * GET LOGGED-IN STUDENT INFORMATION
+ * ============================================================
+ */
 
-        double totalPercentage = 0.0;
+String firstName =
+        (String) session.getAttribute("studentFirstName");
 
-        for (Map<String, Object> result : resultHistory) {
+String middleName =
+        (String) session.getAttribute("studentMiddleName");
 
-            Object percentageObject =
-                    result.get("percentage");
+String lastName =
+        (String) session.getAttribute("studentLastName");
 
-            if (percentageObject instanceof Number) {
-
-                double percentage =
-                        ((Number) percentageObject)
-                                .doubleValue();
-
-                totalPercentage += percentage;
-
-                if (percentage > highestScore) {
-                    highestScore = percentage;
-                }
-
-                if (lowestScore == 0.0 ||
-                        percentage < lowestScore) {
-                    lowestScore = percentage;
-                }
-            }
-        }
-
-        averageScore =
-                totalPercentage / resultHistory.size();
-    }
-
-    /*
-     * Get number of published quizzes.
-     */
-    try (Connection connection =
-                 DBConnection.getConnection()) {
-
-        String countSql =
-                "SELECT COUNT(*) " +
-                "FROM quizzes " +
-                "WHERE status = 'PUBLISHED'";
-
-        try (PreparedStatement statement =
-                     connection.prepareStatement(countSql);
-             ResultSet resultSet =
-                     statement.executeQuery()) {
-
-            if (resultSet.next()) {
-                availableQuizzes =
-                        resultSet.getInt(1);
-            }
-        }
-
-    } catch (SQLException e) {
-        e.printStackTrace();
-    }
-%>
-
-<%
-    Boolean studentLoggedIn =
-            (Boolean) session.getAttribute("studentLoggedIn");
-
-    if (studentLoggedIn == null || !studentLoggedIn) {
-        response.sendRedirect(
-                request.getContextPath() + "/login.jsp"
+String registrationNumber =
+        (String) session.getAttribute(
+                "studentRegistrationNumber"
         );
-        return;
+
+String email =
+        (String) session.getAttribute("studentEmail");
+
+String college =
+        (String) session.getAttribute("studentCollege");
+
+String programme =
+        (String) session.getAttribute("studentProgramme");
+
+Integer yearOfStudy =
+        (Integer) session.getAttribute(
+                "studentYearOfStudy"
+        );
+
+
+/*
+ * ============================================================
+ * DEFAULT VALUES
+ * ============================================================
+ */
+
+if (firstName == null || firstName.trim().isEmpty()) {
+    firstName = "Student";
+}
+
+if (middleName == null) {
+    middleName = "";
+}
+
+if (lastName == null) {
+    lastName = "";
+}
+
+if (registrationNumber == null) {
+    registrationNumber = "";
+}
+
+if (email == null) {
+    email = "";
+}
+
+if (college == null) {
+    college = "";
+}
+
+if (programme == null) {
+    programme = "";
+}
+
+if (yearOfStudy == null) {
+    yearOfStudy = 0;
+}
+
+
+/*
+ * ============================================================
+ * FULL NAME
+ * ============================================================
+ */
+
+String fullName =
+        firstName;
+
+if (!middleName.trim().isEmpty()) {
+    fullName += " " + middleName;
+}
+
+if (!lastName.trim().isEmpty()) {
+    fullName += " " + lastName;
+}
+
+
+/*
+ * ============================================================
+ * STUDENT INITIALS
+ * ============================================================
+ */
+
+String initials =
+        firstName.substring(0, 1).toUpperCase();
+
+if (!lastName.trim().isEmpty()) {
+
+    initials +=
+            lastName.substring(0, 1).toUpperCase();
+}
+
+
+/*
+ * ============================================================
+ * QUIZ STATISTICS
+ * ============================================================
+ */
+
+int availableQuizzes = 0;
+
+List<Map<String, Object>> resultHistory =
+        (List<Map<String, Object>>) session.getAttribute(
+                "quizResultHistory"
+        );
+
+if (resultHistory == null) {
+    resultHistory = new ArrayList<>();
+}
+
+
+/*
+ * Number of completed quizzes
+ */
+
+int completedQuizzes =
+        resultHistory.size();
+
+
+/*
+ * Score calculations
+ */
+
+double averageScore = 0.0;
+double highestScore = 0.0;
+double lowestScore = 0.0;
+
+
+if (!resultHistory.isEmpty()) {
+
+    double totalPercentage = 0.0;
+
+    for (Map<String, Object> result : resultHistory) {
+
+        double percentage =
+                ((Number) result.get("percentage"))
+                        .doubleValue();
+
+        totalPercentage += percentage;
+
+
+        if (percentage > highestScore) {
+
+            highestScore =
+                    percentage;
+        }
+
+
+        if (lowestScore == 0.0 ||
+                percentage < lowestScore) {
+
+            lowestScore =
+                    percentage;
+        }
     }
 
-    String firstName =
-            (String) session.getAttribute("studentFirstName");
 
-    String middleName =
-            (String) session.getAttribute("studentMiddleName");
+    averageScore =
+            totalPercentage /
+                    resultHistory.size();
+}
 
-    String lastName =
-            (String) session.getAttribute("studentLastName");
 
-    String registrationNumber =
-            (String) session.getAttribute(
-                    "studentRegistrationNumber"
-            );
+/*
+ * ============================================================
+ * COUNT PUBLISHED QUIZZES
+ * ============================================================
+ */
 
-    String email =
-            (String) session.getAttribute("studentEmail");
+try (
+        Connection connection =
+                DBConnection.getConnection()
+) {
 
-    String college =
-            (String) session.getAttribute("studentCollege");
+    String countSql =
+            "SELECT COUNT(*) " +
+            "FROM quizzes " +
+            "WHERE status = 'PUBLISHED'";
 
-    String programme =
-            (String) session.getAttribute("studentProgramme");
 
-    Integer yearOfStudy =
-            (Integer) session.getAttribute(
-                    "studentYearOfStudy"
-            );
+    try (
+            PreparedStatement statement =
+                    connection.prepareStatement(
+                            countSql
+                    );
 
-    if (firstName == null) {
-        firstName = "Student";
+            ResultSet resultSet =
+                    statement.executeQuery()
+    ) {
+
+        if (resultSet.next()) {
+
+            availableQuizzes =
+                    resultSet.getInt(1);
+        }
     }
 
-    if (lastName == null) {
-        lastName = "";
-    }
+} catch (SQLException e) {
 
-    if (registrationNumber == null) {
-        registrationNumber = "";
-    }
+    e.printStackTrace();
+}
 
-    if (email == null) {
-        email = "";
-    }
-
-    if (college == null) {
-        college = "";
-    }
-
-    if (programme == null) {
-        programme = "";
-    }
-
-    if (yearOfStudy == null) {
-        yearOfStudy = 0;
-    }
-
-    String fullName =
-            firstName +
-            (middleName != null && !middleName.trim().isEmpty()
-                    ? " " + middleName
-                    : "") +
-            (lastName.isEmpty() ? "" : " " + lastName);
-
-    String initials =
-            firstName.substring(0, 1).toUpperCase();
-
-    if (!lastName.isEmpty()) {
-        initials +=
-                lastName.substring(0, 1).toUpperCase();
-    }
 %>
-
 
 <!DOCTYPE html>
 
@@ -202,1056 +256,820 @@
 
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0">
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
 
-    <title>
-        Student Dashboard | UDOM Online Quiz System
-    </title>
+<title>
+    Student Dashboard | UDOM Online Quiz System
+</title>
 
-    <!-- Bootstrap 5.3.3 -->
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet">
 
-    <!-- Bootstrap Icons -->
-    <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<!-- Bootstrap 5.3.3 -->
 
-    <!-- Dashboard CSS -->
-    <link
-        rel="stylesheet"
-        href="../css/dashboard.css">
+<link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet">
+
+
+<!-- Bootstrap Icons -->
+
+<link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+
+<!-- Shared Dashboard CSS -->
+
+<link
+    rel="stylesheet"
+    href="../css/dashboard.css">
 
 </head>
 
 <body>
 
-<!-- ============================================================
+<!-- =========================================================
      TOP NAVBAR
-     ============================================================ -->
+========================================================= -->
 
 <nav class="navbar navbar-expand-lg dashboard-navbar fixed-top">
 
-    <div class="container-fluid">
+<div class="container-fluid">
 
-        <!-- Mobile menu button -->
+<!-- Mobile menu button -->
+
+<button
+    class="btn sidebar-toggle d-lg-none me-2"
+    type="button"
+    data-bs-toggle="offcanvas"
+    data-bs-target="#studentSidebar">
+
+    <i class="bi bi-list"></i>
+
+</button>
+
+
+<!-- Brand -->
+
+<a
+    class="navbar-brand d-flex align-items-center"
+    href="#">
+
+    <div class="brand-icon">
+
+        <i class="bi bi-mortarboard-fill"></i>
+
+    </div>
+
+
+    <div class="brand-text">
+
+        <span>UDOM</span>
+
+        <small>
+            Online Quiz System
+        </small>
+
+    </div>
+
+</a>
+
+
+<!-- Right navigation -->
+
+<div class="d-flex align-items-center ms-auto">
+
+
+    <!-- Notification -->
+
+    <button
+        class="notification-btn me-3"
+        type="button">
+
+        <i class="bi bi-bell"></i>
+
+        <span class="notification-badge">
+            3
+        </span>
+
+    </button>
+
+
+    <!-- Student profile -->
+
+    <div class="dropdown">
 
         <button
-            class="btn sidebar-toggle d-lg-none me-2"
-            type="button"
-            data-bs-toggle="offcanvas"
-            data-bs-target="#studentSidebar">
-
-            <i class="bi bi-list"></i>
-
-        </button>
+            class="profile-button dropdown-toggle"
+            data-bs-toggle="dropdown"
+            type="button">
 
 
-        <!-- Brand -->
+            <div class="student-avatar">
 
-        <a
-            class="navbar-brand d-flex align-items-center"
-            href="#">
-
-            <div class="brand-icon">
-
-                <i class="bi bi-mortarboard-fill"></i>
+                <%= initials %>
 
             </div>
 
-            <div class="brand-text">
 
-                <span>UDOM</span>
+            <div class="student-name d-none d-md-block">
+
+                <strong>
+                    <%= fullName %>
+                </strong>
 
                 <small>
-                    Online Quiz System
+                    Student Account
                 </small>
 
             </div>
 
-        </a>
+        </button>
 
 
-        <!-- Right navigation -->
-
-        <div class="d-flex align-items-center ms-auto">
-
-            <!-- Notification -->
-
-            <button
-                class="notification-btn me-3"
-                type="button">
-
-                <i class="bi bi-bell"></i>
-
-                <span class="notification-badge">
-                    3
-                </span>
-
-            </button>
+        <ul
+            class="dropdown-menu dropdown-menu-end shadow">
 
 
-            <!-- Student profile -->
+            <li>
 
-            <div class="dropdown">
+                <a
+                    class="dropdown-item"
+                    href="#">
 
-                <button
-                    class="profile-button dropdown-toggle"
-                    type="button"
-                    data-bs-toggle="dropdown">
+                    <i class="bi bi-person me-2"></i>
 
-                    <div class="student-avatar">
-                        RO
-                    </div>
+                    My Profile
 
-                    <div
-                        class="student-name d-none d-md-block">
+                </a>
 
-                        <strong>
-                            Student
-                        </strong>
-
-                        <small>
-                            Student Account
-                        </small>
-
-                    </div>
-
-                </button>
+            </li>
 
 
-                <ul
-                    class="dropdown-menu dropdown-menu-end shadow">
+            <li>
 
-                    <li>
+                <a
+                    class="dropdown-item"
+                    href="#">
 
-                        <a
-                            class="dropdown-item"
-                            href="#">
+                    <i class="bi bi-gear me-2"></i>
 
-                            <i class="bi bi-person me-2"></i>
+                    Settings
 
-                            My Profile
+                </a>
 
-                        </a>
+            </li>
 
-                    </li>
 
-                    <li>
+            <li>
 
-                        <a
-                            class="dropdown-item"
-                            href="#">
+                <hr class="dropdown-divider">
 
-                            <i class="bi bi-gear me-2"></i>
+            </li>
 
-                            Settings
 
-                        </a>
+            <li>
 
-                    </li>
+                <a
+                    class="dropdown-item text-danger"
+                    href="../logout">
 
-                    <li>
+                    <i class="bi bi-box-arrow-right me-2"></i>
 
-                        <hr class="dropdown-divider">
+                    Logout
 
-                    </li>
+                </a>
 
-                    <li>
+            </li>
 
-                        <a
-                            class="dropdown-item text-danger"
-                            href="../login.jsp">
 
-                            <i class="bi bi-box-arrow-right me-2"></i>
-
-                            Logout
-
-                        </a>
-
-                    </li>
-
-                </ul>
-
-            </div>
-
-        </div>
+        </ul>
 
     </div>
 
+</div>
+
+</div>
+
 </nav>
 
-
-<!-- ============================================================
+<!-- =========================================================
      SIDEBAR
-     ============================================================ -->
+========================================================= -->
 
 <div
     class="offcanvas-lg offcanvas-start student-sidebar"
     tabindex="-1"
     id="studentSidebar">
 
-    <!-- Mobile sidebar header -->
+<!-- Mobile sidebar header -->
 
-    <div class="offcanvas-header d-lg-none">
+<div class="offcanvas-header d-lg-none">
 
-        <h5 class="offcanvas-title">
-            Student Menu
-        </h5>
+    <h5 class="offcanvas-title">
 
-        <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="offcanvas">
-        </button>
+        Student Menu
+
+    </h5>
+
+
+    <button
+        type="button"
+        class="btn-close"
+        data-bs-dismiss="offcanvas">
+
+    </button>
+
+</div>
+
+
+
+<div class="sidebar-content">
+
+
+    <!-- Student information -->
+
+    <div class="sidebar-profile">
+
+
+        <div class="sidebar-avatar">
+
+            <%= initials %>
+
+        </div>
+
+
+        <div>
+
+            <h6>
+                <%= fullName %>
+            </h6>
+
+            <span>
+                Student Account
+            </span>
+
+        </div>
 
     </div>
 
 
-    <div class="sidebar-content">
 
-        <!-- Student information -->
+    <!-- Menu -->
 
-        <div class="sidebar-profile">
+    <div class="sidebar-menu">
 
-            <div class="sidebar-avatar">
-                RO
-            </div>
 
-            <div>
+        <p class="menu-title">
 
-                <h6>
-                    Student
+            MAIN MENU
+
+        </p>
+
+
+        <a
+            href="#"
+            class="sidebar-link active">
+
+            <i class="bi bi-grid-1x2-fill"></i>
+
+            <span>
+                Dashboard
+            </span>
+
+        </a>
+
+
+
+        <a
+            href="#available-quizzes"
+            class="sidebar-link">
+
+            <i class="bi bi-journal-check"></i>
+
+            <span>
+                Available Quizzes
+            </span>
+
+            <span class="menu-badge">
+
+                <%= availableQuizzes %>
+
+            </span>
+
+        </a>
+
+
+
+        <a
+            href="#recent-results"
+            class="sidebar-link">
+
+            <i class="bi bi-clock-history"></i>
+
+            <span>
+                Quiz History
+            </span>
+
+        </a>
+
+
+
+        <a
+            href="#recent-results"
+            class="sidebar-link">
+
+            <i class="bi bi-bar-chart-fill"></i>
+
+            <span>
+                My Results
+            </span>
+
+        </a>
+
+
+
+        <p class="menu-title mt-4">
+
+            ACCOUNT
+
+        </p>
+
+
+
+        <a
+            href="#student-information"
+            class="sidebar-link">
+
+            <i class="bi bi-person-fill"></i>
+
+            <span>
+                My Profile
+            </span>
+
+        </a>
+
+
+
+        <a
+            href="#"
+            class="sidebar-link">
+
+            <i class="bi bi-gear-fill"></i>
+
+            <span>
+                Settings
+            </span>
+
+        </a>
+
+
+    </div>
+
+
+
+    <!-- Logout -->
+
+    <div class="sidebar-bottom">
+
+        <a
+            href="../logout"
+            class="logout-link">
+
+            <i class="bi bi-box-arrow-left"></i>
+
+            <span>
+                Logout
+            </span>
+
+        </a>
+
+    </div>
+
+
+</div>
+
+</div>
+
+<!-- =========================================================
+     MAIN CONTENT
+========================================================= -->
+
+<main class="dashboard-main">
+
+<div class="container-fluid dashboard-container">
+
+<!-- =====================================================
+     WELCOME SECTION
+====================================================== -->
+
+<div class="welcome-section">
+
+
+    <div>
+
+        <span class="welcome-label">
+
+            STUDENT DASHBOARD
+
+        </span>
+
+
+        <h1>
+
+            Welcome back,
+            <%= firstName %>! 👋
+
+        </h1>
+
+
+        <p>
+
+            Ready to test your knowledge?
+            Explore available quizzes and keep
+            improving your academic performance.
+
+        </p>
+
+    </div>
+
+
+    <div class="welcome-icon">
+
+        <i class="bi bi-mortarboard-fill"></i>
+
+    </div>
+
+
+</div>
+
+
+
+<!-- =====================================================
+     STUDENT INFORMATION
+====================================================== -->
+
+<div
+    class="content-card mb-4"
+    id="student-information">
+
+
+    <div class="card-header-custom">
+
+        <div>
+
+            <h4>
+                Student Information
+            </h4>
+
+            <p>
+                Your registered academic information
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="row g-4">
+
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="p-3">
+
+                <small class="text-muted">
+                    Full Name
+                </small>
+
+                <h6 class="mt-1 mb-0">
+                    <%= fullName %>
                 </h6>
 
-                <span>
-                    Student Account
-                </span>
+            </div>
+
+        </div>
+
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="p-3">
+
+                <small class="text-muted">
+                    Registration Number
+                </small>
+
+                <h6 class="mt-1 mb-0">
+                    <%= registrationNumber %>
+                </h6>
 
             </div>
 
         </div>
 
 
-        <!-- Menu -->
+        <div class="col-lg-3 col-md-6">
 
-        <div class="sidebar-menu">
+            <div class="p-3">
 
-            <p class="menu-title">
-                MAIN MENU
-            </p>
+                <small class="text-muted">
+                    Programme
+                </small>
 
+                <h6 class="mt-1 mb-0">
+                    <%= programme %>
+                </h6>
 
-            <a
-                href="dashboard.jsp"
-                class="sidebar-link active">
-
-                <i class="bi bi-grid-1x2-fill"></i>
-
-                <span>
-                    Dashboard
-                </span>
-
-            </a>
-
-
-            <a
-                href="#available-quizzes"
-                class="sidebar-link">
-
-                <i class="bi bi-journal-check"></i>
-
-                <span>
-                    Available Quizzes
-                </span>
-
-                <span class="menu-badge">
-                    <%= availableQuizzes %>
-                </span>
-
-            </a>
-
-
-            <a
-                href="#recent-results"
-                class="sidebar-link">
-
-                <i class="bi bi-clock-history"></i>
-
-                <span>
-                    Quiz History
-                </span>
-
-            </a>
-
-
-            <a
-                href="#recent-results"
-                class="sidebar-link">
-
-                <i class="bi bi-bar-chart-fill"></i>
-
-                <span>
-                    My Results
-                </span>
-
-            </a>
-
-
-            <p class="menu-title mt-4">
-                ACCOUNT
-            </p>
-
-
-            <a
-                href="#"
-                class="sidebar-link">
-
-                <i class="bi bi-person-fill"></i>
-
-                <span>
-                    My Profile
-                </span>
-
-            </a>
-
-
-            <a
-                href="#"
-                class="sidebar-link">
-
-                <i class="bi bi-gear-fill"></i>
-
-                <span>
-                    Settings
-                </span>
-
-            </a>
+            </div>
 
         </div>
 
 
-        <!-- Logout -->
+        <div class="col-lg-3 col-md-6">
 
-        <div class="sidebar-bottom">
+            <div class="p-3">
 
-            <a
-                href="../login.jsp"
-                class="logout-link">
+                <small class="text-muted">
+                    Year of Study
+                </small>
 
-                <i class="bi bi-box-arrow-left"></i>
+                <h6 class="mt-1 mb-0">
 
-                <span>
-                    Logout
-                </span>
+                    <% if (yearOfStudy > 0) { %>
 
-            </a>
+                        Year <%= yearOfStudy %>
+
+                    <% } else { %>
+
+                        Not available
+
+                    <% } %>
+
+                </h6>
+
+            </div>
 
         </div>
+
+
+        <div class="col-lg-6 col-md-6">
+
+            <div class="p-3">
+
+                <small class="text-muted">
+                    College
+                </small>
+
+                <h6 class="mt-1 mb-0">
+                    <%= college %>
+                </h6>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-lg-6 col-md-6">
+
+            <div class="p-3">
+
+                <small class="text-muted">
+                    Email
+                </small>
+
+                <h6 class="mt-1 mb-0">
+                    <%= email %>
+                </h6>
+
+            </div>
+
+        </div>
+
 
     </div>
 
 </div>
 
 
-<!-- ============================================================
-     MAIN CONTENT
-     ============================================================ -->
 
-<main class="dashboard-main">
+<!-- =====================================================
+     STATISTICS
+====================================================== -->
 
-    <div class="container-fluid dashboard-container">
+<div class="row g-4 mb-4">
 
 
-        <!-- ====================================================
-             WELCOME SECTION
-             ==================================================== -->
+    <!-- Available quizzes -->
 
-        <div class="welcome-section">
+    <div class="col-xl-3 col-md-6">
+
+        <div class="stat-card">
+
+
+            <div class="stat-icon icon-blue">
+
+                <i class="bi bi-journal-check"></i>
+
+            </div>
+
 
             <div>
 
-                <span class="welcome-label">
-                    STUDENT DASHBOARD
+                <span>
+                    Available Quizzes
                 </span>
 
-                <h1>
-                    Welcome back, Student! 👋
-                </h1>
+                <h2>
+                    <%= availableQuizzes %>
+                </h2>
 
-                <p>
-                    Ready to test your knowledge?
-                    Explore available quizzes and keep improving
-                    your academic performance.
-                </p>
+                <small>
 
-            </div>
+                    <i class="bi bi-journal-check"></i>
 
+                    Published quizzes
 
-            <div class="welcome-icon">
-
-                <i class="bi bi-mortarboard-fill"></i>
+                </small>
 
             </div>
+
 
         </div>
 
-
-        <!-- ====================================================
-             STATISTICS
-             ==================================================== -->
-
-        <div class="row g-4 mb-4">
+    </div>
 
 
-            <!-- Available quizzes -->
 
-            <div class="col-xl-3 col-md-6">
+    <!-- Completed -->
 
-                <div class="stat-card">
+    <div class="col-xl-3 col-md-6">
 
-                    <div class="stat-icon icon-blue">
+        <div class="stat-card">
 
-                        <i class="bi bi-journal-check"></i>
 
-                    </div>
+            <div class="stat-icon icon-green">
 
-                    <div>
-
-                        <span>
-                            Available Quizzes
-                        </span>
-
-                        <h2>
-                            <%= availableQuizzes %>
-                        </h2>
-
-                        <small>
-
-                            <i class="bi bi-journal-check"></i>
-
-                            Published quizzes
-
-                        </small>
-
-                    </div>
-
-                </div>
+                <i class="bi bi-check-circle-fill"></i>
 
             </div>
 
 
-            <!-- Completed quizzes -->
+            <div>
 
-            <div class="col-xl-3 col-md-6">
+                <span>
+                    Completed Quizzes
+                </span>
 
-                <div class="stat-card">
+                <h2>
+                    <%= completedQuizzes %>
+                </h2>
 
-                    <div class="stat-icon icon-green">
 
-                        <i class="bi bi-check-circle-fill"></i>
+                <small>
 
-                    </div>
+                    <i class="bi bi-check2"></i>
 
-                    <div>
+                    <%= completedQuizzes > 0
+                            ? "Keep up the good work"
+                            : "No quizzes completed yet" %>
 
-                        <span>
-                            Completed Quizzes
-                        </span>
-
-                        <h2>
-                            <%= completedQuizzes %>
-                        </h2>
-
-                        <small>
-
-                            <i class="bi bi-check2"></i>
-
-                            <%= completedQuizzes > 0
-                                    ? "Keep up the good work"
-                                    : "No quizzes completed yet" %>
-
-                        </small>
-
-                    </div>
-
-                </div>
+                </small>
 
             </div>
 
-
-            <!-- Average score -->
-
-            <div class="col-xl-3 col-md-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon icon-purple">
-
-                        <i class="bi bi-bar-chart-fill"></i>
-
-                    </div>
-
-                    <div>
-
-                        <span>
-                            Average Score
-                        </span>
-
-                        <h2>
-                            <%= Math.round(averageScore) %>%
-                        </h2>
-
-                        <small>
-
-                            <i class="bi bi-bar-chart"></i>
-
-                            Based on completed quizzes
-
-                        </small>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- Class ranking -->
-
-            <div class="col-xl-3 col-md-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon icon-orange">
-
-                        <i class="bi bi-trophy-fill"></i>
-
-                    </div>
-
-                    <div>
-
-                        <span>
-                            Class Ranking
-                        </span>
-
-                        <h2>
-                            —
-                        </h2>
-
-                        <small>
-
-                            <i class="bi bi-info-circle"></i>
-
-                            Ranking not available
-
-                        </small>
-
-                    </div>
-
-                </div>
-
-            </div>
 
         </div>
 
+    </div>
 
-        <!-- ====================================================
-             MAIN ROW
-             ==================================================== -->
 
-        <div class="row g-4">
 
+    <!-- Average score -->
 
-            <!-- =================================================
-                 AVAILABLE QUIZZES
-                 ================================================= -->
+    <div class="col-xl-3 col-md-6">
 
-            <div
-                class="col-xl-8"
-                id="available-quizzes">
+        <div class="stat-card">
 
-                <div class="content-card">
 
-                    <div class="card-header-custom">
+            <div class="stat-icon icon-purple">
 
-                        <div>
-
-                            <h4>
-                                Available Quizzes
-                            </h4>
-
-                            <p>
-                                Quizzes available for you to attempt
-                            </p>
-
-                        </div>
-
-                        <a href="#available-quizzes">
-
-                            View All
-
-                            <i class="bi bi-arrow-right"></i>
-
-                        </a>
-
-                    </div>
-
-
-                    <%
-
-                        String quizSql =
-                                "SELECT id, title, course, question_count, " +
-                                "duration_minutes, pass_mark " +
-                                "FROM quizzes " +
-                                "WHERE status = 'PUBLISHED' " +
-                                "ORDER BY created_at DESC " +
-                                "LIMIT 5";
-
-                        try (
-                            Connection connection =
-                                    DBConnection.getConnection();
-
-                            PreparedStatement statement =
-                                    connection.prepareStatement(
-                                            quizSql
-                                    );
-
-                            ResultSet resultSet =
-                                    statement.executeQuery()
-                        ) {
-
-                            boolean hasQuizzes = false;
-
-                            while (resultSet.next()) {
-
-                                hasQuizzes = true;
-
-                                int quizId =
-                                        resultSet.getInt("id");
-
-                                String title =
-                                        resultSet.getString("title");
-
-                                String course =
-                                        resultSet.getString("course");
-
-                                int questionCount =
-                                        resultSet.getInt(
-                                                "question_count"
-                                        );
-
-                                int duration =
-                                        resultSet.getInt(
-                                                "duration_minutes"
-                                        );
-
-                                int passMark =
-                                        resultSet.getInt(
-                                                "pass_mark"
-                                        );
-
-                                String icon =
-                                        "bi-journal-check";
-
-                                if (course != null) {
-
-                                    String courseLower =
-                                            course.toLowerCase();
-
-                                    if (courseLower.contains(
-                                            "security")) {
-
-                                        icon =
-                                                "bi-shield-lock-fill";
-
-                                    } else if (
-                                            courseLower.contains(
-                                                    "network")) {
-
-                                        icon =
-                                                "bi-diagram-3-fill";
-
-                                    } else if (
-                                            courseLower.contains(
-                                                    "software")) {
-
-                                        icon =
-                                                "bi-code-slash";
-
-                                    } else if (
-                                            courseLower.contains(
-                                                    "database")) {
-
-                                        icon =
-                                                "bi-database-fill";
-                                    }
-                                }
-
-                    %>
-
-
-                    <!-- Quiz item -->
-
-                    <div class="quiz-item">
-
-                        <div class="quiz-icon">
-
-                            <i class="bi <%= icon %>"></i>
-
-                        </div>
-
-
-                        <div class="quiz-information">
-
-                            <h5>
-                                <%= title %>
-                            </h5>
-
-                            <div class="quiz-meta">
-
-                                <span>
-
-                                    <i class="bi bi-book"></i>
-
-                                    <%= course %>
-
-                                </span>
-
-
-                                <span>
-
-                                    <i class="bi bi-question-circle"></i>
-
-                                    <%= questionCount %>
-                                    Questions
-
-                                </span>
-
-
-                                <span>
-
-                                    <i class="bi bi-clock"></i>
-
-                                    <%= duration %>
-                                    Minutes
-
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="quiz-action">
-
-                            <span class="quiz-status">
-                                Available
-                            </span>
-
-                            <a
-                                href="take-quiz.jsp?quizId=<%= quizId %>"
-                                class="btn start-quiz-btn">
-
-                                Start Quiz
-
-                                <i class="bi bi-arrow-right"></i>
-
-                            </a>
-
-                        </div>
-
-                    </div>
-
-
-                    <%
-
-                            }
-
-                            if (!hasQuizzes) {
-
-                    %>
-
-
-                    <!-- No quizzes -->
-
-                    <div class="text-center py-5">
-
-                        <i
-                            class="bi bi-journal-x"
-                            style="
-                                font-size: 3rem;
-                                color: #94a3b8;
-                            ">
-                        </i>
-
-                        <h5 class="mt-3">
-                            No Quizzes Available
-                        </h5>
-
-                        <p class="text-muted mb-0">
-                            There are currently no published
-                            quizzes available.
-                        </p>
-
-                    </div>
-
-
-                    <%
-
-                            }
-
-                        } catch (SQLException e) {
-
-                            e.printStackTrace();
-
-                    %>
-
-
-                    <div class="alert alert-danger">
-
-                        <i
-                            class="bi bi-exclamation-triangle me-2">
-                        </i>
-
-                        Unable to load available quizzes.
-
-                    </div>
-
-
-                    <%
-
-                        }
-
-                    %>
-
-                </div>
+                <i class="bi bi-bar-chart-fill"></i>
 
             </div>
 
 
-            <!-- =================================================
-                 PERFORMANCE
-                 ================================================= -->
+            <div>
 
-            <div class="col-xl-4">
+                <span>
+                    Average Score
+                </span>
 
-                <div class="content-card performance-card">
+                <h2>
+                    <%= Math.round(averageScore) %>%
+                </h2>
 
-                    <div class="card-header-custom">
 
-                        <div>
+                <small>
 
-                            <h4>
-                                My Performance
-                            </h4>
+                    <i class="bi bi-bar-chart"></i>
 
-                            <p>
-                                Your quiz performance
-                            </p>
+                    Based on completed quizzes
 
-                        </div>
-
-                    </div>
-
-
-                    <div class="performance-circle">
-
-                        <div class="circle-inner">
-
-                            <strong>
-                                <%= Math.round(averageScore) %>%
-                            </strong>
-
-                            <span>
-                                Average
-                            </span>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="performance-info">
-
-                        <div>
-
-                            <span>
-                                Highest Score
-                            </span>
-
-                            <strong>
-                                <%= Math.round(highestScore) %>%
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Lowest Score
-                            </span>
-
-                            <strong>
-                                <%= Math.round(lowestScore) %>%
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="progress-section">
-
-                        <div
-                            class="d-flex justify-content-between">
-
-                            <span>
-                                Overall Progress
-                            </span>
-
-                            <strong>
-                                <%= Math.round(averageScore) %>%
-                            </strong>
-
-                        </div>
-
-
-                        <div class="progress">
-
-                            <div
-                                class="progress-bar"
-                                role="progressbar"
-                                style="width: <%= Math.round(averageScore) %>%"
-                                aria-valuenow="<%= Math.round(averageScore) %>"
-                                aria-valuemin="0"
-                                aria-valuemax="100">
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- =================================================
-                     UPCOMING
-                     ================================================= -->
-
-                <div
-                    class="content-card upcoming-card mt-4">
-
-                    <div class="card-header-custom">
-
-                        <div>
-
-                            <h4>
-                                Upcoming
-                            </h4>
-
-                            <p>
-                                Important quiz deadlines
-                            </p>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="upcoming-item">
-
-                        <div class="calendar-icon">
-
-                            <strong>
-                                05
-                            </strong>
-
-                            <span>
-                                SEP
-                            </span>
-
-                        </div>
-
-                        <div>
-
-                            <h6>
-                                Computer Security
-                            </h6>
-
-                            <small>
-                                Deadline: 11:59 PM
-                            </small>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="upcoming-item">
-
-                        <div class="calendar-icon">
-
-                            <strong>
-                                08
-                            </strong>
-
-                            <span>
-                                SEP
-                            </span>
-
-                        </div>
-
-                        <div>
-
-                            <h6>
-                                Database Systems
-                            </h6>
-
-                            <small>
-                                Deadline: 11:59 PM
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                </div>
+                </small>
 
             </div>
+
 
         </div>
 
+    </div>
 
-        <!-- ====================================================
-             RECENT RESULTS
-             ==================================================== -->
 
-        <div
-            class="content-card mt-4"
-            id="recent-results">
+
+    <!-- Ranking -->
+
+    <div class="col-xl-3 col-md-6">
+
+        <div class="stat-card">
+
+
+            <div class="stat-icon icon-orange">
+
+                <i class="bi bi-trophy-fill"></i>
+
+            </div>
+
+
+            <div>
+
+                <span>
+                    Class Ranking
+                </span>
+
+                <h2>
+                    —
+                </h2>
+
+
+                <small>
+
+                    <i class="bi bi-info-circle"></i>
+
+                    Ranking not available
+
+                </small>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+
+<!-- =====================================================
+     MAIN ROW
+====================================================== -->
+
+<div class="row g-4">
+
+
+
+    <!-- =================================================
+         AVAILABLE QUIZZES
+    ================================================== -->
+
+    <div
+        class="col-xl-8"
+        id="available-quizzes">
+
+
+        <div class="content-card">
+
 
             <div class="card-header-custom">
 
                 <div>
 
                     <h4>
-                        Recent Results
+                        Available Quizzes
                     </h4>
 
                     <p>
-                        Your latest quiz performance
+                        Quizzes available for you to attempt
                     </p>
 
                 </div>
 
-                <a href="#recent-results">
+
+                <a href="#available-quizzes">
 
                     View All
 
@@ -1262,314 +1080,863 @@
             </div>
 
 
-            <div class="table-responsive">
 
-                <table
-                    class="table result-table align-middle">
+            <%
 
-                    <thead>
+                String quizSql =
+                        "SELECT id, title, course, " +
+                        "question_count, duration_minutes, " +
+                        "pass_mark " +
+                        "FROM quizzes " +
+                        "WHERE status = 'PUBLISHED' " +
+                        "ORDER BY created_at DESC " +
+                        "LIMIT 5";
 
-                        <tr>
 
-                            <th>
-                                Quiz
-                            </th>
+                try (
+                        Connection connection =
+                                DBConnection.getConnection();
 
-                            <th>
-                                Date
-                            </th>
+                        PreparedStatement statement =
+                                connection.prepareStatement(
+                                        quizSql
+                                );
 
-                            <th>
-                                Questions
-                            </th>
+                        ResultSet resultSet =
+                                statement.executeQuery()
+                ) {
 
-                            <th>
-                                Score
-                            </th>
 
-                            <th>
-                                Result
-                            </th>
+                    boolean hasQuizzes = false;
 
-                            <th>
-                            </th>
 
-                        </tr>
+                    while (resultSet.next()) {
 
-                    </thead>
+                        hasQuizzes = true;
 
 
-                    <tbody>
+                        int quizId =
+                                resultSet.getInt("id");
 
 
-                    <%
+                        String title =
+                                resultSet.getString("title");
 
-                        if (resultHistory.isEmpty()) {
 
-                    %>
+                        String course =
+                                resultSet.getString("course");
 
 
-                    <!-- No results -->
+                        int questionCount =
+                                resultSet.getInt(
+                                        "question_count"
+                                );
 
-                    <tr>
 
-                        <td
-                            colspan="6"
-                            class="text-center py-5">
+                        int duration =
+                                resultSet.getInt(
+                                        "duration_minutes"
+                                );
 
-                            <i
-                                class="bi bi-clipboard-x"
-                                style="
-                                    font-size: 2.5rem;
-                                    color: #94a3b8;
-                                ">
-                            </i>
 
-                            <h6 class="mt-3">
-                                No Quiz Results Yet
-                            </h6>
+                        int passMark =
+                                resultSet.getInt(
+                                        "pass_mark"
+                                );
 
-                            <p class="text-muted mb-0">
-                                Complete a quiz to see your
-                                results here.
-                            </p>
 
-                        </td>
+                        String icon =
+                                "bi-journal-check";
 
-                    </tr>
 
+                        if (course != null) {
 
-                    <%
+                            String courseLower =
+                                    course.toLowerCase();
 
-                        } else {
 
-                            for (
-                                Map<String, Object> result :
-                                resultHistory
-                            ) {
+                            if (courseLower.contains(
+                                    "security")) {
 
-                                int resultQuizId =
-                                        ((Number) result.get(
-                                                "quizId"
-                                        )).intValue();
+                                icon =
+                                        "bi-shield-lock-fill";
 
-                                String resultTitle =
-                                        (String) result.get(
-                                                "title"
-                                        );
+                            } else if (
+                                    courseLower.contains(
+                                            "network")) {
 
-                                int resultScore =
-                                        ((Number) result.get(
-                                                "score"
-                                        )).intValue();
+                                icon =
+                                        "bi-diagram-3-fill";
 
-                                int resultTotal =
-                                        ((Number) result.get(
-                                                "total"
-                                        )).intValue();
+                            } else if (
+                                    courseLower.contains(
+                                            "software")) {
 
-                                double resultPercentage =
-                                        ((Number) result.get(
-                                                "percentage"
-                                        )).doubleValue();
+                                icon =
+                                        "bi-code-slash";
 
-                                boolean resultPassed =
-                                        Boolean.TRUE.equals(
-                                                result.get(
-                                                        "passed"
-                                                )
-                                        );
+                            } else if (
+                                    courseLower.contains(
+                                            "database")) {
 
-
-                                /*
-                                 * Get the date/time for this
-                                 * specific result.
-                                 */
-
-                                Object submittedAtObject =
-                                        result.get(
-                                                "submittedAt"
-                                        );
-
-                                String submittedAtText =
-                                        "—";
-
-                                if (
-                                    submittedAtObject
-                                    instanceof LocalDateTime
-                                ) {
-
-                                    submittedAtText =
-                                            (
-                                                (LocalDateTime)
-                                                submittedAtObject
-                                            ).format(
-                                                    resultDateFormatter
-                                            );
-                                }
-
-                    %>
-
-
-                    <tr>
-
-
-                        <!-- Quiz -->
-
-                        <td>
-
-                            <strong>
-                                <%= resultTitle %>
-                            </strong>
-
-                        </td>
-
-
-                        <!-- Date -->
-
-                        <td>
-
-                            <%= submittedAtText %>
-
-                        </td>
-
-
-                        <!-- Questions -->
-
-                        <td>
-
-                            <%= resultTotal %>
-
-                        </td>
-
-
-                        <!-- Score -->
-
-                        <td>
-
-                            <strong>
-
-                                <%= resultScore %>
-                                /
-                                <%= resultTotal %>
-
-                            </strong>
-
-                            <small class="text-muted">
-
-                                (
-                                <%= Math.round(
-                                        resultPercentage
-                                ) %>%
-                                )
-
-                            </small>
-
-                        </td>
-
-
-                        <!-- Result -->
-
-                        <td>
-
-                            <% if (resultPassed) { %>
-
-                                <span class="result-pass">
-
-                                    Passed
-
-                                </span>
-
-                            <% } else { %>
-
-                                <span class="result-warning">
-
-                                    Needs Improvement
-
-                                </span>
-
-                            <% } %>
-
-                        </td>
-
-
-                        <!-- View -->
-
-                        <td>
-
-                            <a
-                                href="quiz-result.jsp?quizId=<%= resultQuizId %>"
-                                class="btn result-btn">
-
-                                View
-
-                            </a>
-
-                        </td>
-
-
-                    </tr>
-
-
-                    <%
-
+                                icon =
+                                        "bi-database-fill";
                             }
-
                         }
 
-                    %>
+            %>
 
 
-                    </tbody>
+            <div class="quiz-item">
 
-                </table>
+
+                <div class="quiz-icon">
+
+                    <i class="bi <%= icon %>"></i>
+
+                </div>
+
+
+                <div class="quiz-information">
+
+                    <h5>
+                        <%= title %>
+                    </h5>
+
+
+                    <div class="quiz-meta">
+
+
+                        <span>
+
+                            <i class="bi bi-book"></i>
+
+                            <%= course %>
+
+                        </span>
+
+
+                        <span>
+
+                            <i class="bi bi-question-circle"></i>
+
+                            <%= questionCount %>
+                            Questions
+
+                        </span>
+
+
+                        <span>
+
+                            <i class="bi bi-clock"></i>
+
+                            <%= duration %>
+                            Minutes
+
+                        </span>
+
+
+                    </div>
+
+                </div>
+
+
+                <div class="quiz-action">
+
+
+                    <span class="quiz-status">
+
+                        Available
+
+                    </span>
+
+
+                    <a
+                        href="take-quiz.jsp?quizId=<%= quizId %>"
+                        class="btn start-quiz-btn">
+
+                        Start Quiz
+
+                        <i class="bi bi-arrow-right"></i>
+
+                    </a>
+
+
+                </div>
+
 
             </div>
+
+
+            <%
+
+                    }
+
+
+                    if (!hasQuizzes) {
+
+            %>
+
+
+            <div class="text-center py-5">
+
+
+                <i
+                    class="bi bi-journal-x"
+                    style="font-size: 3rem; color: #94a3b8;">
+
+                </i>
+
+
+                <h5 class="mt-3">
+
+                    No Quizzes Available
+
+                </h5>
+
+
+                <p class="text-muted mb-0">
+
+                    There are currently no published
+                    quizzes available.
+
+                </p>
+
+
+            </div>
+
+
+            <%
+
+                    }
+
+                } catch (SQLException e) {
+
+            %>
+
+
+            <div class="alert alert-danger">
+
+                <i
+                    class="bi bi-exclamation-triangle me-2">
+                </i>
+
+                Unable to load available quizzes.
+
+            </div>
+
+
+            <%
+
+                    e.printStackTrace();
+
+                }
+
+            %>
+
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =================================================
+         PERFORMANCE
+    ================================================== -->
+
+    <div class="col-xl-4">
+
+
+        <div class="content-card performance-card">
+
+
+            <div class="card-header-custom">
+
+
+                <div>
+
+                    <h4>
+                        My Performance
+                    </h4>
+
+                    <p>
+                        Your quiz performance
+                    </p>
+
+                </div>
+
+
+            </div>
+
+
+
+            <div class="performance-circle">
+
+
+                <div class="circle-inner">
+
+
+                    <strong>
+
+                        <%= Math.round(averageScore) %>%
+
+                    </strong>
+
+
+                    <span>
+                        Average
+                    </span>
+
+
+                </div>
+
+
+            </div>
+
+
+
+            <div class="performance-info">
+
+
+                <div>
+
+                    <span>
+                        Highest Score
+                    </span>
+
+
+                    <strong>
+
+                        <%= Math.round(highestScore) %>%
+
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Lowest Score
+                    </span>
+
+
+                    <strong>
+
+                        <%= Math.round(lowestScore) %>%
+
+                    </strong>
+
+                </div>
+
+
+            </div>
+
+
+
+            <div class="progress-section">
+
+
+                <div
+                    class="d-flex justify-content-between">
+
+
+                    <span>
+                        Overall Progress
+                    </span>
+
+
+                    <strong>
+
+                        <%= Math.round(averageScore) %>%
+
+                    </strong>
+
+
+                </div>
+
+
+                <div class="progress">
+
+
+                    <div
+                        class="progress-bar"
+                        style="width: <%= Math.round(averageScore) %>%">
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
 
         </div>
 
 
-        <!-- ====================================================
-             FOOTER
-             ==================================================== -->
 
-        <footer class="dashboard-footer">
+        <!-- =================================================
+             UPCOMING
+        ================================================== -->
 
-            <p>
-
-                © 2026 UDOM Online Quiz System.
-                University of Dodoma.
-
-            </p>
+        <div
+            class="content-card upcoming-card mt-4">
 
 
-            <div>
+            <div class="card-header-custom">
 
-                <a href="#">
-                    Help
-                </a>
 
-                <a href="#">
-                    Privacy
-                </a>
+                <div>
 
-                <a href="#">
-                    Support
-                </a>
+                    <h4>
+                        Upcoming
+                    </h4>
+
+
+                    <p>
+                        Important quiz deadlines
+                    </p>
+
+
+                </div>
+
 
             </div>
 
-        </footer>
+
+
+            <div class="upcoming-item">
+
+
+                <div class="calendar-icon">
+
+                    <strong>
+                        05
+                    </strong>
+
+                    <span>
+                        SEP
+                    </span>
+
+                </div>
+
+
+                <div>
+
+                    <h6>
+                        Computer Security
+                    </h6>
+
+
+                    <small>
+                        Deadline: 11:59 PM
+                    </small>
+
+                </div>
+
+
+            </div>
+
+
+
+            <div class="upcoming-item">
+
+
+                <div class="calendar-icon">
+
+                    <strong>
+                        08
+                    </strong>
+
+                    <span>
+                        SEP
+                    </span>
+
+                </div>
+
+
+                <div>
+
+                    <h6>
+                        Database Systems
+                    </h6>
+
+
+                    <small>
+                        Deadline: 11:59 PM
+                    </small>
+
+                </div>
+
+
+            </div>
+
+
+        </div>
 
 
     </div>
 
+
+</div>
+
+
+
+<!-- =====================================================
+     RECENT RESULTS
+====================================================== -->
+
+<div
+    class="content-card mt-4"
+    id="recent-results">
+
+
+    <div class="card-header-custom">
+
+
+        <div>
+
+            <h4>
+                Recent Results
+            </h4>
+
+
+            <p>
+                Your latest quiz performance
+            </p>
+
+
+        </div>
+
+
+        <a href="#recent-results">
+
+            View All
+
+            <i class="bi bi-arrow-right"></i>
+
+        </a>
+
+
+    </div>
+
+
+
+    <div class="table-responsive">
+
+
+        <table
+            class="table result-table align-middle">
+
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Quiz
+                    </th>
+
+
+                    <th>
+                        Date
+                    </th>
+
+
+                    <th>
+                        Questions
+                    </th>
+
+
+                    <th>
+                        Score
+                    </th>
+
+
+                    <th>
+                        Result
+                    </th>
+
+
+                    <th>
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+
+            <tbody>
+
+
+            <%
+
+                if (resultHistory.isEmpty()) {
+
+            %>
+
+
+                <tr>
+
+                    <td
+                        colspan="6"
+                        class="text-center py-5">
+
+
+                        <i
+                            class="bi bi-clipboard-x"
+                            style="
+                                font-size: 2.5rem;
+                                color: #94a3b8;
+                            ">
+
+                        </i>
+
+
+                        <h6 class="mt-3">
+
+                            No Quiz Results Yet
+
+                        </h6>
+
+
+                        <p class="text-muted mb-0">
+
+                            Complete a quiz to see
+                            your results here.
+
+                        </p>
+
+
+                    </td>
+
+                </tr>
+
+
+            <%
+
+                } else {
+
+
+                    for (
+                        Map<String, Object> result
+                            : resultHistory
+                    ) {
+
+
+                        int resultQuizId =
+                                ((Number)
+                                        result.get(
+                                                "quizId"
+                                        ))
+                                        .intValue();
+
+
+                        String resultTitle =
+                                (String)
+                                        result.get(
+                                                "title"
+                                        );
+
+
+                        int resultScore =
+                                ((Number)
+                                        result.get(
+                                                "score"
+                                        ))
+                                        .intValue();
+
+
+                        int resultTotal =
+                                ((Number)
+                                        result.get(
+                                                "total"
+                                        ))
+                                        .intValue();
+
+
+                        double resultPercentage =
+                                ((Number)
+                                        result.get(
+                                                "percentage"
+                                        ))
+                                        .doubleValue();
+
+
+                        boolean resultPassed =
+                                (Boolean)
+                                        result.get(
+                                                "passed"
+                                        );
+
+            %>
+
+
+                <tr>
+
+
+                    <td>
+
+                        <strong>
+
+                            <%= resultTitle %>
+
+                        </strong>
+
+                    </td>
+
+
+                    <td>
+
+                        Today
+
+                    </td>
+
+
+                    <td>
+
+                        <%= resultTotal %>
+
+                    </td>
+
+
+                    <td>
+
+                        <strong>
+
+                            <%= resultScore %>
+                            /
+                            <%= resultTotal %>
+
+                        </strong>
+
+
+                        <small class="text-muted">
+
+                            (<%= Math.round(
+                                    resultPercentage
+                            ) %>%)
+
+                        </small>
+
+                    </td>
+
+
+                    <td>
+
+
+                        <% if (resultPassed) { %>
+
+
+                            <span class="result-pass">
+
+                                Passed
+
+                            </span>
+
+
+                        <% } else { %>
+
+
+                            <span class="result-warning">
+
+                                Needs Improvement
+
+                            </span>
+
+
+                        <% } %>
+
+
+                    </td>
+
+
+                    <td>
+
+
+                        <a
+                            href="quiz-result.jsp"
+                            class="btn result-btn">
+
+                            View
+
+                        </a>
+
+
+                    </td>
+
+
+                </tr>
+
+
+            <%
+
+                    }
+
+                }
+
+            %>
+
+
+            </tbody>
+
+
+        </table>
+
+
+    </div>
+
+
+</div>
+
+
+
+<!-- =====================================================
+     FOOTER
+====================================================== -->
+
+<footer class="dashboard-footer">
+
+
+    <p>
+
+        © 2026 UDOM Online Quiz System.
+        University of Dodoma.
+
+    </p>
+
+
+    <div>
+
+        <a href="#">
+            Help
+        </a>
+
+
+        <a href="#">
+            Privacy
+        </a>
+
+
+        <a href="#">
+            Support
+        </a>
+
+    </div>
+
+
+</footer>
+
+</div>
+
 </main>
 
-
-<!-- ============================================================
+<!-- =========================================================
      BOOTSTRAP JAVASCRIPT
-     ============================================================ -->
+========================================================= -->
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
