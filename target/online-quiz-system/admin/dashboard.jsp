@@ -111,11 +111,9 @@
 
             // Published quizzes
             String publishedSql =
-                    """
                     SELECT COUNT(*)
                     FROM quizzes
-                    WHERE status = 'PUBLISHED'
-                    """;
+                    WHERE status = 'PUBLISHED';
 
             try (
                 java.sql.PreparedStatement statement =

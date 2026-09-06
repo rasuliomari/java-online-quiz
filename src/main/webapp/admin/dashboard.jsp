@@ -108,12 +108,12 @@
                     totalQuizzes = resultSet.getInt(1);
                 }
             }
-
-            // Published quizzes
-            String publishedSql =
-                    SELECT COUNT(*)
-                    FROM quizzes
-                    WHERE status = 'PUBLISHED';
+            
+            //published quizzes
+           String publishedSql =
+            "SELECT COUNT(*) " +
+            "FROM quizzes " +
+            "WHERE status = 'PUBLISHED'";
 
             try (
                 java.sql.PreparedStatement statement =
