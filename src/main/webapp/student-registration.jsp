@@ -678,6 +678,7 @@
                             class="form-check-input"
                             type="checkbox"
                             id="terms"
+                            name="terms"
                             required>
 
                         <label
