@@ -6,4 +6,6 @@ tz/udom/quiz/servlet/SaveQuestionServlet.class
 tz/udom/quiz/servlet/StudentRegisterServlet.class
 tz/udom/quiz/servlet/LoginServlet.class
 tz/udom/quiz/servlet/PublishQuizServlet.class
+tz/udom/quiz/filter/StudentAuthFilter.class
+tz/udom/quiz/servlet/LogoutServlet.class
 tz/udom/quiz/util/DatabaseTest.class

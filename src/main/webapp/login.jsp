@@ -1,13 +1,4 @@
-
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-
-<%
-    String email = (String) request.getAttribute("email");
-    String loginError = (String) request.getAttribute("loginError");
-    String generalError = (String) request.getAttribute("generalError");
-
-    String registered = request.getParameter("registered");
-%>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -21,254 +12,282 @@
 
     <title>Login | UDOM Online Quiz System</title>
 
-    <!-- Bootstrap -->
+    <!-- Bootstrap 5.3.3 -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet">
 
     <!-- Bootstrap Icons -->
     <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-        rel="stylesheet">
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <!-- Authentication CSS -->
-    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet"
+          href="css/auth.css">
 
 </head>
 
-<body class="auth-page">
+<body>
+
+<%
+    String error = request.getParameter("error");
+    String registered = request.getParameter("registered");
+    String logout = request.getParameter("logout");
+%>
 
 
-<div class="container-fluid">
+<div class="auth-page">
 
-    <div class="row min-vh-100">
+    <div class="auth-container">
 
+        <!-- =====================================================
+             LEFT SIDE
+        ====================================================== -->
 
-        <!-- ================= LEFT SIDE ================= -->
+        <div class="auth-intro">
 
-        <div class="col-lg-6 auth-intro d-none d-lg-flex">
+            <div class="auth-brand">
+
+                <div class="brand-icon">
+                    <i class="bi bi-mortarboard-fill"></i>
+                </div>
+
+                <div>
+                    <h2>UDOM</h2>
+                    <span>Online Quiz System</span>
+                </div>
+
+            </div>
+
 
             <div class="auth-intro-content">
 
-                <a href="index.html"
-                   class="auth-brand">
+                <span class="intro-label">
+                    STUDENT PORTAL
+                </span>
 
-                    <div class="brand-icon">
+                <h1>
+                    Welcome Back!
+                </h1>
 
-                        <i class="bi bi-mortarboard-fill"></i>
-
-                    </div>
-
-                    <div>
-
-                        <strong>UDOM</strong>
-
-                        <small>
-                            Online Quiz System
-                        </small>
-
-                    </div>
-
-                </a>
+                <p>
+                    Sign in to access your quizzes, track your
+                    academic performance, and view your results.
+                </p>
 
 
-                <div class="intro-content mt-5">
+                <!-- Features -->
 
-                    <span class="intro-label">
-                        WELCOME BACK
-                    </span>
+                <div class="auth-features">
 
-                    <h1>
-                        Continue your
-                        <span>learning journey.</span>
-                    </h1>
+                    <div class="auth-feature">
 
-                    <p>
-                        Sign in to access your personalized quiz
-                        dashboard, assessments and academic results.
-                    </p>
-
-
-                    <div class="intro-feature">
-
-                        <i class="bi bi-shield-check"></i>
+                        <div class="feature-icon">
+                            <i class="bi bi-journal-check"></i>
+                        </div>
 
                         <div>
+                            <h6>Online Assessments</h6>
 
-                            <strong>
-                                Secure Access
-                            </strong>
-
-                            <small>
-                                Your account is protected.
-                            </small>
-
+                            <p>
+                                Access your available quizzes
+                                anytime.
+                            </p>
                         </div>
 
                     </div>
 
 
-                    <div class="intro-feature">
+                    <div class="auth-feature">
 
-                        <i class="bi bi-speedometer2"></i>
+                        <div class="feature-icon">
+                            <i class="bi bi-lightning-charge-fill"></i>
+                        </div>
 
                         <div>
+                            <h6>Instant Results</h6>
 
-                            <strong>
-                                Personalized Dashboard
-                            </strong>
-
-                            <small>
-                                Access tools based on your role.
-                            </small>
-
+                            <p>
+                                Get your quiz performance
+                                immediately after submission.
+                            </p>
                         </div>
 
                     </div>
 
 
-                    <div class="intro-feature">
+                    <div class="auth-feature">
 
-                        <i class="bi bi-bar-chart-line"></i>
+                        <div class="feature-icon">
+                            <i class="bi bi-bar-chart-fill"></i>
+                        </div>
 
                         <div>
+                            <h6>Track Progress</h6>
 
-                            <strong>
-                                Track Performance
-                            </strong>
-
-                            <small>
-                                Monitor your assessment results.
-                            </small>
-
+                            <p>
+                                Monitor your academic performance
+                                over time.
+                            </p>
                         </div>
 
                     </div>
 
                 </div>
 
+            </div>
 
-                <div class="intro-footer">
 
-                    <i class="bi bi-geo-alt me-2"></i>
-                    Dodoma, Tanzania
+            <div class="auth-footer">
 
-                </div>
+                <span>
+                    © 2026 University of Dodoma
+                </span>
+
+                <span>
+                    UDOM Online Quiz System
+                </span>
 
             </div>
 
         </div>
 
 
-        <!-- ================= LOGIN SIDE ================= -->
+        <!-- =====================================================
+             RIGHT SIDE
+        ====================================================== -->
 
-        <div class="col-lg-6 auth-form-side">
+        <div class="auth-form-side">
+
+            <div class="auth-form-wrapper">
 
 
-            <div class="registration-container">
-
-
-                <div class="mobile-brand d-lg-none mb-5">
-
-                    <a href="index.html"
-                       class="auth-brand">
-
-                        <div class="brand-icon">
-
-                            <i class="bi bi-mortarboard-fill"></i>
-
-                        </div>
-
-                        <div>
-
-                            <strong>UDOM</strong>
-
-                            <small>
-                                Online Quiz System
-                            </small>
-
-                        </div>
-
-                    </a>
-
-                </div>
-
+                <!-- Header -->
 
                 <div class="form-header">
 
-                    <span class="form-label-custom">
-                        ACCOUNT LOGIN
-                    </span>
+                    <div class="mobile-brand-icon">
+
+                        <i class="bi bi-mortarboard-fill"></i>
+
+                    </div>
 
                     <h2>
-                        Welcome back
+                        Sign In
                     </h2>
 
                     <p>
-                        Sign in to continue to your dashboard.
+                        Enter your credentials to access your account.
                     </p>
-
-
-                    <!-- REGISTRATION SUCCESS -->
-
-                    <% if ("success".equals(registered)) { %>
-
-                        <div class="alert alert-success mt-3"
-                             role="alert">
-
-                            <i class="bi bi-check-circle-fill me-2"></i>
-
-                            Registration successful.
-                            You can now log in to your account.
-
-                        </div>
-
-                    <% } %>
-
-
-                    <!-- LOGIN ERROR -->
-
-                    <% if (loginError != null) { %>
-
-                        <div class="alert alert-danger mt-3"
-                             role="alert">
-
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-
-                            <%= loginError %>
-
-                        </div>
-
-                    <% } %>
-
-
-                    <!-- GENERAL ERROR -->
-
-                    <% if (generalError != null) { %>
-
-                        <div class="alert alert-danger mt-3"
-                             role="alert">
-
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-
-                            <%= generalError %>
-
-                        </div>
-
-                    <% } %>
 
                 </div>
 
 
-                <!-- LOGIN FORM -->
+                <!-- =================================================
+                     ALERT MESSAGES
+                ================================================== -->
 
-                <form action="login"
-                      method="post">
+                <% if ("success".equals(registered)) { %>
+
+                    <div
+                        class="alert alert-success alert-dismissible fade show"
+                        role="alert">
+
+                        <i class="bi bi-check-circle-fill me-2"></i>
+
+                        <strong>Registration successful!</strong>
+                        You can now log in to your account.
+
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert">
+                        </button>
+
+                    </div>
+
+                <% } %>
 
 
-                    <!-- EMAIL -->
+                <% if ("success".equals(logout)) { %>
 
-                    <div class="mb-4">
+                    <div
+                        class="alert alert-success alert-dismissible fade show"
+                        role="alert">
+
+                        <i class="bi bi-check-circle-fill me-2"></i>
+
+                        <strong>Logged out successfully!</strong>
+                        Your session has been ended.
+
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert">
+                        </button>
+
+                    </div>
+
+                <% } %>
+
+
+                <% if ("loginRequired".equals(error)) { %>
+
+                    <div
+                        class="alert alert-warning alert-dismissible fade show"
+                        role="alert">
+
+                        <i class="bi bi-shield-lock-fill me-2"></i>
+
+                        <strong>Login required.</strong>
+                        Please sign in to access the student portal.
+
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert">
+                        </button>
+
+                    </div>
+
+                <% } %>
+
+
+                <% if ("invalid".equals(error)) { %>
+
+                    <div
+                        class="alert alert-danger alert-dismissible fade show"
+                        role="alert">
+
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
+                        Invalid email or password.
+
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert">
+                        </button>
+
+                    </div>
+
+                <% } %>
+
+
+                <!-- =================================================
+                     LOGIN FORM
+                ================================================== -->
+
+                <form
+                    action="login"
+                    method="post"
+                    class="auth-form">
+
+
+                    <!-- Email -->
+
+                    <div class="mb-3">
 
                         <label
                             for="email"
@@ -288,11 +307,11 @@
 
                             <input
                                 type="email"
-                                class="form-control <%= loginError != null ? "is-invalid" : "" %>"
+                                class="form-control"
                                 id="email"
                                 name="email"
-                                placeholder="Enter your email"
-                                value="<%= email != null ? email : "" %>"
+                                placeholder="Enter your email address"
+                                autocomplete="email"
                                 required>
 
                         </div>
@@ -300,7 +319,7 @@
                     </div>
 
 
-                    <!-- PASSWORD -->
+                    <!-- Password -->
 
                     <div class="mb-3">
 
@@ -314,18 +333,16 @@
 
                             </label>
 
-                            <a href="#"
-                               class="small"
-                               style="color:#003b73;">
-
-                                Forgot password?
-
-                            </a>
-
                         </div>
 
 
-                        <div class="password-field">
+                        <div class="input-group">
+
+                            <span class="input-group-text">
+
+                                <i class="bi bi-lock"></i>
+
+                            </span>
 
                             <input
                                 type="password"
@@ -333,16 +350,16 @@
                                 id="password"
                                 name="password"
                                 placeholder="Enter your password"
+                                autocomplete="current-password"
                                 required>
 
                             <button
                                 type="button"
-                                class="password-toggle"
-                                onclick="toggleLoginPassword()">
+                                class="btn password-toggle"
+                                id="togglePassword">
 
-                                <i
-                                    id="passwordIcon"
-                                    class="bi bi-eye">
+                                <i class="bi bi-eye"
+                                   id="passwordIcon">
                                 </i>
 
                             </button>
@@ -352,36 +369,43 @@
                     </div>
 
 
-                    <!-- REMEMBER -->
+                    <!-- Remember Me -->
 
-                    <div class="form-check mb-4">
+                    <div
+                        class="d-flex align-items-center justify-content-between mb-4">
 
-                        <input
-                            class="form-check-input"
-                            type="checkbox"
-                            id="rememberMe"
-                            name="rememberMe">
+                        <div class="form-check">
 
-                        <label
-                            class="form-check-label small text-muted"
-                            for="rememberMe">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                id="rememberMe"
+                                name="rememberMe">
 
-                            Remember me
+                            <label
+                                class="form-check-label"
+                                for="rememberMe">
 
-                        </label>
+                                Remember me
+
+                            </label>
+
+                        </div>
 
                     </div>
 
 
-                    <!-- LOGIN BUTTON -->
+                    <!-- Sign In Button -->
 
                     <button
                         type="submit"
-                        class="btn btn-register w-100">
+                        class="btn auth-submit w-100">
 
-                        <i class="bi bi-box-arrow-in-right me-2"></i>
+                        <span>
+                            Sign In
+                        </span>
 
-                        Sign In
+                        <i class="bi bi-arrow-right"></i>
 
                     </button>
 
@@ -389,107 +413,70 @@
                 </form>
 
 
-                <!-- REGISTRATION -->
+                <!-- =================================================
+                     REGISTER
+                ================================================== -->
 
-                <div class="text-center mt-4">
+                <div class="auth-divider">
 
-                    <span class="text-muted small">
-                        Don't have a student account?
+                    <span>
+                        Don't have an account?
                     </span>
-
-                    <a
-                        href="student-registration.jsp"
-                        class="fw-bold ms-1"
-                        style="color:#003b73;">
-
-                        Register now
-
-                    </a>
 
                 </div>
 
 
-                <!-- ROLE INFORMATION -->
+                <a
+                    href="student-registration.jsp"
+                    class="btn btn-outline-primary w-100 register-button">
 
-                <div class="mt-5">
+                    <i class="bi bi-person-plus me-2"></i>
 
-                    <div class="text-center text-muted small mb-3">
+                    Create Student Account
+
+                </a>
+
+
+                <!-- =================================================
+                     ACCOUNT INFORMATION
+                ================================================== -->
+
+                <div class="login-info mt-4">
+
+                    <div class="info-item">
+
+                        <i class="bi bi-shield-check"></i>
 
                         <span>
-                            ACCESS AVAILABLE FOR
+                            Your account information is protected.
                         </span>
 
                     </div>
 
+                    <div class="info-item">
 
-                    <div class="row g-2">
+                        <i class="bi bi-person-badge"></i>
 
-                        <div class="col-4">
-
-                            <div class="text-center border rounded-3 p-3">
-
-                                <i
-                                    class="bi bi-mortarboard-fill"
-                                    style="color:#003b73;font-size:20px;">
-                                </i>
-
-                                <small class="d-block mt-1">
-                                    Student
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="col-4">
-
-                            <div class="text-center border rounded-3 p-3">
-
-                                <i
-                                    class="bi bi-person-workspace"
-                                    style="color:#003b73;font-size:20px;">
-                                </i>
-
-                                <small class="d-block mt-1">
-                                    Teacher
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="col-4">
-
-                            <div class="text-center border rounded-3 p-3">
-
-                                <i
-                                    class="bi bi-speedometer2"
-                                    style="color:#003b73;font-size:20px;">
-                                </i>
-
-                                <small class="d-block mt-1">
-                                    Admin
-                                </small>
-
-                            </div>
-
-                        </div>
+                        <span>
+                            Student accounts are for UDOM students.
+                        </span>
 
                     </div>
 
                 </div>
 
 
-                <div class="text-center mt-5">
+                <!-- Back Home -->
 
-                    <a href="index.html"
-                       class="small text-muted">
+                <div class="text-center mt-4">
+
+                    <a
+                        href="index.html"
+                        class="back-home">
 
                         <i class="bi bi-arrow-left me-1"></i>
 
-                        Back to homepage
+                        Back to Homepage
 
                     </a>
 
@@ -505,40 +492,57 @@
 </div>
 
 
+<!-- =========================================================
+     PASSWORD TOGGLE
+========================================================= -->
+
 <script>
 
-function toggleLoginPassword() {
+    const togglePassword =
+        document.getElementById("togglePassword");
 
     const password =
         document.getElementById("password");
 
-    const icon =
+    const passwordIcon =
         document.getElementById("passwordIcon");
 
 
-    if (password.type === "password") {
+    if (togglePassword && password && passwordIcon) {
 
-        password.type = "text";
+        togglePassword.addEventListener("click", function () {
 
-        icon.classList.remove("bi-eye");
+            if (password.type === "password") {
 
-        icon.classList.add("bi-eye-slash");
+                password.type = "text";
 
-    } else {
+                passwordIcon.classList.remove("bi-eye");
 
-        password.type = "password";
+                passwordIcon.classList.add("bi-eye-slash");
 
-        icon.classList.remove("bi-eye-slash");
+            } else {
 
-        icon.classList.add("bi-eye");
+                password.type = "password";
+
+                passwordIcon.classList.remove("bi-eye-slash");
+
+                passwordIcon.classList.add("bi-eye");
+
+            }
+
+        });
 
     }
-
-}
 
 </script>
 
 
-</body>
-</html>
+<!-- Bootstrap JavaScript -->
 
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+</script>
+
+</body>
+
+</html>
