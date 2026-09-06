@@ -1,4 +1,3 @@
-
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
 <%
@@ -7,6 +6,8 @@
     String generalError = (String) request.getAttribute("generalError");
 
     String registered = request.getParameter("registered");
+    String logout = request.getParameter("logout");
+    String error = request.getParameter("error");
 %>
 
 <!DOCTYPE html>
@@ -209,7 +210,9 @@
                     </p>
 
 
-                    <!-- REGISTRATION SUCCESS -->
+                    <!-- =================================================
+                         REGISTRATION SUCCESS
+                    ================================================== -->
 
                     <% if ("success".equals(registered)) { %>
 
@@ -226,7 +229,63 @@
                     <% } %>
 
 
-                    <!-- LOGIN ERROR -->
+                    <!-- =================================================
+                         LOGOUT SUCCESS
+                    ================================================== -->
+
+                    <% if ("success".equals(logout)) { %>
+
+                        <div class="alert alert-success mt-3"
+                             role="alert">
+
+                            <i class="bi bi-check-circle-fill me-2"></i>
+
+                            You have been logged out successfully.
+
+                        </div>
+
+                    <% } %>
+
+
+                    <!-- =================================================
+                         LOGIN REQUIRED
+                    ================================================== -->
+
+                    <% if ("loginRequired".equals(error)) { %>
+
+                        <div class="alert alert-warning mt-3"
+                             role="alert">
+
+                            <i class="bi bi-shield-lock-fill me-2"></i>
+
+                            Please sign in to access the student portal.
+
+                        </div>
+
+                    <% } %>
+
+
+                    <!-- =================================================
+                         INVALID LOGIN
+                    ================================================== -->
+
+                    <% if ("invalid".equals(error)) { %>
+
+                        <div class="alert alert-danger mt-3"
+                             role="alert">
+
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
+                            Invalid email or password.
+
+                        </div>
+
+                    <% } %>
+
+
+                    <!-- =================================================
+                         LOGIN ERROR FROM LOGIN SERVLET
+                    ================================================== -->
 
                     <% if (loginError != null) { %>
 
@@ -242,7 +301,9 @@
                     <% } %>
 
 
-                    <!-- GENERAL ERROR -->
+                    <!-- =================================================
+                         GENERAL ERROR FROM LOGIN SERVLET
+                    ================================================== -->
 
                     <% if (generalError != null) { %>
 
@@ -260,10 +321,13 @@
                 </div>
 
 
-                <!-- LOGIN FORM -->
+                <!-- =================================================
+                     LOGIN FORM
+                ================================================== -->
 
-                <form action="login"
-                      method="post">
+                <form
+                    action="login"
+                    method="post">
 
 
                     <!-- EMAIL -->
@@ -389,7 +453,9 @@
                 </form>
 
 
-                <!-- REGISTRATION -->
+                <!-- =================================================
+                     REGISTRATION
+                ================================================== -->
 
                 <div class="text-center mt-4">
 
@@ -409,7 +475,9 @@
                 </div>
 
 
-                <!-- ROLE INFORMATION -->
+                <!-- =================================================
+                     ROLE INFORMATION
+                ================================================== -->
 
                 <div class="mt-5">
 
@@ -482,10 +550,15 @@
                 </div>
 
 
+                <!-- =================================================
+                     BACK TO HOMEPAGE
+                ================================================== -->
+
                 <div class="text-center mt-5">
 
-                    <a href="index.html"
-                       class="small text-muted">
+                    <a
+                        href="index.html"
+                        class="small text-muted">
 
                         <i class="bi bi-arrow-left me-1"></i>
 
@@ -504,6 +577,10 @@
 
 </div>
 
+
+<!-- =========================================================
+     PASSWORD TOGGLE
+========================================================= -->
 
 <script>
 
@@ -541,4 +618,3 @@ function toggleLoginPassword() {
 
 </body>
 </html>
-
