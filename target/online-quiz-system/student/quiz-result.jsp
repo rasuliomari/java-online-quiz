@@ -5,104 +5,259 @@
 <%@ page import="java.sql.ResultSet" %>
 <%@ page import="java.sql.SQLException" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="java.util.List" %>
 <%@ page import="jakarta.servlet.http.HttpSession" %>
 <%@ page import="tz.udom.quiz.util.DBConnection" %>
 
+
 <%
-    /*
-     * ============================================================
-     * GET SESSION
-     * ============================================================
-     */
+/*
+ * ============================================================
+ * GET SESSION
+ * ============================================================
+ */
 
-    HttpSession quizSession =
-            request.getSession(false);
+HttpSession quizSession = request.getSession(false);
+
+if (quizSession == null) {
+    response.sendRedirect("dashboard.jsp");
+    return;
+}
 
 
-    if (quizSession == null
-            || quizSession.getAttribute(
-                    "quizResultQuizId") == null) {
+/*
+ * ============================================================
+ * GET SELECTED QUIZ ID
+ * ============================================================
+ */
 
-        response.sendRedirect("dashboard.jsp");
+String selectedQuizIdValue =
+        request.getParameter("quizId");
 
-        return;
+int selectedQuizId = -1;
+
+if (selectedQuizIdValue != null
+        && !selectedQuizIdValue.trim().isEmpty()) {
+
+    try {
+
+        selectedQuizId =
+                Integer.parseInt(selectedQuizIdValue);
+
+    } catch (NumberFormatException e) {
+
+        selectedQuizId = -1;
     }
+}
 
 
-    /*
-     * ============================================================
-     * RESULT INFORMATION
-     * ============================================================
-     */
+/*
+ * ============================================================
+ * GET RESULT HISTORY
+ * ============================================================
+ */
 
-    int quizId =
-            (Integer) quizSession.getAttribute(
-                    "quizResultQuizId");
-
-
-    String quizTitle =
-            (String) quizSession.getAttribute(
-                    "quizResultTitle");
+@SuppressWarnings("unchecked")
+List<Map<String, Object>> resultHistory =
+        (List<Map<String, Object>>)
+                quizSession.getAttribute(
+                        "quizResultHistory"
+                );
 
 
-    int score =
-            (Integer) quizSession.getAttribute(
-                    "quizResultScore");
+/*
+ * ============================================================
+ * FIND SELECTED RESULT
+ * ============================================================
+ */
+
+Map<String, Object> selectedResult = null;
+
+if (resultHistory != null
+        && selectedQuizId != -1) {
+
+    for (Map<String, Object> result : resultHistory) {
+
+        Object idObject =
+                result.get("quizId");
+
+        if (idObject != null
+                && Integer.parseInt(
+                        idObject.toString()
+                ) == selectedQuizId) {
+
+            selectedResult = result;
+
+            break;
+        }
+    }
+}
 
 
-    int totalQuestions =
-            (Integer) quizSession.getAttribute(
-                    "quizResultTotal");
+/*
+ * ============================================================
+ * IF NO QUIZ ID WAS PROVIDED,
+ * USE THE LATEST RESULT
+ * ============================================================
+ */
 
+if (selectedResult == null) {
 
-    double percentage =
-            (Double) quizSession.getAttribute(
-                    "quizResultPercentage");
-
-
-    int passMark =
-            (Integer) quizSession.getAttribute(
-                    "quizResultPassMark");
-
-
-    boolean passed =
-            (Boolean) quizSession.getAttribute(
-                    "quizResultPassed");
-
-
-    /*
-     * ============================================================
-     * GET STUDENT'S SUBMITTED ANSWERS
-     * ============================================================
-     */
-
-    Map<Integer, String> submittedAnswers = null;
-
-    Object submittedAnswersObject =
+    Object latestQuizIdObject =
             quizSession.getAttribute(
-                    "quizSubmittedAnswers_" + quizId);
+                    "quizResultQuizId"
+            );
+
+    if (latestQuizIdObject != null) {
+
+        try {
+
+            selectedQuizId =
+                    Integer.parseInt(
+                            latestQuizIdObject.toString()
+                    );
+
+        } catch (NumberFormatException e) {
+
+            selectedQuizId = -1;
+        }
 
 
-    if (submittedAnswersObject instanceof Map) {
+        if (resultHistory != null
+                && selectedQuizId != -1) {
 
-        submittedAnswers =
-                (Map<Integer, String>) submittedAnswersObject;
+            for (Map<String, Object> result :
+                    resultHistory) {
+
+                Object idObject =
+                        result.get("quizId");
+
+                if (idObject != null
+                        && Integer.parseInt(
+                                idObject.toString()
+                        ) == selectedQuizId) {
+
+                    selectedResult = result;
+
+                    break;
+                }
+            }
+        }
     }
+}
 
 
-    String resultMessage;
+/*
+ * ============================================================
+ * NO RESULT FOUND
+ * ============================================================
+ */
+
+if (selectedResult == null) {
+
+    response.sendRedirect("dashboard.jsp");
+
+    return;
+}
 
 
-    if (passed) {
+/*
+ * ============================================================
+ * RESULT INFORMATION
+ * ============================================================
+ */
 
-        resultMessage =
-                "Congratulations! You have passed the quiz.";
+String quizTitle =
+        String.valueOf(
+                selectedResult.get("title")
+        );
 
-    } else {
 
-        resultMessage =
-                "You did not reach the required pass mark.";
-    }
+int score =
+        Integer.parseInt(
+                selectedResult.get(
+                        "score"
+                ).toString()
+        );
+
+
+int totalQuestions =
+        Integer.parseInt(
+                selectedResult.get(
+                        "total"
+                ).toString()
+        );
+
+
+double percentage =
+        Double.parseDouble(
+                selectedResult.get(
+                        "percentage"
+                ).toString()
+        );
+
+
+int passMark =
+        Integer.parseInt(
+                selectedResult.get(
+                        "passMark"
+                ).toString()
+        );
+
+
+boolean passed =
+        Boolean.parseBoolean(
+                selectedResult.get(
+                        "passed"
+                ).toString()
+        );
+
+
+/*
+ * ============================================================
+ * RESULT MESSAGE
+ * ============================================================
+ */
+
+String resultMessage;
+
+if (passed) {
+
+    resultMessage =
+            "Congratulations! You have passed the quiz.";
+
+} else {
+
+    resultMessage =
+            "You did not reach the required pass mark.";
+}
+
+
+/*
+ * ============================================================
+ * GET STUDENT'S SUBMITTED ANSWERS
+ * ============================================================
+ */
+
+Map<Integer, String> submittedAnswers = null;
+
+Object submittedAnswersObject =
+        quizSession.getAttribute(
+                "quizSubmittedAnswers_"
+                        + selectedQuizId
+        );
+
+
+if (submittedAnswersObject instanceof Map) {
+
+    @SuppressWarnings("unchecked")
+    Map<Integer, String> answerMap =
+            (Map<Integer, String>)
+                    submittedAnswersObject;
+
+    submittedAnswers = answerMap;
+}
+
 %>
 
 
@@ -116,7 +271,6 @@
 
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
-
 
     <title>
         Quiz Result - UDOM Online Quiz System
@@ -207,7 +361,8 @@
             <!-- Notification -->
 
             <button
-                class="notification-btn me-3">
+                class="notification-btn me-3"
+                type="button">
 
                 <i class="bi bi-bell"></i>
 
@@ -224,6 +379,7 @@
 
                 <button
                     class="profile-button dropdown-toggle"
+                    type="button"
                     data-bs-toggle="dropdown">
 
                     <div class="student-avatar">
@@ -231,7 +387,8 @@
                     </div>
 
 
-                    <div class="student-name d-none d-md-block">
+                    <div
+                        class="student-name d-none d-md-block">
 
                         <strong>
                             Student
@@ -292,7 +449,9 @@
                             class="dropdown-item text-danger"
                             href="../login.jsp">
 
-                            <i class="bi bi-box-arrow-right me-2"></i>
+                            <i
+                                class="bi bi-box-arrow-right me-2">
+                            </i>
 
                             Logout
 
@@ -389,7 +548,7 @@
 
 
             <a
-                href="dashboard.jsp"
+                href="dashboard.jsp#available-quizzes"
                 class="sidebar-link">
 
                 <i class="bi bi-journal-check"></i>
@@ -493,9 +652,7 @@
     <div class="container-fluid dashboard-container">
 
 
-        <!-- ====================================================
-             HEADER
-             ==================================================== -->
+        <!-- HEADER -->
 
         <div class="welcome-section">
 
@@ -546,7 +703,6 @@
 
                     <% } else { %>
 
-
                         <div class="mb-3">
 
                             <i
@@ -561,12 +717,13 @@
                             Quiz Not Passed
                         </h3>
 
-
                     <% } %>
 
 
                     <p class="text-muted mb-4">
+
                         <%= resultMessage %>
+
                     </p>
 
                 </div>
@@ -622,7 +779,9 @@
 
 
                             <h2 class="fw-bold">
+
                                 <%= score %>/<%= totalQuestions %>
+
                             </h2>
 
                         </div>
@@ -679,7 +838,9 @@
 
 
                             <h2 class="fw-bold">
+
                                 <%= passMark %>%
+
                             </h2>
 
                         </div>
@@ -751,13 +912,19 @@
                 <div>
 
                     <h4>
+
                         <i class="bi bi-list-check me-2"></i>
+
                         Question Review
+
                     </h4>
 
+
                     <p>
+
                         Review your answers and compare them
                         with the correct answers.
+
                     </p>
 
                 </div>
@@ -769,69 +936,134 @@
 
 
                 <%
-                    try (Connection connection =
-                                 DBConnection.getConnection()) {
+                try (
+                    Connection connection =
+                            DBConnection.getConnection()
+                ) {
 
 
-                        String questionSql =
-                                "SELECT id, question_text, " +
-                                "question_number " +
-                                "FROM questions " +
-                                "WHERE quiz_id = ? " +
-                                "ORDER BY question_number ASC";
+                    String questionSql =
+                            "SELECT id, question_text, " +
+                            "question_number " +
+                            "FROM questions " +
+                            "WHERE quiz_id = ? " +
+                            "ORDER BY question_number ASC";
 
 
-                        try (PreparedStatement questionStatement =
-                                     connection.prepareStatement(
-                                             questionSql)) {
+                    try (
+                        PreparedStatement questionStatement =
+                                connection.prepareStatement(
+                                        questionSql
+                                )
+                    ) {
 
 
-                            questionStatement.setInt(
-                                    1,
-                                    quizId
-                            );
+                        questionStatement.setInt(
+                                1,
+                                selectedQuizId
+                        );
 
 
-                            try (ResultSet questionResult =
-                                         questionStatement.executeQuery()) {
+                        try (
+                            ResultSet questionResult =
+                                    questionStatement.executeQuery()
+                        ) {
 
 
-                                while (questionResult.next()) {
+                            while (questionResult.next()) {
 
 
-                                    int currentQuestionId =
-                                            questionResult.getInt(
-                                                    "id"
+                                int currentQuestionId =
+                                        questionResult.getInt(
+                                                "id"
+                                        );
+
+
+                                int currentQuestionNumber =
+                                        questionResult.getInt(
+                                                "question_number"
+                                        );
+
+
+                                String currentQuestionText =
+                                        questionResult.getString(
+                                                "question_text"
+                                        );
+
+
+                                String selectedAnswer = null;
+
+
+                                if (submittedAnswers != null) {
+
+                                    selectedAnswer =
+                                            submittedAnswers.get(
+                                                    currentQuestionId
                                             );
+                                }
 
 
-                                    int currentQuestionNumber =
-                                            questionResult.getInt(
-                                                    "question_number"
-                                            );
+                                String correctAnswer = null;
+
+                                String correctAnswerText = null;
 
 
-                                    String currentQuestionText =
-                                            questionResult.getString(
-                                                    "question_text"
-                                            );
+                                /*
+                                 * Find correct answer.
+                                 */
+
+                                String correctSql =
+                                        "SELECT option_label, " +
+                                        "answer_text " +
+                                        "FROM answers " +
+                                        "WHERE question_id = ? " +
+                                        "AND is_correct = TRUE";
 
 
-                                    String selectedAnswer = null;
+                                try (
+                                    PreparedStatement correctStatement =
+                                            connection.prepareStatement(
+                                                    correctSql
+                                            )
+                                ) {
 
 
-                                    if (submittedAnswers != null) {
+                                    correctStatement.setInt(
+                                            1,
+                                            currentQuestionId
+                                    );
 
-                                        selectedAnswer =
-                                                submittedAnswers.get(
-                                                        currentQuestionId
-                                                );
+
+                                    try (
+                                        ResultSet correctResult =
+                                                correctStatement.executeQuery()
+                                    ) {
+
+
+                                        if (correctResult.next()) {
+
+                                            correctAnswer =
+                                                    correctResult.getString(
+                                                            "option_label"
+                                                    );
+
+
+                                            correctAnswerText =
+                                                    correctResult.getString(
+                                                            "answer_text"
+                                                    );
+                                        }
                                     }
+                                }
 
 
-                                    String correctAnswer = null;
+                                boolean answerCorrect =
+                                        selectedAnswer != null
+                                        && correctAnswer != null
+                                        && selectedAnswer.equalsIgnoreCase(
+                                                correctAnswer
+                                        );
 
-                                    String correctAnswerText = null;
                 %>
 
 
@@ -846,63 +1078,13 @@
                         class="d-flex justify-content-between align-items-center mb-3">
 
 
-                        <span class="badge bg-primary rounded-pill">
+                        <span
+                            class="badge bg-primary rounded-pill">
 
                             Question
                             <%= currentQuestionNumber %>
 
                         </span>
-
-
-                        <%
-                            /*
-                             * Find correct answer.
-                             */
-                            String correctSql =
-                                    "SELECT option_label, answer_text " +
-                                    "FROM answers " +
-                                    "WHERE question_id = ? " +
-                                    "AND is_correct = TRUE";
-
-
-                            try (PreparedStatement correctStatement =
-                                         connection.prepareStatement(
-                                                 correctSql)) {
-
-
-                                correctStatement.setInt(
-                                        1,
-                                        currentQuestionId
-                                );
-
-
-                                try (ResultSet correctResult =
-                                             correctStatement.executeQuery()) {
-
-
-                                    if (correctResult.next()) {
-
-                                        correctAnswer =
-                                                correctResult.getString(
-                                                        "option_label"
-                                                );
-
-
-                                        correctAnswerText =
-                                                correctResult.getString(
-                                                        "answer_text"
-                                                );
-                                    }
-                                }
-                            }
-
-
-                            boolean answerCorrect =
-                                    selectedAnswer != null
-                                    && selectedAnswer.equalsIgnoreCase(
-                                            correctAnswer
-                                    );
-                        %>
 
 
                         <% if (answerCorrect) { %>
@@ -948,85 +1130,92 @@
                     <!-- OPTIONS -->
 
                     <%
-                        String answerSql =
-                                "SELECT option_label, answer_text, " +
-                                "is_correct " +
-                                "FROM answers " +
-                                "WHERE question_id = ? " +
-                                "ORDER BY option_label ASC";
+                    String answerSql =
+                            "SELECT option_label, answer_text, " +
+                            "is_correct " +
+                            "FROM answers " +
+                            "WHERE question_id = ? " +
+                            "ORDER BY option_label ASC";
 
 
-                        try (PreparedStatement answerStatement =
-                                     connection.prepareStatement(
-                                             answerSql)) {
+                    try (
+                        PreparedStatement answerStatement =
+                                connection.prepareStatement(
+                                        answerSql
+                                )
+                    ) {
 
 
-                            answerStatement.setInt(
-                                    1,
-                                    currentQuestionId
-                            );
+                        answerStatement.setInt(
+                                1,
+                                currentQuestionId
+                        );
 
 
-                            try (ResultSet answerResult =
-                                         answerStatement.executeQuery()) {
+                        try (
+                            ResultSet answerResult =
+                                    answerStatement.executeQuery()
+                        ) {
 
 
-                                while (answerResult.next()) {
+                            while (answerResult.next()) {
 
 
-                                    String optionLabel =
-                                            answerResult.getString(
-                                                    "option_label"
-                                            );
+                                String optionLabel =
+                                        answerResult.getString(
+                                                "option_label"
+                                        );
 
 
-                                    String answerText =
-                                            answerResult.getString(
-                                                    "answer_text"
-                                            );
+                                String answerText =
+                                        answerResult.getString(
+                                                "answer_text"
+                                        );
 
 
-                                    boolean isCorrect =
-                                            answerResult.getBoolean(
-                                                    "is_correct"
-                                            );
+                                boolean isCorrect =
+                                        answerResult.getBoolean(
+                                                "is_correct"
+                                        );
 
 
-                                    boolean isSelected =
-                                            selectedAnswer != null
-                                            && selectedAnswer.equalsIgnoreCase(
-                                                    optionLabel
-                                            );
+                                boolean isSelected =
+                                        selectedAnswer != null
+                                        && selectedAnswer.equalsIgnoreCase(
+                                                optionLabel
+                                        );
 
 
-                                    String borderClass =
-                                            "border";
+                                String borderClass =
+                                        "border";
 
 
-                                    String backgroundClass = "";
+                                String backgroundClass =
+                                        "";
 
 
-                                    if (isSelected && isCorrect) {
+                                if (isSelected && isCorrect) {
 
-                                        borderClass =
-                                                "border border-success";
+                                    borderClass =
+                                            "border border-success";
 
-                                        backgroundClass =
-                                                "bg-success-subtle";
+                                    backgroundClass =
+                                            "bg-success-subtle";
 
-                                    } else if (isSelected) {
+                                } else if (isSelected) {
 
-                                        borderClass =
-                                                "border border-danger";
+                                    borderClass =
+                                            "border border-danger";
 
-                                        backgroundClass =
-                                                "bg-danger-subtle";
+                                    backgroundClass =
+                                            "bg-danger-subtle";
 
-                                    } else if (isCorrect) {
+                                } else if (isCorrect) {
 
-                                        borderClass =
-                                                "border border-success";
-                                    }
+                                    borderClass =
+                                            "border border-success";
+                                }
+
                     %>
 
 
@@ -1039,7 +1228,6 @@
 
 
                             <div>
-
 
                                 <strong class="me-2">
 
@@ -1092,7 +1280,6 @@
 
                                     <% } %>
 
-
                                 <% } %>
 
 
@@ -1119,9 +1306,9 @@
 
 
                     <%
-                                }
                             }
                         }
+                    }
                     %>
 
 
@@ -1135,7 +1322,8 @@
 
                             <% if (answerCorrect) { %>
 
-                                <div class="alert alert-success mb-2">
+                                <div
+                                    class="alert alert-success mb-2">
 
                                     <i
                                         class="bi bi-check-circle-fill me-2">
@@ -1149,17 +1337,15 @@
 
                                     <%= selectedAnswer %>
 
-                                    —
-                                    <%= submittedAnswers != null
-                                            ? "Selected answer"
-                                            : "" %>
+                                    — Correct
 
                                 </div>
 
 
                             <% } else { %>
 
-                                <div class="alert alert-danger mb-2">
+                                <div
+                                    class="alert alert-danger mb-2">
 
                                     <i
                                         class="bi bi-x-circle-fill me-2">
@@ -1183,7 +1369,8 @@
                         <% } else { %>
 
 
-                            <div class="alert alert-warning mb-2">
+                            <div
+                                class="alert alert-warning mb-2">
 
                                 <i
                                     class="bi bi-exclamation-circle-fill me-2">
@@ -1197,7 +1384,6 @@
                                 Not answered
 
                             </div>
-
 
                         <% } %>
 
@@ -1227,13 +1413,13 @@
 
 
                 <%
-                                }
                             }
                         }
+                    }
 
-                    } catch (SQLException e) {
+                } catch (SQLException e) {
 
-                        e.printStackTrace();
+                    e.printStackTrace();
                 %>
 
 
@@ -1249,7 +1435,7 @@
 
 
                 <%
-                    }
+                }
                 %>
 
             </div>
@@ -1263,7 +1449,6 @@
              ==================================================== -->
 
         <div class="content-card mb-4">
-
 
             <div class="card-body p-4">
 
@@ -1285,7 +1470,6 @@
 
                     <% if (passed) { %>
 
-
                         <strong>
                             Well done!
                         </strong>
@@ -1294,13 +1478,16 @@
                         You achieved
 
                         <strong>
+
                             <%= String.format(
                                     "%.1f",
                                     percentage
                             ) %>%
+
                         </strong>
 
-                        which meets or exceeds the required pass mark of
+                        which meets or exceeds the required
+                        pass mark of
 
                         <strong>
                             <%= passMark %>%
@@ -1308,7 +1495,6 @@
 
 
                     <% } else { %>
-
 
                         <strong>
                             Keep practicing.
@@ -1318,10 +1504,12 @@
                         You achieved
 
                         <strong>
+
                             <%= String.format(
                                     "%.1f",
                                     percentage
                             ) %>%
+
                         </strong>
 
                         while the required pass mark is
@@ -1329,7 +1517,6 @@
                         <strong>
                             <%= passMark %>%
                         </strong>.
-
 
                     <% } %>
 

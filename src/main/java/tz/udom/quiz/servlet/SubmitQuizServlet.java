@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -341,6 +342,7 @@ public class SubmitQuizServlet extends HttpServlet {
             result.put("percentage", percentage);
             result.put("passed", passed);
             result.put("passMark", passMark);
+            result.put("submittedAt", LocalDateTime.now());
 
             resultHistory.add(0, result);
 
