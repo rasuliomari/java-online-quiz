@@ -437,7 +437,7 @@
             <!-- Manage Teachers -->
 
             <a
-                href="#"
+                href="manage-teachers.jsp"
                 class="sidebar-link">
 
                 <i class="bi bi-people-fill"></i>
@@ -862,7 +862,7 @@
                     <div class="col-md-6">
 
                         <a
-                            href="#"
+                            href="manage-teachers.jsp"
                             class="text-decoration-none">
 
                             <div class="quiz-item">
