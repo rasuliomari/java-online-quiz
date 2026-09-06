@@ -124,6 +124,25 @@ if (quizComplete) {
 
 %>
 
+<%
+    String quizIdParam = request.getParameter("quizId");
+
+    if (quizIdParam == null || quizIdParam.trim().isEmpty()) {
+        response.sendRedirect("create-quiz.jsp");
+        return;
+    }
+
+    int quizId;
+
+    try {
+        quizId = Integer.parseInt(quizIdParam);
+    } catch (NumberFormatException e) {
+        response.sendRedirect("create-quiz.jsp");
+        return;
+    }
+%>
+
+
 <!DOCTYPE html>
 
 <html lang="en">

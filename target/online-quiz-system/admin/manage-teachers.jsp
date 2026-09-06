@@ -1258,6 +1258,99 @@
 .delete-confirm-btn:hover {
     transform: translateY(-1px);
 }
+
+/* ==========================================================
+   SYSTEM MESSAGE MODAL
+   ========================================================== */
+
+.system-message-modal {
+
+    border: none;
+
+    border-radius: 18px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.20);
+
+}
+
+
+.system-message-icon {
+
+    width: 72px;
+
+    height: 72px;
+
+    margin: 0 auto;
+
+    border-radius: 50%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 34px;
+
+}
+
+
+.system-message-icon.success {
+
+    background: #e8f7ee;
+
+    color: #198754;
+
+}
+
+
+.system-message-icon.error {
+
+    background: #fff0f1;
+
+    color: #dc3545;
+
+}
+
+
+.system-message-title {
+
+    font-weight: 700;
+
+    color: #212529;
+
+}
+
+
+.system-message-text {
+
+    max-width: 420px;
+
+    margin: 10px auto 0;
+
+    color: #6c757d;
+
+    font-size: 15px;
+
+    line-height: 1.6;
+
+}
+
+
+.system-message-btn {
+
+    min-width: 120px;
+
+    margin-top: 20px;
+
+    border-radius: 8px;
+
+    font-weight: 600;
+
+}
 </style>
 
 <script>
@@ -1287,6 +1380,116 @@
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const messageModal =
+            document.getElementById("systemMessageModal");
+
+        if (messageModal) {
+
+            const modal =
+                new bootstrap.Modal(messageModal);
+
+            modal.show();
+
+        }
+
+    });
+
+</script>
+
+<!-- ==========================================================
+     SYSTEM MESSAGE MODAL
+     ========================================================== -->
+
+<%
+    String status = request.getParameter("status");
+    String message = request.getParameter("message");
+
+    boolean hasMessage =
+            message != null
+            && !message.trim().isEmpty();
+
+    boolean isSuccess =
+            "success".equalsIgnoreCase(status);
+%>
+
+
+<% if (hasMessage) { %>
+
+<div
+    class="modal fade"
+    id="systemMessageModal"
+    tabindex="-1"
+    aria-labelledby="systemMessageModalLabel"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content system-message-modal">
+
+            <div class="modal-body text-center px-4 py-4">
+
+                <!-- ICON -->
+
+                <div class="<%= isSuccess
+                        ? "system-message-icon success"
+                        : "system-message-icon error" %>">
+
+                    <i class="bi <%= isSuccess
+                            ? "bi-check-lg"
+                            : "bi-exclamation-lg" %>"></i>
+
+                </div>
+
+
+                <!-- TITLE -->
+
+                <h4 class="system-message-title mt-3">
+
+                    <%= isSuccess
+                            ? "Operation Successful"
+                            : "Operation Failed" %>
+
+                </h4>
+
+
+                <!-- MESSAGE -->
+
+                <p class="system-message-text">
+
+                    <%= message %>
+
+                </p>
+
+
+                <!-- BUTTON -->
+
+                <button
+                    type="button"
+                    class="btn <%= isSuccess
+                            ? "btn-primary"
+                            : "btn-danger" %> system-message-btn"
+                    data-bs-dismiss="modal">
+
+                    <i class="bi bi-check2 me-1"></i>
+
+                    OK
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<% } %>
 
 
 </body>

@@ -166,7 +166,8 @@ public class SaveQuestionServlet extends HttpServlet {
             String quizSql =
                     "SELECT question_count " +
                     "FROM quizzes " +
-                    "WHERE id = ?";
+                    "WHERE id = ?" +
+                    "AND teacher_id = ?";
 
             int allowedQuestions;
 
