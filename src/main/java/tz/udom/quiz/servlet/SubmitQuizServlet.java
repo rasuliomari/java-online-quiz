@@ -1,16 +1,14 @@
+
 package tz.udom.quiz.servlet;
 
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.time.LocalDateTime;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -29,13 +27,66 @@ public class SubmitQuizServlet extends HttpServlet {
             HttpServletResponse response)
             throws ServletException, IOException {
 
-        String quizIdValue = request.getParameter("quizId");
+        request.setCharacterEncoding("UTF-8");
 
-        if (quizIdValue == null || quizIdValue.trim().isEmpty()) {
+        /*
+         * ============================================================
+         * 1. STUDENT AUTHENTICATION
+         * ============================================================
+         */
 
-            response.sendError(
-                    HttpServletResponse.SC_BAD_REQUEST,
-                    "Quiz ID is required."
+        HttpSession session =
+                request.getSession(false);
+
+        boolean studentLoggedIn =
+                session != null
+                && Boolean.TRUE.equals(
+                        session.getAttribute("studentLoggedIn")
+                )
+                && "STUDENT".equals(
+                        session.getAttribute("userRole")
+                );
+
+        if (!studentLoggedIn) {
+
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/login.jsp?error=studentLoginRequired"
+            );
+
+            return;
+        }
+
+        Integer studentId =
+                (Integer) session.getAttribute("studentId");
+
+        if (studentId == null) {
+
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/login.jsp?error=studentLoginRequired"
+            );
+
+            return;
+        }
+
+
+        /*
+         * ============================================================
+         * 2. GET QUIZ ID
+         * ============================================================
+         */
+
+        String quizIdValue =
+                request.getParameter("quizId");
+
+        if (quizIdValue == null
+                || quizIdValue.trim().isEmpty()) {
+
+            redirectError(
+                    request,
+                    response,
+                    "Quiz information is missing."
             );
 
             return;
@@ -45,13 +96,17 @@ public class SubmitQuizServlet extends HttpServlet {
 
         try {
 
-            quizId = Integer.parseInt(quizIdValue);
+            quizId =
+                    Integer.parseInt(
+                            quizIdValue.trim()
+                    );
 
         } catch (NumberFormatException e) {
 
-            response.sendError(
-                    HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid quiz ID."
+            redirectError(
+                    request,
+                    response,
+                    "Invalid quiz information."
             );
 
             return;
@@ -59,62 +114,55 @@ public class SubmitQuizServlet extends HttpServlet {
 
 
         /*
-         * Get the current student session.
-         */
-        HttpSession session = request.getSession();
-
-
-        /*
-         * ========================================================
-         * PREVENT SECOND ATTEMPT
-         * ========================================================
+         * ============================================================
+         * 3. PREVENT DUPLICATE ATTEMPT
+         * ============================================================
          */
 
         String attemptKey =
                 "quizAttempted_" + quizId;
 
-        synchronized (session) {
+        if (Boolean.TRUE.equals(
+                session.getAttribute(attemptKey))) {
 
-            if (Boolean.TRUE.equals(
-                    session.getAttribute(attemptKey))) {
-
-                response.sendRedirect(
-                        "student/quiz-already-attempted.jsp?quizId="
-                                + quizId
-                );
-
-                return;
-            }
-
-
-            /*
-             * Mark this quiz as attempted BEFORE processing.
-             *
-             * This prevents the student from submitting the same
-             * quiz twice from two requests.
-             */
-            session.setAttribute(
-                    attemptKey,
-                    Boolean.TRUE
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/student/quiz-already-attempted.jsp"
+                    + "?quizId="
+                    + quizId
             );
+
+            return;
         }
 
 
-        int score = 0;
-        int totalQuestions = 0;
-        int passMark = 0;
+        /*
+         * ============================================================
+         * 4. LOAD ONLY PUBLISHED QUIZ
+         * ============================================================
+         */
 
-        String quizTitle = "";
+        String quizSql =
+                "SELECT title, question_count, pass_mark "
+                + "FROM quizzes "
+                + "WHERE id = ? "
+                + "AND status = 'PUBLISHED'";
 
 
         /*
-         * Store the student's selected answers.
-         *
-         * Key   = question ID
-         * Value = selected option A/B/C/D
+         * ============================================================
+         * 5. LOAD CORRECT ANSWERS
+         * ============================================================
          */
-        Map<Integer, String> submittedAnswers =
-                new LinkedHashMap<>();
+
+        String answersSql =
+                "SELECT q.id, a.option_label "
+                + "FROM questions q "
+                + "JOIN answers a "
+                + "ON q.id = a.question_id "
+                + "AND a.is_correct = TRUE "
+                + "WHERE q.quiz_id = ? "
+                + "ORDER BY q.question_number ASC";
 
 
         try (Connection connection =
@@ -122,152 +170,213 @@ public class SubmitQuizServlet extends HttpServlet {
 
 
             /*
-             * ====================================================
-             * GET QUIZ INFORMATION
-             * ====================================================
+             * ========================================================
+             * LOAD QUIZ
+             * ========================================================
              */
 
-            String quizSql =
-                    "SELECT title, question_count, pass_mark " +
-                    "FROM quizzes " +
-                    "WHERE id = ? " +
-                    "AND status = 'PUBLISHED'";
-
+            String quizTitle = null;
+            int expectedQuestionCount = 0;
+            int passMark = 0;
 
             try (PreparedStatement statement =
-                         connection.prepareStatement(quizSql)) {
+                         connection.prepareStatement(
+                                 quizSql
+                         )) {
 
                 statement.setInt(1, quizId);
-
 
                 try (ResultSet resultSet =
                              statement.executeQuery()) {
 
                     if (!resultSet.next()) {
 
-                        session.removeAttribute(attemptKey);
-
-                        response.sendError(
-                                HttpServletResponse.SC_NOT_FOUND,
-                                "Published quiz not found."
+                        redirectError(
+                                request,
+                                response,
+                                "This quiz is not available."
                         );
 
                         return;
                     }
 
-
                     quizTitle =
-                            resultSet.getString("title");
+                            resultSet.getString(
+                                    "title"
+                            );
 
+                    expectedQuestionCount =
+                            resultSet.getInt(
+                                    "question_count"
+                            );
 
                     passMark =
-                            resultSet.getInt("pass_mark");
+                            resultSet.getInt(
+                                    "pass_mark"
+                            );
                 }
             }
 
 
             /*
-             * ====================================================
-             * GET QUESTIONS AND CORRECT ANSWERS
-             * ====================================================
+             * ========================================================
+             * LOAD CORRECT ANSWERS FROM DATABASE
+             * ========================================================
              */
 
-            String questionSql =
-                    "SELECT q.id, a.option_label " +
-                    "FROM questions q " +
-                    "JOIN answers a " +
-                    "ON q.id = a.question_id " +
-                    "AND a.is_correct = TRUE " +
-                    "WHERE q.quiz_id = ? " +
-                    "ORDER BY q.question_number ASC";
-
+            Map<Integer, String> correctAnswers =
+                    new HashMap<>();
 
             try (PreparedStatement statement =
-                         connection.prepareStatement(questionSql)) {
+                         connection.prepareStatement(
+                                 answersSql
+                         )) {
 
                 statement.setInt(1, quizId);
-
 
                 try (ResultSet resultSet =
                              statement.executeQuery()) {
 
-
                     while (resultSet.next()) {
-
-                        totalQuestions++;
-
 
                         int questionId =
                                 resultSet.getInt("id");
 
-
-                        String correctAnswer =
+                        String correctOption =
                                 resultSet.getString(
                                         "option_label"
                                 );
 
-
-                        /*
-                         * Get the student's selected answer.
-                         */
-                        String submittedAnswer =
-                                request.getParameter(
-                                        "question_" + questionId
-                                );
-
-
-                        /*
-                         * Store answer for the result review.
-                         */
-                        if (submittedAnswer != null
-                                && !submittedAnswer.trim().isEmpty()) {
-
-                            submittedAnswers.put(
-                                    questionId,
-                                    submittedAnswer
-                            );
-                        }
-
-
-                        /*
-                         * Check whether answer is correct.
-                         */
-                        if (submittedAnswer != null
-                                && submittedAnswer.equalsIgnoreCase(
-                                        correctAnswer)) {
-
-                            score++;
-                        }
+                        correctAnswers.put(
+                                questionId,
+                                correctOption
+                        );
                     }
                 }
             }
 
 
             /*
-             * ====================================================
-             * CALCULATE RESULT
-             * ====================================================
+             * ========================================================
+             * VERIFY QUESTION COUNT
+             * ========================================================
              */
 
-            double percentage = 0.0;
+            if (correctAnswers.size()
+                    != expectedQuestionCount) {
 
+                redirectError(
+                        request,
+                        response,
+                        "This quiz is not properly configured."
+                );
 
-            if (totalQuestions > 0) {
-
-                percentage =
-                        ((double) score / totalQuestions)
-                                * 100.0;
+                return;
             }
 
+
+            /*
+             * ========================================================
+             * CALCULATE SCORE
+             * ========================================================
+             */
+
+            int score = 0;
+
+            List<Integer> questionIds =
+                    new ArrayList<>(
+                            correctAnswers.keySet()
+                    );
+
+            Map<Integer, String> submittedAnswers =
+                    new HashMap<>();
+
+
+            for (Integer questionId : questionIds) {
+
+                String parameterName =
+                        "question_" + questionId;
+
+                String submittedAnswer =
+                        request.getParameter(
+                                parameterName
+                        );
+
+                if (submittedAnswer != null) {
+
+                    submittedAnswer =
+                            submittedAnswer
+                                    .trim()
+                                    .toUpperCase();
+
+                    /*
+                     * Only A, B, C or D are accepted.
+                     */
+                    if (!submittedAnswer.equals("A")
+                            && !submittedAnswer.equals("B")
+                            && !submittedAnswer.equals("C")
+                            && !submittedAnswer.equals("D")) {
+
+                        submittedAnswer = null;
+                    }
+                }
+
+                if (submittedAnswer != null) {
+
+                    submittedAnswers.put(
+                            questionId,
+                            submittedAnswer
+                    );
+
+                    String correctAnswer =
+                            correctAnswers.get(
+                                    questionId
+                            );
+
+                    if (submittedAnswer.equals(
+                            correctAnswer
+                    )) {
+
+                        score++;
+                    }
+                }
+            }
+
+
+            /*
+             * ========================================================
+             * CALCULATE RESULT
+             * ========================================================
+             */
+
+            int total =
+                    correctAnswers.size();
+
+            double percentage =
+                    total > 0
+                    ? ((double) score / total) * 100
+                    : 0;
 
             boolean passed =
                     percentage >= passMark;
 
 
             /*
-             * ====================================================
-             * STORE RESULT IN SESSION
-             * ====================================================
+             * ========================================================
+             * MARK QUIZ AS ATTEMPTED
+             * ========================================================
+             */
+
+            session.setAttribute(
+                    attemptKey,
+                    true
+            );
+
+
+            /*
+             * ========================================================
+             * STORE CURRENT RESULT
+             * ========================================================
              */
 
             session.setAttribute(
@@ -275,119 +384,172 @@ public class SubmitQuizServlet extends HttpServlet {
                     quizId
             );
 
-
             session.setAttribute(
                     "quizResultTitle",
                     quizTitle
             );
-
 
             session.setAttribute(
                     "quizResultScore",
                     score
             );
 
-
             session.setAttribute(
                     "quizResultTotal",
-                    totalQuestions
+                    total
             );
-
 
             session.setAttribute(
                     "quizResultPercentage",
                     percentage
             );
 
-
             session.setAttribute(
                     "quizResultPassMark",
                     passMark
             );
-
 
             session.setAttribute(
                     "quizResultPassed",
                     passed
             );
 
-
-            /*
-             * Save student's answers so the result page
-             * can display exactly what the student selected.
-             */
             session.setAttribute(
                     "quizSubmittedAnswers_" + quizId,
                     submittedAnswers
             );
 
-            // ================= STORE RESULT HISTORY =================
+
+            /*
+             * ========================================================
+             * STORE RESULT HISTORY
+             * ========================================================
+             */
 
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> resultHistory =
-                    (List<Map<String, Object>>) session.getAttribute(
+            List<Map<String, Object>> history =
+                    (List<Map<String, Object>>)
+                    session.getAttribute(
                             "quizResultHistory"
                     );
 
-            if (resultHistory == null) {
-                resultHistory = new ArrayList<>();
+            if (history == null) {
+
+                history =
+                        new ArrayList<>();
             }
 
-            Map<String, Object> result = new HashMap<>();
+            Map<String, Object> result =
+                    new HashMap<>();
 
-            result.put("quizId", quizId);
-            result.put("title", quizTitle);
-            result.put("score", score);
-            result.put("total", totalQuestions);
-            result.put("percentage", percentage);
-            result.put("passed", passed);
-            result.put("passMark", passMark);
-            result.put("submittedAt", LocalDateTime.now());
+            result.put(
+                    "quizId",
+                    quizId
+            );
 
-            resultHistory.add(0, result);
+            result.put(
+                    "title",
+                    quizTitle
+            );
 
-            // Keep only the latest 10 results
-            if (resultHistory.size() > 10) {
-                resultHistory =
+            result.put(
+                    "score",
+                    score
+            );
+
+            result.put(
+                    "total",
+                    total
+            );
+
+            result.put(
+                    "percentage",
+                    percentage
+            );
+
+            result.put(
+                    "passMark",
+                    passMark
+            );
+
+            result.put(
+                    "passed",
+                    passed
+            );
+
+            history.add(
+                    0,
+                    result
+            );
+
+
+            /*
+             * Keep only the latest 10 results.
+             */
+
+            if (history.size() > 10) {
+
+                history =
                         new ArrayList<>(
-                                resultHistory.subList(0, 10)
+                                history.subList(
+                                        0,
+                                        10
+                                )
                         );
             }
 
             session.setAttribute(
                     "quizResultHistory",
-                    resultHistory
+                    history
             );
 
 
             /*
-             * ====================================================
-             * GO TO RESULT PAGE
-             * ====================================================
+             * ========================================================
+             * 6. REDIRECT TO RESULT PAGE
+             * ========================================================
              */
 
             response.sendRedirect(
-                    "student/quiz-result.jsp"
+                    request.getContextPath()
+                    + "/student/quiz-result.jsp"
             );
 
-
-        } catch (SQLException e) {
+        } catch (Exception e) {
 
             e.printStackTrace();
 
-
-            /*
-             * If database processing fails, allow the student
-             * to try again because the submission was not
-             * successfully processed.
-             */
-            session.removeAttribute(attemptKey);
-
-
-            response.sendError(
-                    HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Database error while submitting the quiz."
+            redirectError(
+                    request,
+                    response,
+                    "An error occurred while submitting the quiz."
             );
         }
+    }
+
+
+    /*
+     * ================================================================
+     * ERROR REDIRECT
+     * ================================================================
+     */
+
+    private void redirectError(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String message)
+            throws IOException {
+
+        response.sendRedirect(
+                request.getContextPath()
+                + "/student/take-quiz.jsp"
+                + "?quizId="
+                + request.getParameter("quizId")
+                + "&error="
+                + java.net.URLEncoder.encode(
+                        message,
+                        java.nio.charset.StandardCharsets.UTF_8
+                )
+        );
     }
 }
