@@ -2,6 +2,7 @@ package tz.udom.quiz.servlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URLEncoder;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,30 +19,26 @@ import tz.udom.quiz.util.DBConnection;
 @WebServlet("/assignCourse")
 public class AssignCourseServlet extends HttpServlet {
 
-    // ============================================================
-    // ADMIN AUTHENTICATION
-    // ============================================================
-
-    private boolean isAdmin(HttpServletRequest request) {
-
-        HttpSession session =
-                request.getSession(false);
-
-        return session != null
-                && Boolean.TRUE.equals(
-                        session.getAttribute("adminLoggedIn")
-                )
-                && "ADMIN".equals(
-                        session.getAttribute("userRole")
-                );
-    }
+    private static final long serialVersionUID = 1L;
 
 
-    // ============================================================
-    // GET
-    //
-    // Used by assign-courses.jsp to load courses
-    // ============================================================
+    /*
+     * ============================
+     * GET
+     * ============================
+     *
+     * action=list
+     *
+     * Returns courses belonging to:
+     *
+     * Programme
+     * +
+     * Year
+     *
+     * and tells whether each course
+     * is already assigned to the
+     * selected teacher.
+     */
 
     @Override
     protected void doGet(
@@ -49,47 +46,125 @@ public class AssignCourseServlet extends HttpServlet {
             HttpServletResponse response)
             throws ServletException, IOException {
 
-        if (!isAdmin(request)) {
+        /*
+         * ADMIN AUTHENTICATION
+         */
+
+        HttpSession session =
+                request.getSession(false);
+
+        if (session == null) {
 
             response.sendError(
                     HttpServletResponse.SC_UNAUTHORIZED,
-                    "Administrator login required."
+                    "You must be logged in."
             );
 
             return;
         }
 
+
+        Boolean adminLoggedIn =
+                (Boolean) session.getAttribute(
+                        "adminLoggedIn"
+                );
+
+        String userRole =
+                (String) session.getAttribute(
+                        "userRole"
+                );
+
+
+        if (adminLoggedIn == null ||
+            !adminLoggedIn ||
+            !"ADMIN".equals(userRole)) {
+
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Administrator access required."
+            );
+
+            return;
+        }
+
+
+        /*
+         * CHECK ACTION
+         */
 
         String action =
                 request.getParameter("action");
 
 
-        if ("list".equals(action)) {
+        if (!"list".equalsIgnoreCase(action)) {
 
-            listCourses(
-                    request,
-                    response
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid action."
             );
 
             return;
         }
 
 
-        response.sendError(
-                HttpServletResponse.SC_BAD_REQUEST,
-                "Invalid request."
-        );
-    }
+        /*
+         * READ PARAMETERS
+         */
+
+        int teacherId;
+        int programmeId;
+        int year;
 
 
-    // ============================================================
-    // LIST COURSES
-    // ============================================================
+        try {
 
-    private void listCourses(
-            HttpServletRequest request,
-            HttpServletResponse response)
-            throws IOException {
+            teacherId =
+                    Integer.parseInt(
+                            request.getParameter("teacherId")
+                    );
+
+            programmeId =
+                    Integer.parseInt(
+                            request.getParameter("programmeId")
+                    );
+
+            year =
+                    Integer.parseInt(
+                            request.getParameter("year")
+                    );
+
+        } catch (Exception e) {
+
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid teacher, programme or year."
+            );
+
+            return;
+        }
+
+
+        /*
+         * VALIDATE VALUES
+         */
+
+        if (teacherId <= 0 ||
+            programmeId <= 0 ||
+            year < 1 ||
+            year > 4) {
+
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid assignment parameters."
+            );
+
+            return;
+        }
+
+
+        /*
+         * JSON RESPONSE
+         */
 
         response.setContentType(
                 "application/json"
@@ -100,68 +175,27 @@ public class AssignCourseServlet extends HttpServlet {
         );
 
 
-        String programmeIdParam =
-                request.getParameter("programmeId");
-
-        String yearParam =
-                request.getParameter("year");
-
-        String teacherIdParam =
-                request.getParameter("teacherId");
-
-
-        if (programmeIdParam == null
-                || yearParam == null
-                || teacherIdParam == null) {
-
-            response.sendError(
-                    HttpServletResponse.SC_BAD_REQUEST,
-                    "Missing parameters."
-            );
-
-            return;
-        }
-
-
-        int programmeId;
-        int year;
-        int teacherId;
-
-
-        try {
-
-            programmeId =
-                    Integer.parseInt(programmeIdParam);
-
-            year =
-                    Integer.parseInt(yearParam);
-
-            teacherId =
-                    Integer.parseInt(teacherIdParam);
-
-        } catch (NumberFormatException e) {
-
-            response.sendError(
-                    HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid parameter."
-            );
-
-            return;
-        }
-
+        /*
+         * SQL
+         *
+         * LEFT JOIN allows us to return
+         * every course and determine
+         * whether it is assigned.
+         */
 
         String sql =
                 "SELECT " +
                 "c.id, " +
                 "c.course_code, " +
                 "c.course_name, " +
+                "c.year_of_study, " +
                 "CASE " +
-                "WHEN tc.id IS NOT NULL THEN TRUE " +
-                "ELSE FALSE " +
+                "WHEN tc.id IS NULL THEN false " +
+                "ELSE true " +
                 "END AS assigned " +
                 "FROM courses c " +
                 "LEFT JOIN teacher_courses tc " +
-                "ON c.id = tc.course_id " +
+                "ON tc.course_id = c.id " +
                 "AND tc.teacher_id = ? " +
                 "WHERE c.programme_id = ? " +
                 "AND c.year_of_study = ? " +
@@ -169,89 +203,152 @@ public class AssignCourseServlet extends HttpServlet {
 
 
         try (
-                Connection conn =
+                Connection connection =
                         DBConnection.getConnection();
 
-                PreparedStatement ps =
-                        conn.prepareStatement(sql)
+                PreparedStatement statement =
+                        connection.prepareStatement(sql)
         ) {
 
-            ps.setInt(1, teacherId);
-            ps.setInt(2, programmeId);
-            ps.setInt(3, year);
+            statement.setInt(
+                    1,
+                    teacherId
+            );
+
+            statement.setInt(
+                    2,
+                    programmeId
+            );
+
+            statement.setInt(
+                    3,
+                    year
+            );
 
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet resultSet =
+                            statement.executeQuery();
 
-                PrintWriter out =
-                        response.getWriter();
+                    PrintWriter out =
+                            response.getWriter()
+            ) {
 
-                out.print("[");
+                StringBuilder json =
+                        new StringBuilder();
+
+                json.append("[");
 
 
-                boolean first = true;
+                boolean first =
+                        true;
 
 
-                while (rs.next()) {
+                while (resultSet.next()) {
 
                     if (!first) {
-                        out.print(",");
+
+                        json.append(",");
+
                     }
 
                     first = false;
 
 
-                    out.print("{");
+                    int courseId =
+                            resultSet.getInt("id");
 
-                    out.print(
-                            "\"id\":"
-                            + rs.getInt("id")
-                    );
+                    String courseCode =
+                            resultSet.getString(
+                                    "course_code"
+                            );
 
-                    out.print(",");
+                    String courseName =
+                            resultSet.getString(
+                                    "course_name"
+                            );
 
-                    out.print(
-                            "\"courseCode\":\""
-                            + escapeJson(
-                                    rs.getString(
-                                            "course_code"
-                                    )
-                            )
-                            + "\""
-                    );
+                    int courseYear =
+                            resultSet.getInt(
+                                    "year_of_study"
+                            );
 
-                    out.print(",");
-
-                    out.print(
-                            "\"courseName\":\""
-                            + escapeJson(
-                                    rs.getString(
-                                            "course_name"
-                                    )
-                            )
-                            + "\""
-                    );
-
-                    out.print(",");
-
-                    out.print(
-                            "\"assigned\":"
-                            + rs.getBoolean(
+                    boolean assigned =
+                            resultSet.getBoolean(
                                     "assigned"
-                            )
+                            );
+
+
+                    json.append("{");
+
+                    json.append(
+                            "\"id\":"
                     );
 
-                    out.print("}");
+                    json.append(
+                            courseId
+                    );
+
+                    json.append(",");
+
+
+                    json.append(
+                            "\"course_code\":\""
+                    );
+
+                    json.append(
+                            escapeJson(courseCode)
+                    );
+
+                    json.append("\",");
+
+
+                    json.append(
+                            "\"course_name\":\""
+                    );
+
+                    json.append(
+                            escapeJson(courseName)
+                    );
+
+                    json.append("\",");
+
+
+                    json.append(
+                            "\"year_of_study\":"
+                    );
+
+                    json.append(
+                            courseYear
+                    );
+
+                    json.append(",");
+
+
+                    json.append(
+                            "\"assigned\":"
+                    );
+
+                    json.append(
+                            assigned
+                    );
+
+                    json.append("}");
 
                 }
 
 
-                out.print("]");
+                json.append("]");
+
+
+                out.print(
+                        json.toString()
+                );
 
                 out.flush();
 
             }
+
 
         } catch (SQLException e) {
 
@@ -259,17 +356,21 @@ public class AssignCourseServlet extends HttpServlet {
 
             response.sendError(
                     HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Database error."
+                    "Database error while loading courses."
             );
         }
+
     }
 
 
-    // ============================================================
-    // POST
-    //
-    // Assign selected courses to teacher
-    // ============================================================
+    /*
+     * ============================
+     * POST
+     * ============================
+     *
+     * Saves teacher course
+     * assignments.
+     */
 
     @Override
     protected void doPost(
@@ -277,20 +378,120 @@ public class AssignCourseServlet extends HttpServlet {
             HttpServletResponse response)
             throws ServletException, IOException {
 
-        if (!isAdmin(request)) {
+
+        /*
+         * ADMIN AUTHENTICATION
+         */
+
+        HttpSession session =
+                request.getSession(false);
+
+
+        if (session == null) {
 
             response.sendRedirect(
                     request.getContextPath()
-                    + "/login.jsp?error=adminLoginRequired"
+                    + "/login.jsp"
             );
 
             return;
         }
 
 
-        String teacherIdParam =
-                request.getParameter("teacherId");
+        Boolean adminLoggedIn =
+                (Boolean) session.getAttribute(
+                        "adminLoggedIn"
+                );
 
+        String userRole =
+                (String) session.getAttribute(
+                        "userRole"
+                );
+
+
+        if (adminLoggedIn == null ||
+            !adminLoggedIn ||
+            !"ADMIN".equals(userRole)) {
+
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/login.jsp"
+            );
+
+            return;
+        }
+
+
+        /*
+         * READ PARAMETERS
+         */
+
+        int teacherId;
+        int programmeId;
+        int year;
+
+
+        try {
+
+            teacherId =
+                    Integer.parseInt(
+                            request.getParameter(
+                                    "teacherId"
+                            )
+                    );
+
+            programmeId =
+                    Integer.parseInt(
+                            request.getParameter(
+                                    "programmeId"
+                            )
+                    );
+
+            year =
+                    Integer.parseInt(
+                            request.getParameter(
+                                    "year"
+                            )
+                    );
+
+        } catch (Exception e) {
+
+            redirectWithMessage(
+                    request,
+                    response,
+                    0,
+                    "error",
+                    "Invalid teacher, programme or year."
+            );
+
+            return;
+        }
+
+
+        /*
+         * VALIDATE PARAMETERS
+         */
+
+        if (teacherId <= 0 ||
+            programmeId <= 0 ||
+            year < 1 ||
+            year > 4) {
+
+            redirectWithMessage(
+                    request,
+                    response,
+                    teacherId,
+                    "error",
+                    "Invalid assignment information."
+            );
+
+            return;
+        }
+
+
+        /*
+         * SELECTED COURSE IDS
+         */
 
         String[] courseIds =
                 request.getParameterValues(
@@ -298,54 +499,23 @@ public class AssignCourseServlet extends HttpServlet {
                 );
 
 
-        if (teacherIdParam == null
-                || courseIds == null
-                || courseIds.length == 0) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/admin/assign-courses.jsp?error=error"
-            );
-
-            return;
-        }
-
-
-        int teacherId;
+        Connection connection =
+                null;
 
 
         try {
 
-            teacherId =
-                    Integer.parseInt(
-                            teacherIdParam
-                    );
-
-        } catch (NumberFormatException e) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/admin/assign-courses.jsp?error=error"
-            );
-
-            return;
-        }
-
-
-        Connection conn = null;
-
-
-        try {
-
-            conn =
+            connection =
                     DBConnection.getConnection();
 
-            conn.setAutoCommit(false);
+            connection.setAutoCommit(false);
 
 
-            // ----------------------------------------------------
-            // Verify teacher exists
-            // ----------------------------------------------------
+            /*
+             * ============================
+             * VERIFY TEACHER
+             * ============================
+             */
 
             String teacherCheckSql =
                     "SELECT id " +
@@ -354,30 +524,33 @@ public class AssignCourseServlet extends HttpServlet {
 
 
             try (
-                    PreparedStatement ps =
-                            conn.prepareStatement(
+                    PreparedStatement statement =
+                            connection.prepareStatement(
                                     teacherCheckSql
                             )
             ) {
 
-                ps.setInt(
+                statement.setInt(
                         1,
                         teacherId
                 );
 
 
                 try (
-                        ResultSet rs =
-                                ps.executeQuery()
+                        ResultSet resultSet =
+                                statement.executeQuery()
                 ) {
 
-                    if (!rs.next()) {
+                    if (!resultSet.next()) {
 
-                        conn.rollback();
+                        connection.rollback();
 
-                        response.sendRedirect(
-                                request.getContextPath()
-                                + "/admin/assign-courses.jsp?error=error"
+                        redirectWithMessage(
+                                request,
+                                response,
+                                teacherId,
+                                "error",
+                                "Selected teacher does not exist."
                         );
 
                         return;
@@ -386,71 +559,270 @@ public class AssignCourseServlet extends HttpServlet {
             }
 
 
-            // ----------------------------------------------------
-            // Insert assignments
-            // ----------------------------------------------------
+            /*
+             * ============================
+             * VERIFY PROGRAMME
+             * ============================
+             */
 
-            String insertSql =
-                    "INSERT INTO teacher_courses " +
-                    "(teacher_id, course_id) " +
-                    "VALUES (?, ?) " +
-                    "ON CONFLICT " +
-                    "(teacher_id, course_id) " +
-                    "DO NOTHING";
+            String programmeCheckSql =
+                    "SELECT id " +
+                    "FROM programmes " +
+                    "WHERE id = ?";
 
 
             try (
-                    PreparedStatement ps =
-                            conn.prepareStatement(
-                                    insertSql
+                    PreparedStatement statement =
+                            connection.prepareStatement(
+                                    programmeCheckSql
                             )
             ) {
 
-                for (String courseIdParam :
-                        courseIds) {
+                statement.setInt(
+                        1,
+                        programmeId
+                );
 
-                    int courseId;
 
+                try (
+                        ResultSet resultSet =
+                                statement.executeQuery()
+                ) {
 
-                    try {
+                    if (!resultSet.next()) {
 
-                        courseId =
-                                Integer.parseInt(
-                                        courseIdParam
-                                );
+                        connection.rollback();
 
-                    } catch (
-                            NumberFormatException e
-                    ) {
+                        redirectWithMessage(
+                                request,
+                                response,
+                                teacherId,
+                                "error",
+                                "Selected programme does not exist."
+                        );
 
-                        continue;
+                        return;
                     }
-
-
-                    ps.setInt(
-                            1,
-                            teacherId
-                    );
-
-                    ps.setInt(
-                            2,
-                            courseId
-                    );
-
-                    ps.addBatch();
                 }
-
-
-                ps.executeBatch();
             }
 
 
-            conn.commit();
+            /*
+             * ============================
+             * DELETE OLD ASSIGNMENTS
+             *
+             * ONLY for the selected
+             * programme + year.
+             *
+             * Other programme/year
+             * assignments remain untouched.
+             * ============================
+             */
+
+            String deleteSql =
+                    "DELETE FROM teacher_courses " +
+                    "WHERE teacher_id = ? " +
+                    "AND course_id IN (" +
+                    "SELECT id " +
+                    "FROM courses " +
+                    "WHERE programme_id = ? " +
+                    "AND year_of_study = ?" +
+                    ")";
 
 
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/admin/assign-courses.jsp?message=success"
+            try (
+                    PreparedStatement statement =
+                            connection.prepareStatement(
+                                    deleteSql
+                            )
+            ) {
+
+                statement.setInt(
+                        1,
+                        teacherId
+                );
+
+                statement.setInt(
+                        2,
+                        programmeId
+                );
+
+                statement.setInt(
+                        3,
+                        year
+                );
+
+                statement.executeUpdate();
+            }
+
+
+            /*
+             * ============================
+             * INSERT SELECTED COURSES
+             * ============================
+             */
+
+            if (courseIds != null &&
+                courseIds.length > 0) {
+
+
+                String validateCourseSql =
+                        "SELECT id " +
+                        "FROM courses " +
+                        "WHERE id = ? " +
+                        "AND programme_id = ? " +
+                        "AND year_of_study = ?";
+
+
+                String insertSql =
+                        "INSERT INTO teacher_courses " +
+                        "(teacher_id, course_id) " +
+                        "VALUES (?, ?) " +
+                        "ON CONFLICT " +
+                        "(teacher_id, course_id) " +
+                        "DO NOTHING";
+
+
+                try (
+                        PreparedStatement validateStatement =
+                                connection.prepareStatement(
+                                        validateCourseSql
+                                );
+
+                        PreparedStatement insertStatement =
+                                connection.prepareStatement(
+                                        insertSql
+                                )
+                ) {
+
+
+                    for (String courseIdString :
+                            courseIds) {
+
+
+                        int courseId;
+
+
+                        try {
+
+                            courseId =
+                                    Integer.parseInt(
+                                            courseIdString
+                                    );
+
+                        } catch (NumberFormatException e) {
+
+                            connection.rollback();
+
+                            redirectWithMessage(
+                                    request,
+                                    response,
+                                    teacherId,
+                                    "error",
+                                    "Invalid course selected."
+                            );
+
+                            return;
+                        }
+
+
+                        /*
+                         * VERIFY COURSE
+                         *
+                         * The course must belong
+                         * to the selected programme
+                         * and year.
+                         */
+
+                        validateStatement.setInt(
+                                1,
+                                courseId
+                        );
+
+                        validateStatement.setInt(
+                                2,
+                                programmeId
+                        );
+
+                        validateStatement.setInt(
+                                3,
+                                year
+                        );
+
+
+                        boolean validCourse =
+                                false;
+
+
+                        try (
+                                ResultSet resultSet =
+                                        validateStatement
+                                                .executeQuery()
+                        ) {
+
+                            if (resultSet.next()) {
+
+                                validCourse = true;
+
+                            }
+                        }
+
+
+                        if (!validCourse) {
+
+                            connection.rollback();
+
+                            redirectWithMessage(
+                                    request,
+                                    response,
+                                    teacherId,
+                                    "error",
+                                    "One or more selected courses do not belong to the selected programme and year."
+                            );
+
+                            return;
+                        }
+
+
+                        /*
+                         * INSERT ASSIGNMENT
+                         */
+
+                        insertStatement.setInt(
+                                1,
+                                teacherId
+                        );
+
+                        insertStatement.setInt(
+                                2,
+                                courseId
+                        );
+
+                        insertStatement.addBatch();
+
+                    }
+
+
+                    insertStatement.executeBatch();
+
+                }
+
+            }
+
+
+            /*
+             * COMMIT
+             */
+
+            connection.commit();
+
+
+            redirectWithMessage(
+                    request,
+                    response,
+                    teacherId,
+                    "success",
+                    "Course assignments saved successfully."
             );
 
 
@@ -459,48 +831,119 @@ public class AssignCourseServlet extends HttpServlet {
             e.printStackTrace();
 
 
-            if (conn != null) {
+            if (connection != null) {
 
                 try {
-                    conn.rollback();
-                } catch (SQLException ignored) {
+
+                    connection.rollback();
+
+                } catch (SQLException rollbackException) {
+
+                    rollbackException.printStackTrace();
+
                 }
             }
 
 
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/admin/assign-courses.jsp?error=error"
+            redirectWithMessage(
+                    request,
+                    response,
+                    teacherId,
+                    "error",
+                    "Database error while saving course assignments."
             );
 
 
         } finally {
 
-            if (conn != null) {
+
+            if (connection != null) {
 
                 try {
-                    conn.close();
-                } catch (SQLException ignored) {
+
+                    connection.setAutoCommit(true);
+
+                    connection.close();
+
+                } catch (SQLException e) {
+
+                    e.printStackTrace();
+
                 }
+
             }
+
         }
+
     }
 
 
-    // ============================================================
-    // SIMPLE JSON ESCAPING
-    // ============================================================
+    /*
+     * ============================
+     * REDIRECT WITH MESSAGE
+     * ============================
+     */
 
-    private String escapeJson(String value) {
+    private void redirectWithMessage(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            int teacherId,
+            String status,
+            String message)
+            throws IOException {
+
+
+        String encodedMessage =
+                URLEncoder.encode(
+                        message,
+                        "UTF-8"
+                );
+
+
+        String url =
+                request.getContextPath()
+                + "/admin/assign-courses.jsp"
+                + "?teacherId="
+                + teacherId
+                + "&status="
+                + URLEncoder.encode(
+                        status,
+                        "UTF-8"
+                )
+                + "&message="
+                + encodedMessage;
+
+
+        response.sendRedirect(url);
+
+    }
+
+
+    /*
+     * ============================
+     * JSON ESCAPE
+     * ============================
+     */
+
+    private String escapeJson(
+            String value) {
 
         if (value == null) {
+
             return "";
+
         }
+
 
         return value
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
+                .replace("\b", "\\b")
+                .replace("\f", "\\f")
                 .replace("\n", "\\n")
-                .replace("\r", "\\r");
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+
     }
+
 }

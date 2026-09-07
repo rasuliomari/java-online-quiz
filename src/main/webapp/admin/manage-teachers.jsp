@@ -59,12 +59,14 @@
         ) {
 
             if (resultSet.next()) {
+
                 totalTeachers =
                         resultSet.getInt(1);
             }
         }
 
     } catch (Exception e) {
+
         e.printStackTrace();
     }
 %>
@@ -191,7 +193,6 @@
                 type="button"
                 data-bs-toggle="dropdown">
 
-
                 <div class="student-avatar">
 
                     <%= adminFirstName.substring(0, 1).toUpperCase() %>
@@ -210,7 +211,6 @@
                     </small>
 
                 </div>
-
 
             </button>
 
@@ -296,13 +296,16 @@
     <div class="offcanvas-header d-lg-none">
 
         <h5 class="offcanvas-title">
+
             Administrator Menu
+
         </h5>
 
         <button
             type="button"
             class="btn-close"
             data-bs-dismiss="offcanvas">
+
         </button>
 
     </div>
@@ -386,6 +389,21 @@
 
                 <span>
                     Manage Teachers
+                </span>
+
+            </a>
+
+
+            <!-- Assign Courses -->
+
+            <a
+                href="assign-courses.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-journal-bookmark-fill"></i>
+
+                <span>
+                    Assign Courses
                 </span>
 
             </a>
@@ -521,9 +539,7 @@
 <div class="container-fluid dashboard-container">
 
 
-    <!-- =====================================================
-         PAGE HEADER
-    ====================================================== -->
+    <!-- PAGE HEADER -->
 
     <div class="welcome-section">
 
@@ -610,7 +626,6 @@
 
     <div class="content-card">
 
-
         <div class="card-header-custom">
 
             <div>
@@ -637,37 +652,21 @@
 
                     <tr>
 
-                        <th>
-                            #
-                        </th>
+                        <th>#</th>
 
-                        <th>
-                            Name
-                        </th>
+                        <th>Name</th>
 
-                        <th>
-                            Staff Number
-                        </th>
+                        <th>Staff Number</th>
 
-                        <th>
-                            College
-                        </th>
+                        <th>College</th>
 
-                        <th>
-                            Department
-                        </th>
+                        <th>Department</th>
 
-                        <th>
-                            Email
-                        </th>
+                        <th>Email</th>
 
-                        <th>
-                            Phone
-                        </th>
+                        <th>Phone</th>
 
-                        <th>
-                            Actions
-                        </th>
+                        <th>Actions</th>
 
                     </tr>
 
@@ -692,6 +691,7 @@
         try (
             PreparedStatement statement =
                     connection.prepareStatement(teacherSql);
+
             ResultSet resultSet =
                     statement.executeQuery()
         ) {
@@ -744,6 +744,7 @@
                             <%= rowNumber++ %>
                         </td>
 
+
                         <td>
 
                             <strong>
@@ -752,29 +753,50 @@
 
                         </td>
 
+
                         <td>
                             <%= staffNumber %>
                         </td>
+
 
                         <td>
                             <%= college %>
                         </td>
 
+
                         <td>
                             <%= department %>
                         </td>
+
 
                         <td>
                             <%= email %>
                         </td>
 
+
                         <td>
                             <%= phone %>
                         </td>
 
+
                         <td>
 
                             <div class="d-flex gap-2">
+
+
+                                <!-- ASSIGN COURSES -->
+
+                                <a
+                                    href="assign-courses.jsp?teacherId=<%= teacherId %>"
+                                    class="btn btn-sm btn-outline-success"
+                                    title="Assign Courses">
+
+                                    <i
+                                        class="bi bi-journal-bookmark-fill">
+                                    </i>
+
+                                </a>
+
 
                                 <!-- EDIT -->
 
@@ -783,22 +805,25 @@
                                     class="btn btn-sm btn-outline-primary"
                                     title="Edit Teacher">
 
-                                    <i class="bi bi-pencil"></i>
+                                    <i
+                                        class="bi bi-pencil">
+                                    </i>
 
                                 </a>
 
 
-                                 <!-- DELETE -->
+                                <!-- DELETE -->
 
-                                 <form
+                                <form
                                     action="<%= request.getContextPath() %>/deleteTeacher"
                                     method="post"
-                                    class="d-inline delete-teacher-form">
+                                    class="d-inline">
 
                                     <input
                                         type="hidden"
                                         name="teacherId"
                                         value="<%= teacherId %>">
+
 
                                     <button
                                         type="button"
@@ -814,9 +839,6 @@
                                     </button>
 
                                 </form>
-
-
-                               
 
                             </div>
 
@@ -882,12 +904,9 @@
 
 
 
-    <!-- =====================================================
-         INFORMATION
-    ====================================================== -->
+    <!-- INFORMATION -->
 
     <div class="content-card mt-4">
-
 
         <div class="card-header-custom">
 
@@ -977,20 +996,20 @@
 
                     <div class="quiz-icon security-icon">
 
-                        <i class="bi bi-person-x-fill"></i>
+                        <i class="bi bi-journal-bookmark-fill"></i>
 
                     </div>
 
                     <div class="quiz-information">
 
                         <h5>
-                            Account Control
+                            Assign Courses
                         </h5>
 
                         <div class="quiz-meta">
 
                             <span>
-                                Control teacher account access.
+                                Assign academic courses to teachers.
                             </span>
 
                         </div>
@@ -1009,10 +1028,7 @@
 </div>
 
 
-
-<!-- =========================================================
-     FOOTER
-========================================================= -->
+<!-- FOOTER -->
 
 <footer class="dashboard-footer">
 
@@ -1045,36 +1061,39 @@
 
 </main>
 
-<!-- ==========================================================
-     DELETE TEACHER CONFIRMATION MODAL
-     ========================================================== -->
+
+
+<!-- =========================================================
+     DELETE TEACHER MODAL
+========================================================= -->
 
 <div
     class="modal fade"
     id="deleteTeacherModal"
-    tabindex="-1"
-    aria-labelledby="deleteTeacherModalLabel"
-    aria-hidden="true">
+    tabindex="-1">
 
     <div class="modal-dialog modal-dialog-centered">
 
-        <div class="modal-content delete-modal">
+        <div class="modal-content">
 
-            <!-- HEADER -->
-            <div class="modal-header border-0">
+            <div class="modal-header">
+
+                <h5 class="modal-title">
+
+                    Delete Teacher?
+
+                </h5>
 
                 <button
                     type="button"
                     class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close">
+                    data-bs-dismiss="modal">
                 </button>
 
             </div>
 
 
-            <!-- BODY -->
-            <div class="modal-body text-center px-4 pb-4">
+            <div class="modal-body text-center">
 
                 <div class="delete-icon">
 
@@ -1083,12 +1102,7 @@
                 </div>
 
 
-                <h4 class="delete-title mt-3">
-                    Delete Teacher?
-                </h4>
-
-
-                <p class="delete-message">
+                <p class="mt-3">
 
                     Are you sure you want to permanently
                     delete
@@ -1100,20 +1114,16 @@
                 </p>
 
 
-                <div class="delete-warning">
+                <div class="alert alert-warning">
 
-                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
 
-                    <span>
-                        This action cannot be undone.
-                    </span>
+                    This action cannot be undone.
 
                 </div>
 
 
-                <!-- CONFIRM FORM -->
                 <form
-                    id="deleteConfirmForm"
                     method="post"
                     action="<%= request.getContextPath() %>/deleteTeacher">
 
@@ -1123,11 +1133,11 @@
                         id="deleteTeacherId">
 
 
-                    <div class="d-flex justify-content-center gap-2 mt-4">
+                    <div class="d-flex justify-content-center gap-2">
 
                         <button
                             type="button"
-                            class="btn btn-light delete-cancel-btn"
+                            class="btn btn-secondary"
                             data-bs-dismiss="modal">
 
                             Cancel
@@ -1137,7 +1147,7 @@
 
                         <button
                             type="submit"
-                            class="btn btn-danger delete-confirm-btn">
+                            class="btn btn-danger">
 
                             <i class="bi bi-trash3 me-1"></i>
 
@@ -1157,339 +1167,33 @@
 
 </div>
 
-<style>
-    /* ==========================================================
-   DELETE TEACHER MODAL
-   ========================================================== */
 
-.delete-modal {
-    border: none;
-    border-radius: 18px;
-    overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.20);
-}
-
-
-.delete-icon {
-    width: 72px;
-    height: 72px;
-
-    margin: 0 auto;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-
-    background: #fff1f2;
-    color: #dc3545;
-
-    font-size: 30px;
-}
-
-
-.delete-title {
-    font-weight: 700;
-    color: #212529;
-}
-
-
-.delete-message {
-    color: #6c757d;
-    font-size: 15px;
-    line-height: 1.6;
-
-    max-width: 420px;
-    margin: 10px auto 0;
-}
-
-
-.delete-message strong {
-    color: #212529;
-}
-
-
-.delete-warning {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-
-    margin: 18px auto 0;
-
-    padding: 12px 16px;
-
-    max-width: 390px;
-
-    border-radius: 10px;
-
-    background: #fff8e1;
-    color: #856404;
-
-    font-size: 13px;
-    font-weight: 500;
-}
-
-
-.delete-warning i {
-    font-size: 15px;
-}
-
-
-.delete-cancel-btn {
-    min-width: 100px;
-
-    border: 1px solid #dee2e6;
-
-    font-weight: 500;
-}
-
-
-.delete-confirm-btn {
-    min-width: 180px;
-
-    font-weight: 600;
-
-    border-radius: 8px;
-}
-
-
-.delete-confirm-btn:hover {
-    transform: translateY(-1px);
-}
-
-/* ==========================================================
-   SYSTEM MESSAGE MODAL
-   ========================================================== */
-
-.system-message-modal {
-
-    border: none;
-
-    border-radius: 18px;
-
-    overflow: hidden;
-
-    box-shadow:
-        0 20px 60px rgba(0, 0, 0, 0.20);
-
-}
-
-
-.system-message-icon {
-
-    width: 72px;
-
-    height: 72px;
-
-    margin: 0 auto;
-
-    border-radius: 50%;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    font-size: 34px;
-
-}
-
-
-.system-message-icon.success {
-
-    background: #e8f7ee;
-
-    color: #198754;
-
-}
-
-
-.system-message-icon.error {
-
-    background: #fff0f1;
-
-    color: #dc3545;
-
-}
-
-
-.system-message-title {
-
-    font-weight: 700;
-
-    color: #212529;
-
-}
-
-
-.system-message-text {
-
-    max-width: 420px;
-
-    margin: 10px auto 0;
-
-    color: #6c757d;
-
-    font-size: 15px;
-
-    line-height: 1.6;
-
-}
-
-
-.system-message-btn {
-
-    min-width: 120px;
-
-    margin-top: 20px;
-
-    border-radius: 8px;
-
-    font-weight: 600;
-
-}
-</style>
 
 <script>
 
-    function openDeleteModal(teacherId, teacherName) {
+function openDeleteModal(teacherId, teacherName) {
 
-        document.getElementById("deleteTeacherId").value =
-            teacherId;
+    document.getElementById("deleteTeacherId").value =
+        teacherId;
 
-        document.getElementById("deleteTeacherName").textContent =
-            teacherName;
+    document.getElementById("deleteTeacherName").textContent =
+        teacherName;
 
-        const modalElement =
-            document.getElementById("deleteTeacherModal");
+    const modalElement =
+        document.getElementById("deleteTeacherModal");
 
-        const modal =
-            bootstrap.Modal.getOrCreateInstance(modalElement);
+    const modal =
+        bootstrap.Modal.getOrCreateInstance(modalElement);
 
-        modal.show();
-    }
+    modal.show();
+}
 
 </script>
 
-
-<!-- Bootstrap JavaScript -->
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
-
-<script>
-
-    document.addEventListener("DOMContentLoaded", function () {
-
-        const messageModal =
-            document.getElementById("systemMessageModal");
-
-        if (messageModal) {
-
-            const modal =
-                new bootstrap.Modal(messageModal);
-
-            modal.show();
-
-        }
-
-    });
-
-</script>
-
-<!-- ==========================================================
-     SYSTEM MESSAGE MODAL
-     ========================================================== -->
-
-<%
-    String status = request.getParameter("status");
-    String message = request.getParameter("message");
-
-    boolean hasMessage =
-            message != null
-            && !message.trim().isEmpty();
-
-    boolean isSuccess =
-            "success".equalsIgnoreCase(status);
-%>
-
-
-<% if (hasMessage) { %>
-
-<div
-    class="modal fade"
-    id="systemMessageModal"
-    tabindex="-1"
-    aria-labelledby="systemMessageModalLabel"
-    aria-hidden="true">
-
-    <div class="modal-dialog modal-dialog-centered">
-
-        <div class="modal-content system-message-modal">
-
-            <div class="modal-body text-center px-4 py-4">
-
-                <!-- ICON -->
-
-                <div class="<%= isSuccess
-                        ? "system-message-icon success"
-                        : "system-message-icon error" %>">
-
-                    <i class="bi <%= isSuccess
-                            ? "bi-check-lg"
-                            : "bi-exclamation-lg" %>"></i>
-
-                </div>
-
-
-                <!-- TITLE -->
-
-                <h4 class="system-message-title mt-3">
-
-                    <%= isSuccess
-                            ? "Operation Successful"
-                            : "Operation Failed" %>
-
-                </h4>
-
-
-                <!-- MESSAGE -->
-
-                <p class="system-message-text">
-
-                    <%= message %>
-
-                </p>
-
-
-                <!-- BUTTON -->
-
-                <button
-                    type="button"
-                    class="btn <%= isSuccess
-                            ? "btn-primary"
-                            : "btn-danger" %> system-message-btn"
-                    data-bs-dismiss="modal">
-
-                    <i class="bi bi-check2 me-1"></i>
-
-                    OK
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<% } %>
 
 
 </body>

@@ -436,16 +436,13 @@
 
             <!-- Manage Teachers -->
 
-            <a
-                href="manage-teachers.jsp"
-                class="sidebar-link">
-
+            <a href="<%= request.getContextPath() %>/admin/manage-teachers.jsp">
                 <i class="bi bi-people-fill"></i>
-
-                <span>
                     Manage Teachers
-                </span>
-
+            </a>
+            <a href="<%= request.getContextPath() %>/admin/assign-courses.jsp">
+                <i class="bi bi-journal-bookmark-fill"></i>
+                    Assign Courses
             </a>
 
 
