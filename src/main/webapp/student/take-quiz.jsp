@@ -400,7 +400,7 @@
 
                     <a
                         class="nav-link"
-                        href="<%= request.getContextPath() %>/index.jsp">
+                        href="<%= request.getContextPath() %>/logout">
 
                         <i class="bi bi-box-arrow-right me-1"></i>
 
