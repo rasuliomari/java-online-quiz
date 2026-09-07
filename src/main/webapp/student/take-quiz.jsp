@@ -7,6 +7,34 @@
 <%@ page import="tz.udom.quiz.util.DBConnection" %>
 
 <%
+
+<%
+    /* ============================================================
+       STUDENT AUTHENTICATION
+       ============================================================ */
+
+    jakarta.servlet.http.HttpSession currentSession =
+            request.getSession(false);
+
+    boolean studentLoggedIn =
+            currentSession != null
+            && Boolean.TRUE.equals(
+                    currentSession.getAttribute("studentLoggedIn")
+            )
+            && "STUDENT".equals(
+                    currentSession.getAttribute("userRole")
+            );
+
+    if (!studentLoggedIn) {
+        response.sendRedirect(
+                request.getContextPath()
+                + "/login.jsp?error=studentLoginRequired"
+        );
+        return;
+    }
+%>
+
+
     /* ============================================================
        GET QUIZ ID
        ============================================================ */
