@@ -1,3 +1,4 @@
+
 package tz.udom.quiz.servlet;
 
 import java.io.IOException;
@@ -15,7 +16,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import tz.udom.quiz.util.DBConnection;
 
-
 @WebServlet("/createQuiz")
 public class CreateQuizServlet extends HttpServlet {
 
@@ -27,16 +27,13 @@ public class CreateQuizServlet extends HttpServlet {
 
         request.setCharacterEncoding("UTF-8");
 
-
         /*
          * ==========================================================
          * TEACHER AUTHORIZATION
          * ==========================================================
          */
 
-        HttpSession session =
-                request.getSession(false);
-
+        HttpSession session = request.getSession(false);
 
         boolean teacherLoggedIn =
                 session != null
@@ -46,7 +43,6 @@ public class CreateQuizServlet extends HttpServlet {
                 && "TEACHER".equals(
                         session.getAttribute("userRole")
                 );
-
 
         if (!teacherLoggedIn) {
 
@@ -58,7 +54,6 @@ public class CreateQuizServlet extends HttpServlet {
             return;
         }
 
-
         /*
          * ==========================================================
          * GET TEACHER ID FROM SESSION
@@ -67,7 +62,6 @@ public class CreateQuizServlet extends HttpServlet {
 
         Integer teacherId =
                 (Integer) session.getAttribute("teacherId");
-
 
         if (teacherId == null) {
 
@@ -79,7 +73,6 @@ public class CreateQuizServlet extends HttpServlet {
             return;
         }
 
-
         /*
          * ==========================================================
          * GET FORM DATA
@@ -89,8 +82,8 @@ public class CreateQuizServlet extends HttpServlet {
         String quizTitle =
                 clean(request.getParameter("quizTitle"));
 
-        String course =
-                clean(request.getParameter("course"));
+        String courseIdValue =
+                clean(request.getParameter("courseId"));
 
         String description =
                 clean(request.getParameter("description"));
@@ -107,7 +100,6 @@ public class CreateQuizServlet extends HttpServlet {
         String action =
                 clean(request.getParameter("action"));
 
-
         /*
          * ==========================================================
          * REQUIRED FIELD VALIDATION
@@ -115,7 +107,7 @@ public class CreateQuizServlet extends HttpServlet {
          */
 
         if (isEmpty(quizTitle)
-                || isEmpty(course)
+                || isEmpty(courseIdValue)
                 || isEmpty(description)
                 || isEmpty(durationValue)
                 || isEmpty(questionCountValue)
@@ -130,21 +122,21 @@ public class CreateQuizServlet extends HttpServlet {
             return;
         }
 
-
         /*
          * ==========================================================
          * CONVERT NUMERIC VALUES
          * ==========================================================
          */
 
+        int courseId;
         int duration;
-
         int questionCount;
-
         int passMark;
 
-
         try {
+
+            courseId =
+                    Integer.parseInt(courseIdValue);
 
             duration =
                     Integer.parseInt(durationValue);
@@ -160,18 +152,28 @@ public class CreateQuizServlet extends HttpServlet {
             redirectError(
                     request,
                     response,
-                    "Duration, question count and pass mark must be valid numbers."
+                    "Course, duration, question count and pass mark must be valid numbers."
             );
 
             return;
         }
-
 
         /*
          * ==========================================================
          * NUMERIC VALIDATION
          * ==========================================================
          */
+
+        if (courseId < 1) {
+
+            redirectError(
+                    request,
+                    response,
+                    "Please select a valid assigned course."
+            );
+
+            return;
+        }
 
         if (duration < 1) {
 
@@ -184,7 +186,6 @@ public class CreateQuizServlet extends HttpServlet {
             return;
         }
 
-
         if (questionCount < 1) {
 
             redirectError(
@@ -195,7 +196,6 @@ public class CreateQuizServlet extends HttpServlet {
 
             return;
         }
-
 
         if (passMark < 1 || passMark > 100) {
 
@@ -208,7 +208,6 @@ public class CreateQuizServlet extends HttpServlet {
             return;
         }
 
-
         /*
          * ==========================================================
          * DETERMINE QUIZ STATUS
@@ -217,7 +216,6 @@ public class CreateQuizServlet extends HttpServlet {
 
         String status = "DRAFT";
 
-
         if ("continue".equalsIgnoreCase(action)) {
 
             status = "DRAFT";
@@ -225,9 +223,94 @@ public class CreateQuizServlet extends HttpServlet {
         } else if ("draft".equalsIgnoreCase(action)) {
 
             status = "DRAFT";
-
         }
 
+        /*
+         * ==========================================================
+         * VERIFY COURSE ASSIGNMENT
+         *
+         * The teacher is NOT allowed to create a quiz for an
+         * arbitrary course ID.
+         *
+         * The course must exist AND be assigned to this teacher.
+         * ==========================================================
+         */
+
+        String courseSql =
+                "SELECT c.id, "
+                + "c.course_code, "
+                + "c.course_name "
+                + "FROM courses c "
+                + "INNER JOIN teacher_courses tc "
+                + "ON tc.course_id = c.id "
+                + "WHERE tc.teacher_id = ? "
+                + "AND c.id = ?";
+
+        /*
+         * ==========================================================
+         * GET COURSE INFORMATION
+         * ==========================================================
+         */
+
+        String courseCode;
+        String courseName;
+
+        try (Connection connection =
+                     DBConnection.getConnection();
+
+             PreparedStatement courseStatement =
+                     connection.prepareStatement(courseSql)) {
+
+            courseStatement.setInt(1, teacherId);
+            courseStatement.setInt(2, courseId);
+
+            try (ResultSet resultSet =
+                         courseStatement.executeQuery()) {
+
+                if (!resultSet.next()) {
+
+                    redirectError(
+                            request,
+                            response,
+                            "You are not assigned to the selected course."
+                    );
+
+                    return;
+                }
+
+                courseCode =
+                        resultSet.getString("course_code");
+
+                courseName =
+                        resultSet.getString("course_name");
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            redirectError(
+                    request,
+                    response,
+                    "Unable to verify the selected course."
+            );
+
+            return;
+        }
+
+        /*
+         * ==========================================================
+         * DISPLAY VALUE FOR EXISTING course COLUMN
+         *
+         * We keep the existing "course" column because it is
+         * currently NOT NULL and existing pages still use it.
+         *
+         * The normalized relationship is stored in course_id.
+         * ==========================================================
+         */
+
+        String courseDisplay =
+                courseCode + " - " + courseName;
 
         /*
          * ==========================================================
@@ -237,11 +320,11 @@ public class CreateQuizServlet extends HttpServlet {
 
         String insertSql =
                 "INSERT INTO quizzes "
-                + "(teacher_id, title, course, description, "
-                + "duration_minutes, question_count, pass_mark, status) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+                + "(teacher_id, title, course, course_id, "
+                + "description, duration_minutes, question_count, "
+                + "pass_mark, status) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 + "RETURNING id";
-
 
         try (Connection connection =
                      DBConnection.getConnection();
@@ -249,67 +332,96 @@ public class CreateQuizServlet extends HttpServlet {
              PreparedStatement statement =
                      connection.prepareStatement(insertSql)) {
 
-
+            /*
+             * Teacher who owns the quiz
+             */
             statement.setInt(
                     1,
                     teacherId
             );
 
-
+            /*
+             * Quiz title
+             */
             statement.setString(
                     2,
                     quizTitle
             );
 
-
+            /*
+             * Existing course display column
+             */
             statement.setString(
                     3,
-                    course
+                    courseDisplay
             );
 
-
-            statement.setString(
+            /*
+             * Normalized course foreign key
+             */
+            statement.setInt(
                     4,
+                    courseId
+            );
+
+            /*
+             * Description
+             */
+            statement.setString(
+                    5,
                     description
             );
 
-
+            /*
+             * Duration
+             */
             statement.setInt(
-                    5,
+                    6,
                     duration
             );
 
-
+            /*
+             * Number of questions
+             */
             statement.setInt(
-                    6,
+                    7,
                     questionCount
             );
 
-
+            /*
+             * Pass mark
+             */
             statement.setInt(
-                    7,
+                    8,
                     passMark
             );
 
-
+            /*
+             * Status
+             */
             statement.setString(
-                    8,
+                    9,
                     status
             );
 
+            /*
+             * ======================================================
+             * GET GENERATED QUIZ ID
+             * ======================================================
+             */
 
             try (ResultSet resultSet =
                          statement.executeQuery()) {
-
 
                 if (resultSet.next()) {
 
                     int quizId =
                             resultSet.getInt("id");
 
-
                     /*
-                     * Continue → Add Questions
+                     * ==================================================
+                     * CONTINUE → ADD QUESTIONS
+                     * ==================================================
                      */
 
                     if ("continue".equalsIgnoreCase(action)) {
@@ -324,9 +436,10 @@ public class CreateQuizServlet extends HttpServlet {
                         return;
                     }
 
-
                     /*
-                     * Save Draft
+                     * ==================================================
+                     * SAVE DRAFT
+                     * ==================================================
                      */
 
                     response.sendRedirect(
@@ -344,13 +457,17 @@ public class CreateQuizServlet extends HttpServlet {
                 }
             }
 
+            /*
+             * ==========================================================
+             * INSERT FAILED
+             * ==========================================================
+             */
 
             redirectError(
                     request,
                     response,
                     "Quiz could not be created."
             );
-
 
         } catch (Exception e) {
 
@@ -364,11 +481,10 @@ public class CreateQuizServlet extends HttpServlet {
         }
     }
 
-
     /*
-     * ==========================================================
+     * ==============================================================
      * CLEAN INPUT
-     * ==========================================================
+     * ==============================================================
      */
 
     private static String clean(String value) {
@@ -380,11 +496,10 @@ public class CreateQuizServlet extends HttpServlet {
         return value.trim();
     }
 
-
     /*
-     * ==========================================================
+     * ==============================================================
      * EMPTY CHECK
-     * ==========================================================
+     * ==============================================================
      */
 
     private static boolean isEmpty(String value) {
@@ -393,11 +508,10 @@ public class CreateQuizServlet extends HttpServlet {
                 || value.trim().isEmpty();
     }
 
-
     /*
-     * ==========================================================
+     * ==============================================================
      * ERROR REDIRECT
-     * ==========================================================
+     * ==============================================================
      */
 
     private void redirectError(
