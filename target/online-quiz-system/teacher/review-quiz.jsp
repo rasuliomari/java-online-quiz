@@ -1163,6 +1163,7 @@
 
             </div>
             <div>
+                <% if ("DRAFT".equalsIgnoreCase(status)) { %>
                 <a href="edit-quiz.jsp?quizId=<%= quizId %>"
                     class="btn btn-outline-primary">
 
@@ -1170,6 +1171,7 @@
                     Edit Quiz Information
 
                 </a>
+                <% } %>
 
             </div>
 
