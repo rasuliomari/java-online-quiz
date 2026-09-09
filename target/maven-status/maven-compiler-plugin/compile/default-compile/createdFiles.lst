@@ -5,6 +5,7 @@ tz/udom/quiz/filter/AdminAuthFilter.class
 tz/udom/quiz/filter/TeacherAuthFilter.class
 tz/udom/quiz/servlet/SaveQuestionServlet.class
 tz/udom/quiz/servlet/LoginServlet.class
+tz/udom/quiz/servlet/UpdateQuizServlet.class
 tz/udom/quiz/servlet/UpdateTeacherServlet.class
 tz/udom/quiz/servlet/PublishQuizServlet.class
 tz/udom/quiz/filter/StudentAuthFilter.class

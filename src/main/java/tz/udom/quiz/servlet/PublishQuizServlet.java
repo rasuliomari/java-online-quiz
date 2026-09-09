@@ -11,158 +11,74 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import tz.udom.quiz.util.DBConnection;
 
 @WebServlet("/publishQuiz")
 public class PublishQuizServlet extends HttpServlet {
 
-@Override
-protected void doPost(
-        HttpServletRequest request,
-        HttpServletResponse response)
-        throws ServletException, IOException {
-
-
-    /*
-     * =====================================================
-     * GET QUIZ ID
-     * =====================================================
-     */
-
-    String quizIdValue =
-            request.getParameter("quizId");
-
-
-    if (quizIdValue == null
-            || quizIdValue.trim().isEmpty()) {
-
-        response.sendError(
-                HttpServletResponse.SC_BAD_REQUEST,
-                "Quiz ID is required."
-        );
-
-        return;
-    }
-
-
-    int quizId;
-
-
-    try {
-
-        quizId =
-                Integer.parseInt(quizIdValue);
-
-    } catch (NumberFormatException e) {
-
-        response.sendError(
-                HttpServletResponse.SC_BAD_REQUEST,
-                "Invalid quiz ID."
-        );
-
-        return;
-    }
-
-
-    Connection connection = null;
-
-
-    try {
+    @Override
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
 
         /*
-         * =================================================
-         * CONNECT TO DATABASE
-         * =================================================
+         * =====================================================
+         * CHECK TEACHER SESSION
+         * =====================================================
          */
 
-        connection =
-                DBConnection.getConnection();
+        HttpSession session = request.getSession(false);
+
+        if (session == null) {
+
+            response.sendRedirect("login.jsp");
+
+            return;
+        }
+
+        Boolean teacherLoggedIn =
+                (Boolean) session.getAttribute("teacherLoggedIn");
+
+        String userRole =
+                (String) session.getAttribute("userRole");
+
+        Object teacherIdObject =
+                session.getAttribute("teacherId");
+
+
+        if (teacherLoggedIn == null
+                || !teacherLoggedIn
+                || !"TEACHER".equals(userRole)
+                || teacherIdObject == null) {
+
+            response.sendRedirect("login.jsp");
+
+            return;
+        }
 
 
         /*
-         * =================================================
-         * START TRANSACTION
-         * =================================================
+         * =====================================================
+         * GET TEACHER ID
+         * =====================================================
          */
 
-        connection.setAutoCommit(false);
+        int teacherId;
 
+        try {
 
-        /*
-         * =================================================
-         * LOAD QUIZ INFORMATION
-         * =================================================
-         */
-
-        String quizSql = """
-                SELECT
-                    question_count,
-                    status
-                FROM quizzes
-                WHERE id = ?
-                FOR UPDATE
-                """;
-
-
-        int requiredQuestionCount;
-
-        String status;
-
-
-        try (PreparedStatement statement =
-                     connection.prepareStatement(quizSql)) {
-
-
-            statement.setInt(
-                    1,
-                    quizId
-            );
-
-
-            try (ResultSet resultSet =
-                         statement.executeQuery()) {
-
-
-                if (!resultSet.next()) {
-
-                    connection.rollback();
-
-                    response.sendError(
-                            HttpServletResponse.SC_NOT_FOUND,
-                            "Quiz not found."
+            teacherId =
+                    Integer.parseInt(
+                            teacherIdObject.toString()
                     );
 
-                    return;
-                }
-
-
-                requiredQuestionCount =
-                        resultSet.getInt(
-                                "question_count"
-                        );
-
-
-                status =
-                        resultSet.getString(
-                                "status"
-                        );
-            }
-        }
-
-
-        /*
-         * =================================================
-         * CHECK STATUS
-         * =================================================
-         */
-
-        if (!"DRAFT".equalsIgnoreCase(status)) {
-
-            connection.rollback();
+        } catch (NumberFormatException e) {
 
             response.sendError(
-                    HttpServletResponse.SC_BAD_REQUEST,
-                    "Only draft quizzes can be published."
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "Invalid teacher session."
             );
 
             return;
@@ -170,351 +86,463 @@ protected void doPost(
 
 
         /*
-         * =================================================
-         * COUNT QUESTIONS
-         * =================================================
+         * =====================================================
+         * GET QUIZ ID
+         * =====================================================
          */
 
-        String questionCountSql = """
-                SELECT COUNT(*)
-                FROM questions
-                WHERE quiz_id = ?
-                """;
+        String quizIdValue =
+                request.getParameter("quizId");
 
 
-        int actualQuestionCount;
-
-
-        try (PreparedStatement statement =
-                     connection.prepareStatement(
-                             questionCountSql)) {
-
-
-            statement.setInt(
-                    1,
-                    quizId
-            );
-
-
-            try (ResultSet resultSet =
-                         statement.executeQuery()) {
-
-
-                resultSet.next();
-
-
-                actualQuestionCount =
-                        resultSet.getInt(1);
-            }
-        }
-
-
-        /*
-         * =================================================
-         * CHECK QUESTION COUNT
-         * =================================================
-         */
-
-        if (actualQuestionCount
-                != requiredQuestionCount) {
-
-            connection.rollback();
+        if (quizIdValue == null
+                || quizIdValue.trim().isEmpty()) {
 
             response.sendError(
                     HttpServletResponse.SC_BAD_REQUEST,
-
-                    "Quiz cannot be published. "
-                    + "Required questions: "
-                    + requiredQuestionCount
-                    + ", saved questions: "
-                    + actualQuestionCount
+                    "Quiz ID is required."
             );
 
             return;
         }
 
 
-        /*
-         * =================================================
-         * LOAD ALL QUESTIONS
-         * =================================================
-         */
-
-        String questionsSql = """
-                SELECT id
-                FROM questions
-                WHERE quiz_id = ?
-                ORDER BY question_number ASC
-                """;
+        int quizId;
 
 
-        try (PreparedStatement statement =
-                     connection.prepareStatement(
-                             questionsSql)) {
+        try {
 
+            quizId =
+                    Integer.parseInt(quizIdValue);
 
-            statement.setInt(
-                    1,
-                    quizId
+        } catch (NumberFormatException e) {
+
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid quiz ID."
             );
 
-
-            try (ResultSet resultSet =
-                         statement.executeQuery()) {
-
-
-                while (resultSet.next()) {
-
-
-                    int questionId =
-                            resultSet.getInt("id");
-
-
-                    /*
-                     * =====================================
-                     * COUNT ANSWERS FOR QUESTION
-                     * =====================================
-                     */
-
-                    String answerCountSql = """
-                            SELECT COUNT(*)
-                            FROM answers
-                            WHERE question_id = ?
-                            """;
-
-
-                    int answerCount;
-
-
-                    try (PreparedStatement answerStatement =
-                                 connection.prepareStatement(
-                                         answerCountSql)) {
-
-
-                        answerStatement.setInt(
-                                1,
-                                questionId
-                        );
-
-
-                        try (ResultSet answerResult =
-                                     answerStatement.executeQuery()) {
-
-
-                            answerResult.next();
-
-
-                            answerCount =
-                                    answerResult.getInt(1);
-                        }
-                    }
-
-
-                    /*
-                     * =====================================
-                     * EVERY QUESTION MUST HAVE 4 ANSWERS
-                     * =====================================
-                     */
-
-                    if (answerCount != 4) {
-
-                        connection.rollback();
-
-                        response.sendError(
-                                HttpServletResponse.SC_BAD_REQUEST,
-
-                                "Question "
-                                + questionId
-                                + " must have exactly 4 answers."
-                        );
-
-                        return;
-                    }
-
-
-                    /*
-                     * =====================================
-                     * COUNT CORRECT ANSWERS
-                     * =====================================
-                     */
-
-                    String correctAnswerSql = """
-                            SELECT COUNT(*)
-                            FROM answers
-                            WHERE question_id = ?
-                              AND is_correct = TRUE
-                            """;
-
-
-                    int correctAnswerCount;
-
-
-                    try (PreparedStatement correctStatement =
-                                 connection.prepareStatement(
-                                         correctAnswerSql)) {
-
-
-                        correctStatement.setInt(
-                                1,
-                                questionId
-                        );
-
-
-                        try (ResultSet correctResult =
-                                     correctStatement.executeQuery()) {
-
-
-                            correctResult.next();
-
-
-                            correctAnswerCount =
-                                    correctResult.getInt(1);
-                        }
-                    }
-
-
-                    /*
-                     * =====================================
-                     * EXACTLY ONE CORRECT ANSWER
-                     * =====================================
-                     */
-
-                    if (correctAnswerCount != 1) {
-
-                        connection.rollback();
-
-                        response.sendError(
-                                HttpServletResponse.SC_BAD_REQUEST,
-
-                                "Question "
-                                + questionId
-                                + " must have exactly one correct answer."
-                        );
-
-                        return;
-                    }
-                }
-            }
+            return;
         }
 
 
-        /*
-         * =================================================
-         * PUBLISH QUIZ
-         * =================================================
-         */
-
-        String publishSql = """
-                UPDATE quizzes
-                SET status = 'PUBLISHED',
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """;
+        Connection connection = null;
 
 
-        try (PreparedStatement statement =
-                     connection.prepareStatement(
-                             publishSql)) {
+        try {
+
+            /*
+             * =================================================
+             * CONNECT TO DATABASE
+             * =================================================
+             */
+
+            connection =
+                    DBConnection.getConnection();
 
 
-            statement.setInt(
-                    1,
-                    quizId
-            );
+            /*
+             * =================================================
+             * START TRANSACTION
+             * =================================================
+             */
+
+            connection.setAutoCommit(false);
 
 
-            int rowsUpdated =
-                    statement.executeUpdate();
+            /*
+             * =================================================
+             * LOAD QUIZ AND VERIFY OWNERSHIP
+             * =================================================
+             */
+
+            String quizSql = """
+                    SELECT
+                        question_count,
+                        status
+                    FROM quizzes
+                    WHERE id = ?
+                    AND teacher_id = ?
+                    FOR UPDATE
+                    """;
 
 
-            if (rowsUpdated != 1) {
+            int requiredQuestionCount;
+
+            String status;
+
+
+            try (PreparedStatement statement =
+                         connection.prepareStatement(quizSql)) {
+
+                statement.setInt(1, quizId);
+                statement.setInt(2, teacherId);
+
+
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
+
+                    if (!resultSet.next()) {
+
+                        connection.rollback();
+
+                        response.sendError(
+                                HttpServletResponse.SC_NOT_FOUND,
+                                "Quiz not found or you do not own this quiz."
+                        );
+
+                        return;
+                    }
+
+
+                    requiredQuestionCount =
+                            resultSet.getInt(
+                                    "question_count"
+                            );
+
+
+                    status =
+                            resultSet.getString(
+                                    "status"
+                            );
+                }
+            }
+
+
+            /*
+             * =================================================
+             * CHECK QUIZ STATUS
+             * =================================================
+             */
+
+            if (!"DRAFT".equalsIgnoreCase(status)) {
 
                 connection.rollback();
 
                 response.sendError(
-                        HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                        "Quiz could not be published."
+                        HttpServletResponse.SC_BAD_REQUEST,
+                        "Only draft quizzes can be published."
                 );
 
                 return;
             }
-        }
 
 
-        /*
-         * =================================================
-         * COMMIT
-         * =================================================
-         */
+            /*
+             * =================================================
+             * COUNT QUESTIONS
+             * =================================================
+             */
 
-        connection.commit();
-
-
-        /*
-         * =================================================
-         * REDIRECT TO DASHBOARD
-         * =================================================
-         */
-
-        response.sendRedirect(
-                "teacher/dashboard.jsp?published=success"
-        );
+            String questionCountSql = """
+                    SELECT COUNT(*)
+                    FROM questions
+                    WHERE quiz_id = ?
+                    """;
 
 
-    } catch (SQLException e) {
+            int actualQuestionCount;
 
 
-        /*
-         * =================================================
-         * ROLLBACK
-         * =================================================
-         */
+            try (PreparedStatement statement =
+                         connection.prepareStatement(
+                                 questionCountSql)) {
 
-        if (connection != null) {
+                statement.setInt(1, quizId);
 
-            try {
+
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
+
+                    resultSet.next();
+
+                    actualQuestionCount =
+                            resultSet.getInt(1);
+                }
+            }
+
+
+            /*
+             * =================================================
+             * CHECK QUESTION COUNT
+             * =================================================
+             */
+
+            if (actualQuestionCount
+                    != requiredQuestionCount) {
 
                 connection.rollback();
 
-            } catch (SQLException rollbackException) {
+                response.sendError(
+                        HttpServletResponse.SC_BAD_REQUEST,
 
-                rollbackException.printStackTrace();
+                        "Quiz cannot be published. "
+                                + "Required questions: "
+                                + requiredQuestionCount
+                                + ", saved questions: "
+                                + actualQuestionCount
+                );
+
+                return;
             }
-        }
 
 
-        e.printStackTrace();
+            /*
+             * =================================================
+             * CHECK EVERY QUESTION
+             * =================================================
+             */
+
+            String questionsSql = """
+                    SELECT
+                        q.id,
+                        q.question_number
+                    FROM questions q
+                    WHERE q.quiz_id = ?
+                    ORDER BY q.question_number ASC
+                    """;
 
 
-        response.sendError(
-                HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                "Database error while publishing the quiz."
-        );
+            try (PreparedStatement statement =
+                         connection.prepareStatement(
+                                 questionsSql)) {
+
+                statement.setInt(1, quizId);
 
 
-    } finally {
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
 
 
-        /*
-         * =================================================
-         * CLOSE CONNECTION
-         * =================================================
-         */
+                    while (resultSet.next()) {
 
-        if (connection != null) {
+                        int questionId =
+                                resultSet.getInt("id");
 
-            try {
+                        int questionNumber =
+                                resultSet.getInt(
+                                        "question_number"
+                                );
 
-                connection.setAutoCommit(true);
 
-                connection.close();
+                        /*
+                         * =====================================
+                         * COUNT ANSWERS
+                         * =====================================
+                         */
 
-            } catch (SQLException e) {
+                        String answerValidationSql = """
+                                SELECT
+                                    COUNT(*) AS answer_count,
+                                    COALESCE(
+                                        SUM(
+                                            CASE
+                                                WHEN is_correct = TRUE
+                                                THEN 1
+                                                ELSE 0
+                                            END
+                                        ),
+                                        0
+                                    ) AS correct_count
+                                FROM answers
+                                WHERE question_id = ?
+                                """;
 
-                e.printStackTrace();
+
+                        int answerCount;
+
+                        int correctAnswerCount;
+
+
+                        try (PreparedStatement answerStatement =
+                                     connection.prepareStatement(
+                                             answerValidationSql)) {
+
+                            answerStatement.setInt(
+                                    1,
+                                    questionId
+                            );
+
+
+                            try (ResultSet answerResult =
+                                         answerStatement.executeQuery()) {
+
+                                answerResult.next();
+
+                                answerCount =
+                                        answerResult.getInt(
+                                                "answer_count"
+                                        );
+
+                                correctAnswerCount =
+                                        answerResult.getInt(
+                                                "correct_count"
+                                        );
+                            }
+                        }
+
+
+                        /*
+                         * =====================================
+                         * EXACTLY 4 ANSWERS
+                         * =====================================
+                         */
+
+                        if (answerCount != 4) {
+
+                            connection.rollback();
+
+                            response.sendError(
+                                    HttpServletResponse.SC_BAD_REQUEST,
+
+                                    "Question "
+                                            + questionNumber
+                                            + " must have exactly 4 answers."
+                            );
+
+                            return;
+                        }
+
+
+                        /*
+                         * =====================================
+                         * EXACTLY ONE CORRECT ANSWER
+                         * =====================================
+                         */
+
+                        if (correctAnswerCount != 1) {
+
+                            connection.rollback();
+
+                            response.sendError(
+                                    HttpServletResponse.SC_BAD_REQUEST,
+
+                                    "Question "
+                                            + questionNumber
+                                            + " must have exactly one correct answer."
+                            );
+
+                            return;
+                        }
+                    }
+                }
+            }
+
+
+            /*
+             * =================================================
+             * PUBLISH QUIZ
+             * =================================================
+             */
+
+            String publishSql = """
+                    UPDATE quizzes
+                    SET
+                        status = 'PUBLISHED',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    AND teacher_id = ?
+                    AND status = 'DRAFT'
+                    """;
+
+
+            try (PreparedStatement statement =
+                         connection.prepareStatement(
+                                 publishSql)) {
+
+                statement.setInt(1, quizId);
+                statement.setInt(2, teacherId);
+
+
+                int rowsUpdated =
+                        statement.executeUpdate();
+
+
+                if (rowsUpdated != 1) {
+
+                    connection.rollback();
+
+                    response.sendError(
+                            HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                            "Quiz could not be published."
+                    );
+
+                    return;
+                }
+            }
+
+
+            /*
+             * =================================================
+             * COMMIT
+             * =================================================
+             */
+
+            connection.commit();
+
+
+            /*
+             * =================================================
+             * REDIRECT TO TEACHER DASHBOARD
+             * =================================================
+             */
+
+            response.sendRedirect(
+                    "teacher/dashboard.jsp?published=success"
+            );
+
+
+        } catch (SQLException e) {
+
+            /*
+             * =================================================
+             * ROLLBACK
+             * =================================================
+             */
+
+            if (connection != null) {
+
+                try {
+
+                    connection.rollback();
+
+                } catch (SQLException rollbackException) {
+
+                    rollbackException.printStackTrace();
+                }
+            }
+
+
+            e.printStackTrace();
+
+
+            response.sendError(
+                    HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Database error while publishing the quiz."
+            );
+
+
+        } finally {
+
+            /*
+             * =================================================
+             * CLOSE CONNECTION
+             * =================================================
+             */
+
+            if (connection != null) {
+
+                try {
+
+                    connection.setAutoCommit(true);
+
+                    connection.close();
+
+                } catch (SQLException e) {
+
+                    e.printStackTrace();
+                }
             }
         }
     }
-}
-
 }

@@ -1162,6 +1162,16 @@
                 </a>
 
             </div>
+            <div>
+                <a href="edit-quiz.jsp?quizId=<%= quizId %>"
+                    class="btn btn-outline-primary">
+
+                    <i class="bi bi-pencil-square me-1"></i>
+                    Edit Quiz Information
+
+                </a>
+
+            </div>
 
             <div>
 

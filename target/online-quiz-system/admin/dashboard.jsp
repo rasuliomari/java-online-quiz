@@ -438,11 +438,7 @@
 
             <a href="<%= request.getContextPath() %>/admin/manage-teachers.jsp">
                 <i class="bi bi-people-fill"></i>
-                    Manage Teachers
-            </a>
-            <a href="<%= request.getContextPath() %>/admin/assign-courses.jsp">
-                <i class="bi bi-journal-bookmark-fill"></i>
-                    Assign Courses
+                    <span>Manage Teachers</span> 
             </a>
 
 
