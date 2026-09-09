@@ -848,3 +848,99 @@ color: #9ca3af;
 font-size: 12px;
 }
 
+.quiz-detail-box {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 18px;
+    height: 100%;
+}
+
+.quiz-question-item {
+    border: 1px solid #e9ecef;
+    border-radius: 14px;
+    padding: 20px;
+    background: #ffffff;
+}
+
+.quiz-question-number {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #0d6efd;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.quiz-answer-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    margin-top: 8px;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    background: #f8f9fa;
+}
+
+.quiz-answer-option.correct-answer {
+    border-color: #198754;
+    background: #f0fff7;
+}
+
+.answer-label {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.correct-answer .answer-label {
+    background: #198754;
+    color: #ffffff;
+    border-color: #198754;
+}
+
+.answer-text {
+    flex-grow: 1;
+}
+
+/* =====================================================
+   ADMIN QUIZ ACTION BUTTON FIX
+   ===================================================== */
+
+.dashboard-main {
+    position: relative;
+    z-index: 2;
+}
+
+.content-card {
+    position: relative;
+    z-index: 3;
+}
+
+.table-responsive {
+    position: relative;
+    z-index: 4;
+}
+
+.btn-group {
+    position: relative;
+    z-index: 10;
+}
+
+.btn-group a,
+.btn-group button {
+    position: relative;
+    z-index: 11;
+    pointer-events: auto;
+}

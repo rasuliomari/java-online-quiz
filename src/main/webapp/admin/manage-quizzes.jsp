@@ -635,9 +635,10 @@
                             <div class="btn-group">
 
                                 <a
-                                    href="view-quiz.jsp?id=<%= quizId %>"
+                                    href="./view-quiz.jsp?id=<%= quizId %>"
                                     class="btn btn-sm btn-outline-primary"
-                                    title="View">
+                                    title="View"
+                                    style="position: relative; z-index: 100;">
 
                                     <i class="bi bi-eye"></i>
 
@@ -645,9 +646,10 @@
 
 
                                 <a
-                                    href="edit-quiz.jsp?id=<%= quizId %>"
+                                    href="./edit-quiz.jsp?id=<%= quizId %>"
                                     class="btn btn-sm btn-outline-secondary"
-                                    title="Edit">
+                                    title="Edit"
+                                    style="position: relative; z-index: 100;">
 
                                     <i class="bi bi-pencil"></i>
 
