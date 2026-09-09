@@ -1,12 +1,344 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="java.sql.SQLException" %>
+<%@ page import="jakarta.servlet.http.HttpSession" %>
+<%@ page import="tz.udom.quiz.util.DBConnection" %>
 
 <%
-    String quizIdValue =
+    /*
+     * ============================================================
+     * STUDENT AUTHENTICATION
+     * ============================================================
+     */
+
+    HttpSession studentSession =
+            request.getSession(false);
+
+    if (studentSession == null
+            || !Boolean.TRUE.equals(
+                    studentSession.getAttribute("studentLoggedIn"))
+            || !"STUDENT".equals(
+                    studentSession.getAttribute("userRole"))) {
+
+        response.sendRedirect("../login.jsp");
+        return;
+    }
+
+    Object studentIdObject =
+            studentSession.getAttribute("studentId");
+
+    if (studentIdObject == null) {
+
+        response.sendRedirect("../login.jsp");
+        return;
+    }
+
+    int studentId;
+
+    try {
+
+        studentId =
+                Integer.parseInt(
+                        studentIdObject.toString()
+                );
+
+    } catch (NumberFormatException e) {
+
+        response.sendRedirect("../login.jsp");
+        return;
+    }
+
+
+    /*
+     * ============================================================
+     * GET QUIZ ID
+     * ============================================================
+     */
+
+    String quizIdParameter =
             request.getParameter("quizId");
+
+    if (quizIdParameter == null
+            || quizIdParameter.trim().isEmpty()) {
+
+        response.sendRedirect("dashboard.jsp");
+        return;
+    }
+
+    int quizId;
+
+    try {
+
+        quizId =
+                Integer.parseInt(
+                        quizIdParameter
+                );
+
+    } catch (NumberFormatException e) {
+
+        response.sendRedirect("dashboard.jsp");
+        return;
+    }
+
+
+    /*
+     * ============================================================
+     * LOAD PREVIOUS ATTEMPT FROM DATABASE
+     * ============================================================
+     */
+
+    int attemptId = 0;
+
+    String quizTitle = "";
+
+    int score = 0;
+    int totalQuestions = 0;
+    double percentage = 0;
+    String resultStatus = "";
+    String submittedAt = "";
+    int passMark = 0;
+
+    boolean attemptFound = false;
+
+    Connection connection = null;
+    PreparedStatement statement = null;
+    ResultSet result = null;
+
+    try {
+
+        connection =
+                DBConnection.getConnection();
+
+        statement =
+                connection.prepareStatement(
+                        "SELECT qa.id AS attempt_id, " +
+                        "q.id AS quiz_id, " +
+                        "q.title, " +
+                        "q.pass_mark, " +
+                        "qa.score, " +
+                        "qa.total_questions, " +
+                        "qa.percentage, " +
+                        "qa.result_status, " +
+                        "qa.submitted_at " +
+                        "FROM quiz_attempts qa " +
+                        "INNER JOIN quizzes q " +
+                        "ON qa.quiz_id = q.id " +
+                        "WHERE qa.quiz_id = ? " +
+                        "AND qa.student_id = ?"
+                );
+
+        statement.setInt(1, quizId);
+        statement.setInt(2, studentId);
+
+        result =
+                statement.executeQuery();
+
+        if (result.next()) {
+
+            attemptFound = true;
+
+            attemptId =
+                    result.getInt("attempt_id");
+
+            quizTitle =
+                    result.getString("title");
+
+            passMark =
+                    result.getInt("pass_mark");
+
+            score =
+                    result.getInt("score");
+
+            totalQuestions =
+                    result.getInt("total_questions");
+
+            percentage =
+                    result.getDouble("percentage");
+
+            resultStatus =
+                    result.getString("result_status");
+
+            if (result.getTimestamp("submitted_at") != null) {
+
+                submittedAt =
+                        result.getTimestamp(
+                                "submitted_at"
+                        ).toString();
+            }
+        }
+
+    } catch (SQLException e) {
+
+        e.printStackTrace();
+
+        response.sendError(
+                500,
+                "Unable to load previous quiz attempt."
+        );
+
+        return;
+
+    } finally {
+
+        if (result != null) {
+
+            try {
+                result.close();
+            } catch (SQLException ignored) {
+            }
+        }
+
+        if (statement != null) {
+
+            try {
+                statement.close();
+            } catch (SQLException ignored) {
+            }
+        }
+
+        if (connection != null) {
+
+            try {
+                connection.close();
+            } catch (SQLException ignored) {
+            }
+        }
+    }
+
+
+    /*
+     * If no attempt exists, return to dashboard.
+     */
+
+    if (!attemptFound) {
+
+        response.sendRedirect("dashboard.jsp");
+        return;
+    }
+
+
+    /*
+     * ============================================================
+     * STUDENT INFORMATION
+     * ============================================================
+     */
+
+    String studentFirstName =
+            String.valueOf(
+                    studentSession.getAttribute(
+                            "studentFirstName"
+                    )
+            );
+
+    String studentLastName =
+            String.valueOf(
+                    studentSession.getAttribute(
+                            "studentLastName"
+                    )
+            );
+
+    String studentFullName =
+            studentFirstName;
+
+    if (studentLastName != null
+            && !"null".equals(studentLastName)
+            && !studentLastName.trim().isEmpty()) {
+
+        studentFullName =
+                studentFirstName
+                + " "
+                + studentLastName;
+    }
+
+    String initials = "ST";
+
+    if (studentFirstName != null
+            && !studentFirstName.isEmpty()) {
+
+        initials =
+                studentFirstName.substring(0, 1)
+                        .toUpperCase();
+
+        if (studentLastName != null
+                && !studentLastName.isEmpty()
+                && !"null".equals(studentLastName)) {
+
+            initials +=
+                    studentLastName.substring(0, 1)
+                            .toUpperCase();
+        }
+    }
+
+
+    /*
+     * ============================================================
+     * AVAILABLE QUIZ COUNT
+     * ============================================================
+     */
+
+    int availableQuizCount = 0;
+
+    connection = null;
+    statement = null;
+    result = null;
+
+    try {
+
+        connection =
+                DBConnection.getConnection();
+
+        statement =
+                connection.prepareStatement(
+                        "SELECT COUNT(*) " +
+                        "FROM quizzes " +
+                        "WHERE status = 'PUBLISHED'"
+                );
+
+        result =
+                statement.executeQuery();
+
+        if (result.next()) {
+
+            availableQuizCount =
+                    result.getInt(1);
+        }
+
+    } catch (SQLException e) {
+
+        e.printStackTrace();
+
+    } finally {
+
+        if (result != null) {
+
+            try {
+                result.close();
+            } catch (SQLException ignored) {
+            }
+        }
+
+        if (statement != null) {
+
+            try {
+                statement.close();
+            } catch (SQLException ignored) {
+            }
+        }
+
+        if (connection != null) {
+
+            try {
+                connection.close();
+            } catch (SQLException ignored) {
+            }
+        }
+    }
+
 %>
 
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
@@ -17,207 +349,72 @@
           content="width=device-width, initial-scale=1.0">
 
     <title>
-        Attempt Already Completed - UDOM Online Quiz System
+        Quiz Already Attempted - UDOM Online Quiz System
     </title>
-
-
-    <!-- Bootstrap -->
 
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet">
 
-
-    <!-- Bootstrap Icons -->
-
     <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-
-    <!-- Dashboard CSS -->
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+        rel="stylesheet">
 
     <link
         rel="stylesheet"
         href="../css/dashboard.css">
 
+    <style>
+
+        .attempt-card {
+            max-width: 750px;
+            margin: 50px auto;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+        }
+
+        .attempt-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff3cd;
+            color: #856404;
+            font-size: 38px;
+        }
+
+        .result-box {
+            border-radius: 14px;
+            background: #f8f9fa;
+        }
+
+    </style>
+
 </head>
 
-
 <body>
-
-
-<!-- ============================================================
-     NAVBAR
-     ============================================================ -->
-
-<nav class="navbar navbar-expand-lg dashboard-navbar fixed-top">
-
-    <div class="container-fluid">
-
-
-        <button
-            class="btn sidebar-toggle d-lg-none me-2"
-            type="button"
-            data-bs-toggle="offcanvas"
-            data-bs-target="#studentSidebar">
-
-            <i class="bi bi-list"></i>
-
-        </button>
-
-
-        <a
-            class="navbar-brand d-flex align-items-center"
-            href="dashboard.jsp">
-
-            <div class="brand-icon">
-
-                <i class="bi bi-mortarboard-fill"></i>
-
-            </div>
-
-
-            <div class="brand-text">
-
-                <span>
-                    UDOM
-                </span>
-
-                <small>
-                    Online Quiz System
-                </small>
-
-            </div>
-
-        </a>
-
-
-        <div class="d-flex align-items-center ms-auto">
-
-
-            <button
-                class="notification-btn me-3">
-
-                <i class="bi bi-bell"></i>
-
-                <span class="notification-badge">
-                    3
-                </span>
-
-            </button>
-
-
-            <div class="dropdown">
-
-                <button
-                    class="profile-button dropdown-toggle"
-                    data-bs-toggle="dropdown">
-
-                    <div class="student-avatar">
-                        RO
-                    </div>
-
-
-                    <div class="student-name d-none d-md-block">
-
-                        <strong>
-                            Student
-                        </strong>
-
-                        <small>
-                            Student Account
-                        </small>
-
-                    </div>
-
-                </button>
-
-
-                <ul
-                    class="dropdown-menu dropdown-menu-end shadow">
-
-                    <li>
-
-                        <a
-                            class="dropdown-item"
-                            href="#">
-
-                            <i class="bi bi-person me-2"></i>
-
-                            My Profile
-
-                        </a>
-
-                    </li>
-
-
-                    <li>
-
-                        <a
-                            class="dropdown-item"
-                            href="#">
-
-                            <i class="bi bi-gear me-2"></i>
-
-                            Settings
-
-                        </a>
-
-                    </li>
-
-
-                    <li>
-
-                        <hr class="dropdown-divider">
-
-                    </li>
-
-
-                    <li>
-
-                        <a
-                            class="dropdown-item text-danger"
-                            href="../login.jsp">
-
-                            <i
-                                class="bi bi-box-arrow-right me-2">
-                            </i>
-
-                            Logout
-
-                        </a>
-
-                    </li>
-
-                </ul>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</nav>
-
 
 
 <!-- ============================================================
      SIDEBAR
      ============================================================ -->
 
-<div
-    class="offcanvas-lg offcanvas-start student-sidebar"
-    tabindex="-1"
-    id="studentSidebar">
+<div class="offcanvas offcanvas-start student-sidebar"
+     tabindex="-1"
+     id="studentSidebar">
 
+    <div class="offcanvas-header">
 
-    <div class="offcanvas-header d-lg-none">
+        <h5 class="fw-bold mb-0">
 
-        <h5 class="offcanvas-title">
-            Student Menu
+            <i class="bi bi-mortarboard-fill me-2"></i>
+
+            UDOM
+
         </h5>
-
 
         <button
             type="button"
@@ -227,295 +424,399 @@
 
     </div>
 
+    <div class="offcanvas-body">
 
-    <div class="sidebar-content">
+        <div class="mb-4">
 
-
-        <div class="sidebar-profile">
-
-            <div class="sidebar-avatar">
-                RO
-            </div>
-
-
-            <div>
-
-                <h6>
-                    Student
-                </h6>
-
-                <span>
-                    Student Account
-                </span>
-
+            <div class="small text-muted">
+                Online Quiz System
             </div>
 
         </div>
 
+        <ul class="nav flex-column gap-2">
 
-        <div class="sidebar-menu">
+            <li class="nav-item">
 
+                <a class="nav-link"
+                   href="dashboard.jsp">
 
-            <p class="menu-title">
-                MAIN MENU
-            </p>
+                    <i class="bi bi-grid me-2"></i>
 
-
-            <a
-                href="dashboard.jsp"
-                class="sidebar-link active">
-
-                <i class="bi bi-grid-1x2-fill"></i>
-
-                <span>
                     Dashboard
-                </span>
 
-            </a>
+                </a>
 
+            </li>
 
-            <a
-                href="dashboard.jsp"
-                class="sidebar-link">
+            <li class="nav-item">
 
-                <i class="bi bi-journal-check"></i>
+                <a class="nav-link"
+                   href="dashboard.jsp#available-quizzes">
 
-                <span>
+                    <i class="bi bi-journal-check me-2"></i>
+
                     Available Quizzes
-                </span>
 
-            </a>
+                    <span class="badge bg-primary float-end">
 
+                        <%= availableQuizCount %>
 
-            <a
-                href="#"
-                class="sidebar-link">
+                    </span>
 
-                <i class="bi bi-clock-history"></i>
+                </a>
 
-                <span>
-                    Quiz History
-                </span>
+            </li>
 
-            </a>
+            <li class="nav-item">
 
+                <a class="nav-link"
+                   href="quiz-history.jsp">
 
-            <a
-                href="#"
-                class="sidebar-link">
+                    <i class="bi bi-bar-chart me-2"></i>
 
-                <i class="bi bi-bar-chart-fill"></i>
-
-                <span>
                     My Results
-                </span>
 
-            </a>
+                </a>
 
+            </li>
 
-            <p class="menu-title mt-4">
-                ACCOUNT
-            </p>
+            <li class="nav-item">
 
+                <a class="nav-link"
+                   href="quiz-history.jsp">
 
-            <a
-                href="#"
-                class="sidebar-link">
+                    <i class="bi bi-clock-history me-2"></i>
 
-                <i class="bi bi-person-fill"></i>
+                    Quiz History
 
-                <span>
-                    My Profile
-                </span>
+                </a>
 
-            </a>
+            </li>
 
+            <li class="nav-item">
 
-            <a
-                href="#"
-                class="sidebar-link">
+                <a class="nav-link"
+                   href="profile.jsp">
 
-                <i class="bi bi-gear-fill"></i>
+                    <i class="bi bi-person me-2"></i>
 
-                <span>
-                    Settings
-                </span>
+                    Profile
 
-            </a>
+                </a>
 
-        </div>
+            </li>
 
+            <li class="nav-item mt-3">
 
-        <div class="sidebar-bottom">
+                <a class="nav-link text-danger"
+                   href="../logout">
 
-            <a
-                href="../login.jsp"
-                class="logout-link">
+                    <i class="bi bi-box-arrow-right me-2"></i>
 
-                <i class="bi bi-box-arrow-left"></i>
-
-                <span>
                     Logout
-                </span>
 
-            </a>
+                </a>
 
-        </div>
+            </li>
+
+        </ul>
 
     </div>
 
 </div>
 
 
-
 <!-- ============================================================
-     MAIN
+     NAVBAR
      ============================================================ -->
 
-<main class="dashboard-main">
+<nav class="navbar navbar-expand-lg dashboard-navbar bg-white shadow-sm">
 
-    <div class="container-fluid dashboard-container">
+    <div class="container-fluid">
 
+        <button
+            class="btn btn-outline-primary d-lg-none me-2"
+            type="button"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#studentSidebar">
 
-        <div class="welcome-section">
+            <i class="bi bi-list"></i>
 
-            <div>
+        </button>
 
-                <h1>
-                    Attempt Already Completed
-                </h1>
+        <a class="navbar-brand fw-bold"
+           href="dashboard.jsp">
 
-                <p>
-                    This quiz allows only one attempt.
-                </p>
+            <i class="bi bi-mortarboard-fill me-2"></i>
 
-            </div>
+            UDOM Online Quiz System
 
-
-            <div class="welcome-icon">
-
-                <i class="bi bi-shield-check"></i>
-
-            </div>
-
-        </div>
+        </a>
 
 
+        <div class="dropdown ms-auto">
 
-        <!-- MESSAGE -->
+            <button
+                class="btn d-flex align-items-center"
+                data-bs-toggle="dropdown">
 
-        <div class="content-card">
+                <span
+                    class="rounded-circle bg-primary text-white
+                           d-inline-flex align-items-center
+                           justify-content-center me-2"
+                    style="width:40px;height:40px;">
 
-            <div class="card-body p-5 text-center">
+                    <%= initials %>
 
+                </span>
 
-                <div class="mb-4">
+                <span class="d-none d-md-inline">
 
-                    <i
-                        class="bi bi-check-circle-fill text-success"
-                        style="font-size: 5rem;">
-                    </i>
+                    <%= studentFullName %>
 
-                </div>
+                </span>
 
+                <i class="bi bi-chevron-down ms-2"></i>
 
-                <h3 class="fw-bold mb-3">
-
-                    Quiz Already Submitted
-
-                </h3>
-
-
-                <p class="text-muted mb-4">
-
-                    You have already completed this quiz.
-                    Each student is allowed only one attempt,
-                    so you cannot take this quiz again.
-
-                </p>
+            </button>
 
 
-                <div class="alert alert-warning text-start">
+            <ul class="dropdown-menu dropdown-menu-end">
 
-                    <i
-                        class="bi bi-exclamation-triangle-fill me-2">
-                    </i>
+                <li>
 
-                    <strong>
-                        One Attempt Policy:
-                    </strong>
+                    <a class="dropdown-item"
+                       href="profile.jsp">
 
-                    Your previous submission has already been
-                    recorded and evaluated.
+                        <i class="bi bi-person me-2"></i>
 
-                </div>
-
-
-                <div class="d-flex justify-content-center gap-2 mt-4">
-
-                    <a
-                        href="quiz-result.jsp"
-                        class="btn btn-primary">
-
-                        <i class="bi bi-bar-chart-fill me-1"></i>
-
-                        View My Result
+                        Profile
 
                     </a>
 
+                </li>
 
-                    <a
-                        href="dashboard.jsp"
-                        class="btn btn-outline-secondary">
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
 
-                        <i class="bi bi-grid-1x2-fill me-1"></i>
+                <li>
 
-                        Back to Dashboard
+                    <a class="dropdown-item text-danger"
+                       href="../logout">
+
+                        <i class="bi bi-box-arrow-right me-2"></i>
+
+                        Logout
 
                     </a>
 
-                </div>
+                </li>
 
-            </div>
+            </ul>
 
         </div>
 
+    </div>
+
+</nav>
 
 
-        <!-- FOOTER -->
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
 
-        <footer class="dashboard-footer">
+<div class="container-fluid">
 
-            <p>
+    <div class="card attempt-card">
 
-                © 2026 UDOM Online Quiz System.
-                University of Dodoma.
+        <div class="card-body p-5 text-center">
+
+            <div class="attempt-icon mb-4">
+
+                <i class="bi bi-check-circle"></i>
+
+            </div>
+
+
+            <h2 class="fw-bold mb-3">
+
+                Quiz Already Attempted
+
+            </h2>
+
+
+            <p class="text-muted mb-4">
+
+                You have already completed this quiz.
+                Each quiz can only be attempted once.
 
             </p>
 
 
-            <div>
+            <h4 class="fw-bold mb-4">
 
-                <a href="#">
-                    Help
+                <%= quizTitle %>
+
+            </h4>
+
+
+            <!-- RESULT INFORMATION -->
+
+            <div class="row g-3 mb-4">
+
+                <div class="col-md-3">
+
+                    <div class="result-box p-3">
+
+                        <div class="small text-muted">
+                            Score
+                        </div>
+
+                        <div class="fw-bold fs-4">
+
+                            <%= score %>/<%= totalQuestions %>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <div class="result-box p-3">
+
+                        <div class="small text-muted">
+                            Percentage
+                        </div>
+
+                        <div class="fw-bold fs-4">
+
+                            <%= String.format(
+                                    "%.2f",
+                                    percentage
+                               ) %>%
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <div class="result-box p-3">
+
+                        <div class="small text-muted">
+                            Pass Mark
+                        </div>
+
+                        <div class="fw-bold fs-4">
+
+                            <%= passMark %>%
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <div class="result-box p-3">
+
+                        <div class="small text-muted">
+                            Result
+                        </div>
+
+                        <% if ("PASS".equalsIgnoreCase(resultStatus)) { %>
+
+                            <span class="badge bg-success fs-6 mt-2">
+                                PASS
+                            </span>
+
+                        <% } else { %>
+
+                            <span class="badge bg-danger fs-6 mt-2">
+                                FAIL
+                            </span>
+
+                        <% } %>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- SUBMISSION TIME -->
+
+            <% if (submittedAt != null
+                    && !submittedAt.trim().isEmpty()) { %>
+
+                <p class="text-muted mb-4">
+
+                    <i class="bi bi-calendar-check me-1"></i>
+
+                    Submitted:
+
+                    <%= submittedAt %>
+
+                </p>
+
+            <% } %>
+
+
+            <!-- BUTTONS -->
+
+            <div class="d-flex justify-content-center
+                        flex-wrap gap-2">
+
+                <a
+                    href="quiz-result.jsp?quizId=<%= quizId %>&attemptId=<%= attemptId %>"
+                    class="btn btn-primary">
+
+                    <i class="bi bi-eye me-1"></i>
+
+                    View Result
+
                 </a>
 
-                <a href="#">
-                    Privacy
+
+                <a
+                    href="quiz-history.jsp"
+                    class="btn btn-outline-primary">
+
+                    <i class="bi bi-clock-history me-1"></i>
+
+                    Quiz History
+
                 </a>
 
-                <a href="#">
-                    Support
+
+                <a
+                    href="dashboard.jsp"
+                    class="btn btn-outline-secondary">
+
+                    <i class="bi bi-grid me-1"></i>
+
+                    Dashboard
+
                 </a>
 
             </div>
 
-        </footer>
+        </div>
 
     </div>
 
-</main>
-
+</div>
 
 
 <script
