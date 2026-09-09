@@ -4,6 +4,7 @@
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/AssignCourseServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateTeacherServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/DeleteStudentServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/DeleteTeacherServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/LoginServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/LogoutServlet.java

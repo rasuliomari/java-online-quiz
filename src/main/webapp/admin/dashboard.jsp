@@ -445,7 +445,7 @@
             <!-- Manage Students -->
 
             <a
-                href="#"
+                href="<%= request.getContextPath() %>/admin/manage-students.jsp"
                 class="sidebar-link">
 
                 <i class="bi bi-mortarboard-fill"></i>
@@ -898,7 +898,7 @@
                     <div class="col-md-6">
 
                         <a
-                            href="#"
+                            href="<%= request.getContextPath() %>/admin/manage-students.jsp"
                             class="text-decoration-none">
 
                             <div class="quiz-item">
