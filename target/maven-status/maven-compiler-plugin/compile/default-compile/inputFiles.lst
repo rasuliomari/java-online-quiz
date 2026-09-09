@@ -14,6 +14,7 @@
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/SubmitQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateQuestionServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateQuizServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateStudentServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateTeacherServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/util/AdminPasswordGenerator.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/util/DBConnection.java

@@ -16,5 +16,6 @@ tz/udom/quiz/servlet/SubmitQuizServlet.class
 tz/udom/quiz/servlet/UpdateQuestionServlet.class
 tz/udom/quiz/servlet/CreateTeacherServlet.class
 tz/udom/quiz/servlet/StudentRegisterServlet.class
+tz/udom/quiz/servlet/UpdateStudentServlet.class
 tz/udom/quiz/servlet/DeleteTeacherServlet.class
 tz/udom/quiz/servlet/LogoutServlet.class
