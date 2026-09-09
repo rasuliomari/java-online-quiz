@@ -4,45 +4,68 @@
 <%@ page import="java.sql.PreparedStatement" %>
 <%@ page import="java.sql.ResultSet" %>
 <%@ page import="java.sql.SQLException" %>
-<%@ page import="java.util.Map" %>
-<%@ page import="java.util.List" %>
 <%@ page import="jakarta.servlet.http.HttpSession" %>
 <%@ page import="tz.udom.quiz.util.DBConnection" %>
-
 
 <%
 /*
  * ============================================================
- * GET SESSION
+ * STUDENT AUTHENTICATION
  * ============================================================
  */
 
 HttpSession quizSession = request.getSession(false);
 
-if (quizSession == null) {
-    response.sendRedirect("dashboard.jsp");
+if (quizSession == null
+        || !Boolean.TRUE.equals(
+                quizSession.getAttribute("studentLoggedIn"))
+        || !"STUDENT".equals(
+                quizSession.getAttribute("userRole"))) {
+
+    response.sendRedirect("../login.jsp");
+    return;
+}
+
+Object studentIdObject =
+        quizSession.getAttribute("studentId");
+
+if (studentIdObject == null) {
+    response.sendRedirect("../login.jsp");
+    return;
+}
+
+int studentId;
+
+try {
+    studentId =
+            Integer.parseInt(
+                    studentIdObject.toString()
+            );
+} catch (NumberFormatException e) {
+
+    response.sendRedirect("../login.jsp");
     return;
 }
 
 
 /*
  * ============================================================
- * GET SELECTED QUIZ ID
+ * GET QUIZ ID
  * ============================================================
  */
 
-String selectedQuizIdValue =
+String quizIdValue =
         request.getParameter("quizId");
 
 int selectedQuizId = -1;
 
-if (selectedQuizIdValue != null
-        && !selectedQuizIdValue.trim().isEmpty()) {
+if (quizIdValue != null
+        && !quizIdValue.trim().isEmpty()) {
 
     try {
 
         selectedQuizId =
-                Integer.parseInt(selectedQuizIdValue);
+                Integer.parseInt(quizIdValue);
 
     } catch (NumberFormatException e) {
 
@@ -50,167 +73,202 @@ if (selectedQuizIdValue != null
     }
 }
 
-
-/*
- * ============================================================
- * GET RESULT HISTORY
- * ============================================================
- */
-
-@SuppressWarnings("unchecked")
-List<Map<String, Object>> resultHistory =
-        (List<Map<String, Object>>)
-                quizSession.getAttribute(
-                        "quizResultHistory"
-                );
-
-
-/*
- * ============================================================
- * FIND SELECTED RESULT
- * ============================================================
- */
-
-Map<String, Object> selectedResult = null;
-
-if (resultHistory != null
-        && selectedQuizId != -1) {
-
-    for (Map<String, Object> result : resultHistory) {
-
-        Object idObject =
-                result.get("quizId");
-
-        if (idObject != null
-                && Integer.parseInt(
-                        idObject.toString()
-                ) == selectedQuizId) {
-
-            selectedResult = result;
-
-            break;
-        }
-    }
-}
-
-
-/*
- * ============================================================
- * IF NO QUIZ ID WAS PROVIDED,
- * USE THE LATEST RESULT
- * ============================================================
- */
-
-if (selectedResult == null) {
-
-    Object latestQuizIdObject =
-            quizSession.getAttribute(
-                    "quizResultQuizId"
-            );
-
-    if (latestQuizIdObject != null) {
-
-        try {
-
-            selectedQuizId =
-                    Integer.parseInt(
-                            latestQuizIdObject.toString()
-                    );
-
-        } catch (NumberFormatException e) {
-
-            selectedQuizId = -1;
-        }
-
-
-        if (resultHistory != null
-                && selectedQuizId != -1) {
-
-            for (Map<String, Object> result :
-                    resultHistory) {
-
-                Object idObject =
-                        result.get("quizId");
-
-                if (idObject != null
-                        && Integer.parseInt(
-                                idObject.toString()
-                        ) == selectedQuizId) {
-
-                    selectedResult = result;
-
-                    break;
-                }
-            }
-        }
-    }
-}
-
-
-/*
- * ============================================================
- * NO RESULT FOUND
- * ============================================================
- */
-
-if (selectedResult == null) {
+if (selectedQuizId <= 0) {
 
     response.sendRedirect("dashboard.jsp");
-
     return;
 }
 
 
 /*
  * ============================================================
- * RESULT INFORMATION
+ * GET ATTEMPT ID
  * ============================================================
  */
 
-String quizTitle =
-        String.valueOf(
-                selectedResult.get("title")
-        );
+String attemptIdValue =
+        request.getParameter("attemptId");
+
+int attemptId = -1;
+
+if (attemptIdValue != null
+        && !attemptIdValue.trim().isEmpty()) {
+
+    try {
+
+        attemptId =
+                Integer.parseInt(attemptIdValue);
+
+    } catch (NumberFormatException e) {
+
+        attemptId = -1;
+    }
+}
 
 
-int score =
-        Integer.parseInt(
-                selectedResult.get(
-                        "score"
-                ).toString()
-        );
+/*
+ * ============================================================
+ * RESULT VARIABLES
+ * ============================================================
+ */
+
+String quizTitle = null;
+
+int score = 0;
+int totalQuestions = 0;
+double percentage = 0.0;
+int passMark = 0;
+
+boolean passed = false;
+
+String submittedAt = null;
 
 
-int totalQuestions =
-        Integer.parseInt(
-                selectedResult.get(
-                        "total"
-                ).toString()
-        );
+/*
+ * ============================================================
+ * LOAD RESULT FROM DATABASE
+ * ============================================================
+ */
+
+try (
+    Connection connection =
+            DBConnection.getConnection()
+) {
+
+    /*
+     * If attemptId was supplied, verify that it belongs
+     * to the logged-in student and selected quiz.
+     *
+     * Otherwise, load the latest attempt for this quiz.
+     */
+
+    String attemptSql;
+
+    if (attemptId > 0) {
+
+        attemptSql =
+                "SELECT qa.id, " +
+                "       q.title, " +
+                "       q.pass_mark, " +
+                "       qa.score, " +
+                "       qa.total_questions, " +
+                "       qa.percentage, " +
+                "       qa.result_status, " +
+                "       qa.submitted_at " +
+                "FROM quiz_attempts qa " +
+                "INNER JOIN quizzes q " +
+                "    ON qa.quiz_id = q.id " +
+                "WHERE qa.id = ? " +
+                "AND qa.quiz_id = ? " +
+                "AND qa.student_id = ?";
+
+    } else {
+
+        attemptSql =
+                "SELECT qa.id, " +
+                "       q.title, " +
+                "       q.pass_mark, " +
+                "       qa.score, " +
+                "       qa.total_questions, " +
+                "       qa.percentage, " +
+                "       qa.result_status, " +
+                "       qa.submitted_at " +
+                "FROM quiz_attempts qa " +
+                "INNER JOIN quizzes q " +
+                "    ON qa.quiz_id = q.id " +
+                "WHERE qa.quiz_id = ? " +
+                "AND qa.student_id = ? " +
+                "ORDER BY qa.submitted_at DESC " +
+                "LIMIT 1";
+    }
 
 
-double percentage =
-        Double.parseDouble(
-                selectedResult.get(
-                        "percentage"
-                ).toString()
-        );
+    try (
+        PreparedStatement statement =
+                connection.prepareStatement(attemptSql)
+    ) {
+
+        if (attemptId > 0) {
+
+            statement.setInt(1, attemptId);
+            statement.setInt(2, selectedQuizId);
+            statement.setInt(3, studentId);
+
+        } else {
+
+            statement.setInt(1, selectedQuizId);
+            statement.setInt(2, studentId);
+        }
 
 
-int passMark =
-        Integer.parseInt(
-                selectedResult.get(
-                        "passMark"
-                ).toString()
-        );
+        try (
+            ResultSet resultSet =
+                    statement.executeQuery()
+        ) {
+
+            if (!resultSet.next()) {
+
+                response.sendRedirect(
+                        "dashboard.jsp?error=resultNotFound"
+                );
+
+                return;
+            }
 
 
-boolean passed =
-        Boolean.parseBoolean(
-                selectedResult.get(
-                        "passed"
-                ).toString()
-        );
+            attemptId =
+                    resultSet.getInt("id");
+
+            quizTitle =
+                    resultSet.getString("title");
+
+            passMark =
+                    resultSet.getInt("pass_mark");
+
+            score =
+                    resultSet.getInt("score");
+
+            totalQuestions =
+                    resultSet.getInt("total_questions");
+
+            percentage =
+                    resultSet.getDouble("percentage");
+
+            passed =
+                    "PASS".equalsIgnoreCase(
+                            resultSet.getString(
+                                    "result_status"
+                            )
+                    );
+
+            submittedAt =
+                    resultSet.getTimestamp(
+                            "submitted_at"
+                    ).toString();
+        }
+    }
+
+} catch (SQLException e) {
+
+    e.printStackTrace();
+
+%>
+
+    <div class="container mt-5">
+
+        <div class="alert alert-danger">
+
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
+            Unable to load your quiz result.
+
+        </div>
+
+    </div>
+
+<%
+    return;
+}
 
 
 /*
@@ -232,32 +290,6 @@ if (passed) {
             "You did not reach the required pass mark.";
 }
 
-
-/*
- * ============================================================
- * GET STUDENT'S SUBMITTED ANSWERS
- * ============================================================
- */
-
-Map<Integer, String> submittedAnswers = null;
-
-Object submittedAnswersObject =
-        quizSession.getAttribute(
-                "quizSubmittedAnswers_"
-                        + selectedQuizId
-        );
-
-
-if (submittedAnswersObject instanceof Map) {
-
-    @SuppressWarnings("unchecked")
-    Map<Integer, String> answerMap =
-            (Map<Integer, String>)
-                    submittedAnswersObject;
-
-    submittedAnswers = answerMap;
-}
-
 %>
 
 
@@ -269,8 +301,9 @@ if (submittedAnswersObject instanceof Map) {
 
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
     <title>
         Quiz Result - UDOM Online Quiz System
@@ -391,7 +424,11 @@ if (submittedAnswersObject instanceof Map) {
                         class="student-name d-none d-md-block">
 
                         <strong>
-                            Student
+
+                            <%= quizSession.getAttribute(
+                                    "studentFirstName"
+                            ) %>
+
                         </strong>
 
                         <small>
@@ -410,7 +447,7 @@ if (submittedAnswersObject instanceof Map) {
 
                         <a
                             class="dropdown-item"
-                            href="#">
+                            href="profile.jsp">
 
                             <i class="bi bi-person me-2"></i>
 
@@ -447,7 +484,7 @@ if (submittedAnswersObject instanceof Map) {
 
                         <a
                             class="dropdown-item text-danger"
-                            href="../login.jsp">
+                            href="../logout">
 
                             <i
                                 class="bi bi-box-arrow-right me-2">
@@ -512,7 +549,11 @@ if (submittedAnswersObject instanceof Map) {
             <div>
 
                 <h6>
-                    Student
+
+                    <%= quizSession.getAttribute(
+                            "studentFirstName"
+                    ) %>
+
                 </h6>
 
                 <span>
@@ -561,7 +602,7 @@ if (submittedAnswersObject instanceof Map) {
 
 
             <a
-                href="#"
+                href="quiz-history.jsp"
                 class="sidebar-link">
 
                 <i class="bi bi-clock-history"></i>
@@ -574,7 +615,7 @@ if (submittedAnswersObject instanceof Map) {
 
 
             <a
-                href="#"
+                href="quiz-history.jsp"
                 class="sidebar-link active">
 
                 <i class="bi bi-bar-chart-fill"></i>
@@ -592,7 +633,7 @@ if (submittedAnswersObject instanceof Map) {
 
 
             <a
-                href="#"
+                href="profile.jsp"
                 class="sidebar-link">
 
                 <i class="bi bi-person-fill"></i>
@@ -624,7 +665,7 @@ if (submittedAnswersObject instanceof Map) {
         <div class="sidebar-bottom">
 
             <a
-                href="../login.jsp"
+                href="../logout"
                 class="logout-link">
 
                 <i class="bi bi-box-arrow-left"></i>
@@ -851,6 +892,19 @@ if (submittedAnswersObject instanceof Map) {
 
 
 
+                <!-- Submission Time -->
+
+                <div class="text-center text-muted mt-4">
+
+                    <i class="bi bi-calendar-check me-1"></i>
+
+                    Submitted:
+                    <%= submittedAt %>
+
+                </div>
+
+
+
                 <!-- Performance -->
 
                 <div class="mt-4">
@@ -942,12 +996,22 @@ if (submittedAnswersObject instanceof Map) {
                 ) {
 
 
+                    /*
+                     * Get questions and the student's
+                     * submitted answer from the database.
+                     */
+
                     String questionSql =
-                            "SELECT id, question_text, " +
-                            "question_number " +
-                            "FROM questions " +
-                            "WHERE quiz_id = ? " +
-                            "ORDER BY question_number ASC";
+                            "SELECT q.id, " +
+                            "       q.question_text, " +
+                            "       q.question_number, " +
+                            "       qaa.selected_option " +
+                            "FROM questions q " +
+                            "LEFT JOIN quiz_attempt_answers qaa " +
+                            "    ON qaa.question_id = q.id " +
+                            "    AND qaa.attempt_id = ? " +
+                            "WHERE q.quiz_id = ? " +
+                            "ORDER BY q.question_number ASC";
 
 
                     try (
@@ -960,6 +1024,11 @@ if (submittedAnswersObject instanceof Map) {
 
                         questionStatement.setInt(
                                 1,
+                                attemptId
+                        );
+
+                        questionStatement.setInt(
+                                2,
                                 selectedQuizId
                         );
 
@@ -991,16 +1060,10 @@ if (submittedAnswersObject instanceof Map) {
                                         );
 
 
-                                String selectedAnswer = null;
-
-
-                                if (submittedAnswers != null) {
-
-                                    selectedAnswer =
-                                            submittedAnswers.get(
-                                                    currentQuestionId
-                                            );
-                                }
+                                String selectedAnswer =
+                                        questionResult.getString(
+                                                "selected_option"
+                                        );
 
 
                                 String correctAnswer = null;
@@ -1014,7 +1077,7 @@ if (submittedAnswersObject instanceof Map) {
 
                                 String correctSql =
                                         "SELECT option_label, " +
-                                        "answer_text " +
+                                        "       answer_text " +
                                         "FROM answers " +
                                         "WHERE question_id = ? " +
                                         "AND is_correct = TRUE";
@@ -1131,8 +1194,9 @@ if (submittedAnswersObject instanceof Map) {
 
                     <%
                     String answerSql =
-                            "SELECT option_label, answer_text, " +
-                            "is_correct " +
+                            "SELECT option_label, " +
+                            "       answer_text, " +
+                            "       is_correct " +
                             "FROM answers " +
                             "WHERE question_id = ? " +
                             "ORDER BY option_label ASC";
@@ -1523,7 +1587,7 @@ if (submittedAnswersObject instanceof Map) {
                 </div>
 
 
-                <!-- ONLY BACK TO DASHBOARD -->
+                <!-- ACTIONS -->
 
                 <div class="d-flex flex-wrap gap-2 mt-4">
 
@@ -1536,6 +1600,19 @@ if (submittedAnswersObject instanceof Map) {
                         </i>
 
                         Back to Dashboard
+
+                    </a>
+
+
+                    <a
+                        href="quiz-history.jsp"
+                        class="btn btn-outline-primary">
+
+                        <i
+                            class="bi bi-clock-history me-1">
+                        </i>
+
+                        Quiz History
 
                     </a>
 
