@@ -1,12 +1,12 @@
-
 package tz.udom.quiz.servlet;
 
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,215 +27,161 @@ public class SubmitQuizServlet extends HttpServlet {
             HttpServletResponse response)
             throws ServletException, IOException {
 
-        request.setCharacterEncoding("UTF-8");
+        HttpSession session = request.getSession(false);
 
-        /*
-         * ============================================================
-         * 1. STUDENT AUTHENTICATION
-         * ============================================================
-         */
+        // ---------------------------------------------------------
+        // 1. CHECK STUDENT LOGIN
+        // ---------------------------------------------------------
+        if (session == null
+                || !Boolean.TRUE.equals(session.getAttribute("studentLoggedIn"))
+                || !"STUDENT".equals(session.getAttribute("userRole"))) {
 
-        HttpSession session =
-                request.getSession(false);
-
-        boolean studentLoggedIn =
-                session != null
-                && Boolean.TRUE.equals(
-                        session.getAttribute("studentLoggedIn")
-                )
-                && "STUDENT".equals(
-                        session.getAttribute("userRole")
-                );
-
-        if (!studentLoggedIn) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/login.jsp?error=studentLoginRequired"
-            );
-
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
 
-        Integer studentId =
-                (Integer) session.getAttribute("studentId");
+        Object studentIdObject = session.getAttribute("studentId");
 
-        if (studentId == null) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/login.jsp?error=studentLoginRequired"
-            );
-
+        if (studentIdObject == null) {
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
 
+        int studentId;
 
-        /*
-         * ============================================================
-         * 2. GET QUIZ ID
-         * ============================================================
-         */
+        try {
+            studentId = Integer.parseInt(studentIdObject.toString());
+        } catch (NumberFormatException e) {
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            return;
+        }
 
-        String quizIdValue =
-                request.getParameter("quizId");
+        // ---------------------------------------------------------
+        // 2. GET QUIZ ID
+        // ---------------------------------------------------------
+        String quizIdParameter = request.getParameter("quizId");
 
-        if (quizIdValue == null
-                || quizIdValue.trim().isEmpty()) {
-
-            redirectError(
-                    request,
-                    response,
-                    "Quiz information is missing."
+        if (quizIdParameter == null || quizIdParameter.trim().isEmpty()) {
+            response.sendRedirect(
+                    request.getContextPath()
+                            + "/student/dashboard.jsp?error=invalidQuiz"
             );
-
             return;
         }
 
         int quizId;
 
         try {
-
-            quizId =
-                    Integer.parseInt(
-                            quizIdValue.trim()
-                    );
-
+            quizId = Integer.parseInt(quizIdParameter);
         } catch (NumberFormatException e) {
-
-            redirectError(
-                    request,
-                    response,
-                    "Invalid quiz information."
-            );
-
-            return;
-        }
-
-
-        /*
-         * ============================================================
-         * 3. PREVENT DUPLICATE ATTEMPT
-         * ============================================================
-         */
-
-        String attemptKey =
-                "quizAttempted_" + quizId;
-
-        if (Boolean.TRUE.equals(
-                session.getAttribute(attemptKey))) {
-
             response.sendRedirect(
                     request.getContextPath()
-                    + "/student/quiz-already-attempted.jsp"
-                    + "?quizId="
-                    + quizId
+                            + "/student/dashboard.jsp?error=invalidQuiz"
             );
-
             return;
         }
 
+        Connection connection = null;
 
-        /*
-         * ============================================================
-         * 4. LOAD ONLY PUBLISHED QUIZ
-         * ============================================================
-         */
+        try {
 
-        String quizSql =
-                "SELECT title, question_count, pass_mark "
-                + "FROM quizzes "
-                + "WHERE id = ? "
-                + "AND status = 'PUBLISHED'";
+            connection = DBConnection.getConnection();
 
+            connection.setAutoCommit(false);
 
-        /*
-         * ============================================================
-         * 5. LOAD CORRECT ANSWERS
-         * ============================================================
-         */
+            // -----------------------------------------------------
+            // 3. LOAD PUBLISHED QUIZ
+            // -----------------------------------------------------
+            String quizSql =
+                    "SELECT title, question_count, pass_mark " +
+                    "FROM quizzes " +
+                    "WHERE id = ? " +
+                    "AND status = 'PUBLISHED'";
 
-        String answersSql =
-                "SELECT q.id, a.option_label "
-                + "FROM questions q "
-                + "JOIN answers a "
-                + "ON q.id = a.question_id "
-                + "AND a.is_correct = TRUE "
-                + "WHERE q.quiz_id = ? "
-                + "ORDER BY q.question_number ASC";
-
-
-        try (Connection connection =
-                     DBConnection.getConnection()) {
-
-
-            /*
-             * ========================================================
-             * LOAD QUIZ
-             * ========================================================
-             */
-
-            String quizTitle = null;
-            int expectedQuestionCount = 0;
-            int passMark = 0;
+            String quizTitle;
+            int expectedQuestionCount;
+            int passMark;
 
             try (PreparedStatement statement =
-                         connection.prepareStatement(
-                                 quizSql
-                         )) {
+                         connection.prepareStatement(quizSql)) {
 
                 statement.setInt(1, quizId);
 
-                try (ResultSet resultSet =
-                             statement.executeQuery()) {
+                try (ResultSet resultSet = statement.executeQuery()) {
 
                     if (!resultSet.next()) {
 
-                        redirectError(
-                                request,
-                                response,
-                                "This quiz is not available."
+                        connection.rollback();
+
+                        response.sendRedirect(
+                                request.getContextPath()
+                                        + "/student/dashboard.jsp?error=quizNotFound"
                         );
 
                         return;
                     }
 
-                    quizTitle =
-                            resultSet.getString(
-                                    "title"
-                            );
-
+                    quizTitle = resultSet.getString("title");
                     expectedQuestionCount =
-                            resultSet.getInt(
-                                    "question_count"
-                            );
-
+                            resultSet.getInt("question_count");
                     passMark =
-                            resultSet.getInt(
-                                    "pass_mark"
-                            );
+                            resultSet.getInt("pass_mark");
                 }
             }
 
-
-            /*
-             * ========================================================
-             * LOAD CORRECT ANSWERS FROM DATABASE
-             * ========================================================
-             */
-
-            Map<Integer, String> correctAnswers =
-                    new HashMap<>();
+            // -----------------------------------------------------
+            // 4. CHECK DATABASE FOR EXISTING ATTEMPT
+            // -----------------------------------------------------
+            String existingAttemptSql =
+                    "SELECT id " +
+                    "FROM quiz_attempts " +
+                    "WHERE quiz_id = ? " +
+                    "AND student_id = ?";
 
             try (PreparedStatement statement =
-                         connection.prepareStatement(
-                                 answersSql
-                         )) {
+                         connection.prepareStatement(existingAttemptSql)) {
+
+                statement.setInt(1, quizId);
+                statement.setInt(2, studentId);
+
+                try (ResultSet resultSet = statement.executeQuery()) {
+
+                    if (resultSet.next()) {
+
+                        connection.rollback();
+
+                        response.sendRedirect(
+                                request.getContextPath()
+                                        + "/student/quiz-already-attempted.jsp?quizId="
+                                        + quizId
+                        );
+
+                        return;
+                    }
+                }
+            }
+
+            // -----------------------------------------------------
+            // 5. LOAD CORRECT ANSWERS
+            // -----------------------------------------------------
+            String correctAnswerSql =
+                    "SELECT q.id, a.option_label " +
+                    "FROM questions q " +
+                    "INNER JOIN answers a " +
+                    "ON q.id = a.question_id " +
+                    "AND a.is_correct = TRUE " +
+                    "WHERE q.quiz_id = ? " +
+                    "ORDER BY q.question_number ASC";
+
+            Map<Integer, String> correctAnswers =
+                    new LinkedHashMap<>();
+
+            try (PreparedStatement statement =
+                         connection.prepareStatement(correctAnswerSql)) {
 
                 statement.setInt(1, quizId);
 
-                try (ResultSet resultSet =
-                             statement.executeQuery()) {
+                try (ResultSet resultSet = statement.executeQuery()) {
 
                     while (resultSet.next()) {
 
@@ -243,9 +189,7 @@ public class SubmitQuizServlet extends HttpServlet {
                                 resultSet.getInt("id");
 
                         String correctOption =
-                                resultSet.getString(
-                                        "option_label"
-                                );
+                                resultSet.getString("option_label");
 
                         correctAnswers.put(
                                 questionId,
@@ -255,133 +199,196 @@ public class SubmitQuizServlet extends HttpServlet {
                 }
             }
 
+            // -----------------------------------------------------
+            // 6. VERIFY QUESTION COUNT
+            // -----------------------------------------------------
+            if (correctAnswers.size() != expectedQuestionCount) {
 
-            /*
-             * ========================================================
-             * VERIFY QUESTION COUNT
-             * ========================================================
-             */
+                connection.rollback();
 
-            if (correctAnswers.size()
-                    != expectedQuestionCount) {
-
-                redirectError(
-                        request,
-                        response,
-                        "This quiz is not properly configured."
+                response.sendRedirect(
+                        request.getContextPath()
+                                + "/student/take-quiz.jsp?quizId="
+                                + quizId
+                                + "&error=quizIncomplete"
                 );
 
                 return;
             }
 
-
-            /*
-             * ========================================================
-             * CALCULATE SCORE
-             * ========================================================
-             */
-
+            // -----------------------------------------------------
+            // 7. CALCULATE SCORE
+            // -----------------------------------------------------
             int score = 0;
 
-            List<Integer> questionIds =
-                    new ArrayList<>(
-                            correctAnswers.keySet()
-                    );
-
             Map<Integer, String> submittedAnswers =
-                    new HashMap<>();
+                    new LinkedHashMap<>();
 
+            Map<Integer, Boolean> answerCorrectness =
+                    new LinkedHashMap<>();
 
-            for (Integer questionId : questionIds) {
+            for (Map.Entry<Integer, String> entry
+                    : correctAnswers.entrySet()) {
 
-                String parameterName =
-                        "question_" + questionId;
+                int questionId = entry.getKey();
 
-                String submittedAnswer =
+                String correctOption =
+                        entry.getValue();
+
+                String submittedOption =
                         request.getParameter(
-                                parameterName
+                                "question_" + questionId
                         );
 
-                if (submittedAnswer != null) {
+                // Only accept A, B, C or D
+                if (submittedOption != null) {
 
-                    submittedAnswer =
-                            submittedAnswer
-                                    .trim()
-                                    .toUpperCase();
+                    submittedOption =
+                            submittedOption.trim().toUpperCase();
 
-                    /*
-                     * Only A, B, C or D are accepted.
-                     */
-                    if (!submittedAnswer.equals("A")
-                            && !submittedAnswer.equals("B")
-                            && !submittedAnswer.equals("C")
-                            && !submittedAnswer.equals("D")) {
+                    if (!submittedOption.equals("A")
+                            && !submittedOption.equals("B")
+                            && !submittedOption.equals("C")
+                            && !submittedOption.equals("D")) {
 
-                        submittedAnswer = null;
+                        submittedOption = null;
                     }
                 }
 
-                if (submittedAnswer != null) {
+                submittedAnswers.put(
+                        questionId,
+                        submittedOption
+                );
 
-                    submittedAnswers.put(
-                            questionId,
-                            submittedAnswer
-                    );
+                boolean isCorrect =
+                        submittedOption != null
+                                && submittedOption.equals(correctOption);
 
-                    String correctAnswer =
-                            correctAnswers.get(
-                                    questionId
-                            );
+                answerCorrectness.put(
+                        questionId,
+                        isCorrect
+                );
 
-                    if (submittedAnswer.equals(
-                            correctAnswer
-                    )) {
-
-                        score++;
-                    }
+                if (isCorrect) {
+                    score++;
                 }
             }
 
+            // -----------------------------------------------------
+            // 8. CALCULATE PERCENTAGE
+            // -----------------------------------------------------
+            double percentage = 0.0;
 
-            /*
-             * ========================================================
-             * CALCULATE RESULT
-             * ========================================================
-             */
+            if (expectedQuestionCount > 0) {
 
-            int total =
-                    correctAnswers.size();
-
-            double percentage =
-                    total > 0
-                    ? ((double) score / total) * 100
-                    : 0;
+                percentage =
+                        ((double) score
+                                / expectedQuestionCount)
+                                * 100.0;
+            }
 
             boolean passed =
                     percentage >= passMark;
 
+            String resultStatus =
+                    passed ? "PASS" : "FAIL";
 
-            /*
-             * ========================================================
-             * MARK QUIZ AS ATTEMPTED
-             * ========================================================
-             */
+            // -----------------------------------------------------
+            // 9. INSERT QUIZ ATTEMPT
+            // -----------------------------------------------------
+            String insertAttemptSql =
+                    "INSERT INTO quiz_attempts " +
+                    "(quiz_id, student_id, score, total_questions, " +
+                    "percentage, result_status, started_at, submitted_at) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, " +
+                    "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) " +
+                    "RETURNING id";
 
+            int attemptId;
+
+            try (PreparedStatement statement =
+                         connection.prepareStatement(insertAttemptSql)) {
+
+                statement.setInt(1, quizId);
+                statement.setInt(2, studentId);
+                statement.setInt(3, score);
+                statement.setInt(4, expectedQuestionCount);
+                statement.setDouble(5, percentage);
+                statement.setString(6, resultStatus);
+
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
+
+                    if (!resultSet.next()) {
+
+                        throw new SQLException(
+                                "Unable to create quiz attempt."
+                        );
+                    }
+
+                    attemptId =
+                            resultSet.getInt(1);
+                }
+            }
+
+            // -----------------------------------------------------
+            // 10. SAVE EACH STUDENT ANSWER
+            // -----------------------------------------------------
+            String insertAnswerSql =
+                    "INSERT INTO quiz_attempt_answers " +
+                    "(attempt_id, question_id, selected_option, is_correct) " +
+                    "VALUES (?, ?, ?, ?)";
+
+            try (PreparedStatement statement =
+                         connection.prepareStatement(insertAnswerSql)) {
+
+                for (Integer questionId :
+                        correctAnswers.keySet()) {
+
+                    String selectedOption =
+                            submittedAnswers.get(questionId);
+
+                    boolean isCorrect =
+                            answerCorrectness.get(questionId);
+
+                    statement.setInt(1, attemptId);
+                    statement.setInt(2, questionId);
+
+                    if (selectedOption == null) {
+                        statement.setNull(3, java.sql.Types.CHAR);
+                    } else {
+                        statement.setString(3, selectedOption);
+                    }
+
+                    statement.setBoolean(4, isCorrect);
+
+                    statement.addBatch();
+                }
+
+                statement.executeBatch();
+            }
+
+            // -----------------------------------------------------
+            // 11. COMMIT EVERYTHING
+            // -----------------------------------------------------
+            connection.commit();
+
+            // -----------------------------------------------------
+            // 12. KEEP SESSION RESULT FOR CURRENT RESULT PAGE
+            // -----------------------------------------------------
             session.setAttribute(
-                    attemptKey,
+                    "quizAttempted_" + quizId,
                     true
             );
-
-
-            /*
-             * ========================================================
-             * STORE CURRENT RESULT
-             * ========================================================
-             */
 
             session.setAttribute(
                     "quizResultQuizId",
                     quizId
+            );
+
+            session.setAttribute(
+                    "quizResultAttemptId",
+                    attemptId
             );
 
             session.setAttribute(
@@ -396,7 +403,7 @@ public class SubmitQuizServlet extends HttpServlet {
 
             session.setAttribute(
                     "quizResultTotal",
-                    total
+                    expectedQuestionCount
             );
 
             session.setAttribute(
@@ -419,32 +426,57 @@ public class SubmitQuizServlet extends HttpServlet {
                     submittedAnswers
             );
 
+            // -----------------------------------------------------
+            // 13. SAVE RESULT IN SESSION HISTORY
+            // -----------------------------------------------------
+            List<Map<String, Object>> history;
 
-            /*
-             * ========================================================
-             * STORE RESULT HISTORY
-             * ========================================================
-             */
+            Object historyObject =
+                    session.getAttribute("quizResultHistory");
 
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> history =
-                    (List<Map<String, Object>>)
-                    session.getAttribute(
-                            "quizResultHistory"
-                    );
+            if (historyObject instanceof List<?>) {
 
-            if (history == null) {
+                history =
+                        new ArrayList<>();
+
+                for (Object item :
+                        (List<?>) historyObject) {
+
+                    if (item instanceof Map<?, ?>) {
+
+                        Map<String, Object> copy =
+                                new LinkedHashMap<>();
+
+                        for (Map.Entry<?, ?> entry :
+                                ((Map<?, ?>) item).entrySet()) {
+
+                            copy.put(
+                                    String.valueOf(entry.getKey()),
+                                    entry.getValue()
+                            );
+                        }
+
+                        history.add(copy);
+                    }
+                }
+
+            } else {
 
                 history =
                         new ArrayList<>();
             }
 
             Map<String, Object> result =
-                    new HashMap<>();
+                    new LinkedHashMap<>();
 
             result.put(
                     "quizId",
                     quizId
+            );
+
+            result.put(
+                    "attemptId",
+                    attemptId
             );
 
             result.put(
@@ -459,7 +491,7 @@ public class SubmitQuizServlet extends HttpServlet {
 
             result.put(
                     "total",
-                    total
+                    expectedQuestionCount
             );
 
             result.put(
@@ -477,24 +509,15 @@ public class SubmitQuizServlet extends HttpServlet {
                     passed
             );
 
-            history.add(
-                    0,
-                    result
-            );
+            // Add newest result first
+            history.add(0, result);
 
-
-            /*
-             * Keep only the latest 10 results.
-             */
-
+            // Keep only latest 10 results
             if (history.size() > 10) {
 
                 history =
                         new ArrayList<>(
-                                history.subList(
-                                        0,
-                                        10
-                                )
+                                history.subList(0, 10)
                         );
             }
 
@@ -503,53 +526,66 @@ public class SubmitQuizServlet extends HttpServlet {
                     history
             );
 
-
-            /*
-             * ========================================================
-             * 6. REDIRECT TO RESULT PAGE
-             * ========================================================
-             */
-
+            // -----------------------------------------------------
+            // 14. GO TO RESULT PAGE
+            // -----------------------------------------------------
             response.sendRedirect(
                     request.getContextPath()
-                    + "/student/quiz-result.jsp"
+                            + "/student/quiz-result.jsp?quizId="
+                            + quizId
+                            + "&attemptId="
+                            + attemptId
             );
 
-        } catch (Exception e) {
+        } catch (SQLException e) {
+
+            // -----------------------------------------------------
+            // ROLLBACK IF DATABASE ERROR OCCURS
+            // -----------------------------------------------------
+            if (connection != null) {
+
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackException) {
+                    rollbackException.printStackTrace();
+                }
+            }
 
             e.printStackTrace();
 
-            redirectError(
-                    request,
-                    response,
-                    "An error occurred while submitting the quiz."
+            // PostgreSQL duplicate unique constraint
+            // SQLState 23505 = unique_violation
+            if ("23505".equals(e.getSQLState())) {
+
+                response.sendRedirect(
+                        request.getContextPath()
+                                + "/student/quiz-already-attempted.jsp?quizId="
+                                + quizId
+                );
+
+                return;
+            }
+
+            response.sendRedirect(
+                    request.getContextPath()
+                            + "/student/take-quiz.jsp?quizId="
+                            + quizId
+                            + "&error=submitFailed"
             );
+
+        } finally {
+
+            // -----------------------------------------------------
+            // CLOSE DATABASE CONNECTION
+            // -----------------------------------------------------
+            if (connection != null) {
+
+                try {
+                    connection.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
         }
-    }
-
-
-    /*
-     * ================================================================
-     * ERROR REDIRECT
-     * ================================================================
-     */
-
-    private void redirectError(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            String message)
-            throws IOException {
-
-        response.sendRedirect(
-                request.getContextPath()
-                + "/student/take-quiz.jsp"
-                + "?quizId="
-                + request.getParameter("quizId")
-                + "&error="
-                + java.net.URLEncoder.encode(
-                        message,
-                        java.nio.charset.StandardCharsets.UTF_8
-                )
-        );
     }
 }
