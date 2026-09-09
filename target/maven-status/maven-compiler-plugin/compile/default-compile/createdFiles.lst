@@ -13,6 +13,7 @@ tz/udom/quiz/filter/StudentAuthFilter.class
 tz/udom/quiz/util/DatabaseTest.class
 tz/udom/quiz/util/AdminPasswordGenerator.class
 tz/udom/quiz/servlet/SubmitQuizServlet.class
+tz/udom/quiz/servlet/DeleteQuizServlet.class
 tz/udom/quiz/servlet/UpdateQuestionServlet.class
 tz/udom/quiz/servlet/CreateTeacherServlet.class
 tz/udom/quiz/servlet/StudentRegisterServlet.class

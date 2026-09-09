@@ -460,7 +460,7 @@
             <!-- Manage Quizzes -->
 
             <a
-                href="#"
+                href="manage-quizzes.jsp"
                 class="sidebar-link">
 
                 <i class="bi bi-journal-text"></i>
@@ -941,7 +941,7 @@
                     <div class="col-md-6">
 
                         <a
-                            href="#"
+                            href="manage-quizzes.jsp"
                             class="text-decoration-none">
 
                             <div class="quiz-item">
