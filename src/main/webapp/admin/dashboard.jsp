@@ -7,117 +7,138 @@
 
 <%
 /*
+
 * =========================================================
 * ADMIN SESSION
 * =========================================================
-*/
+  */
 
 String adminFirstName =
-        (String) session.getAttribute("adminFirstName");
+(String) session.getAttribute("adminFirstName");
 
 String adminLastName =
-        (String) session.getAttribute("adminLastName");
+(String) session.getAttribute("adminLastName");
 
 String adminUsername =
-        (String) session.getAttribute("adminUsername");
+(String) session.getAttribute("adminUsername");
 
 if (adminFirstName == null || adminFirstName.trim().isEmpty()) {
-    adminFirstName = "Administrator";
+adminFirstName = "Administrator";
 }
 
 if (adminLastName == null) {
-    adminLastName = "";
+adminLastName = "";
 }
 
 if (adminUsername == null || adminUsername.trim().isEmpty()) {
-    adminUsername = "Administrator";
+adminUsername = "Administrator";
 }
 
 String adminFullName =
-        (adminFirstName + " " + adminLastName).trim();
+(adminFirstName + " " + adminLastName).trim();
 
 /*
- * =========================================================
- * INITIAL STATISTICS
- * =========================================================
- */
+
+* =========================================================
+* INITIAL STATISTICS
+* =========================================================
+  */
 
 int totalStudents = 0;
 int totalTeachers = 0;
 int totalQuizzes = 0;
+int totalCourses = 0;
 int publishedQuizzes = 0;
 
 /*
- * =========================================================
- * DATABASE STATISTICS
- * =========================================================
- */
+
+* =========================================================
+* DATABASE STATISTICS
+* =========================================================
+  */
 
 try (Connection connection = DBConnection.getConnection()) {
 
-    String studentSql =
-            "SELECT COUNT(*) FROM students";
 
-    try (
-        PreparedStatement statement =
-                connection.prepareStatement(studentSql);
-        ResultSet resultSet =
-                statement.executeQuery()
-    ) {
-        if (resultSet.next()) {
-            totalStudents = resultSet.getInt(1);
-        }
+String studentSql =
+        "SELECT COUNT(*) FROM students";
+
+try (
+    PreparedStatement statement =
+            connection.prepareStatement(studentSql);
+    ResultSet resultSet =
+            statement.executeQuery()
+) {
+    if (resultSet.next()) {
+        totalStudents = resultSet.getInt(1);
     }
+}
 
 
-    String teacherSql =
-            "SELECT COUNT(*) FROM teachers";
+String teacherSql =
+        "SELECT COUNT(*) FROM teachers";
 
-    try (
-        PreparedStatement statement =
-                connection.prepareStatement(teacherSql);
-        ResultSet resultSet =
-                statement.executeQuery()
-    ) {
-        if (resultSet.next()) {
-            totalTeachers = resultSet.getInt(1);
-        }
+try (
+    PreparedStatement statement =
+            connection.prepareStatement(teacherSql);
+    ResultSet resultSet =
+            statement.executeQuery()
+) {
+    if (resultSet.next()) {
+        totalTeachers = resultSet.getInt(1);
     }
+}
 
 
-    String quizSql =
-            "SELECT COUNT(*) FROM quizzes";
+String quizSql =
+        "SELECT COUNT(*) FROM quizzes";
 
-    try (
-        PreparedStatement statement =
-                connection.prepareStatement(quizSql);
-        ResultSet resultSet =
-                statement.executeQuery()
-    ) {
-        if (resultSet.next()) {
-            totalQuizzes = resultSet.getInt(1);
-        }
+try (
+    PreparedStatement statement =
+            connection.prepareStatement(quizSql);
+    ResultSet resultSet =
+            statement.executeQuery()
+) {
+    if (resultSet.next()) {
+        totalQuizzes = resultSet.getInt(1);
     }
+}
 
 
-    String publishedSql =
-            "SELECT COUNT(*) " +
-            "FROM quizzes " +
-            "WHERE status = 'PUBLISHED'";
+String courseSql =
+        "SELECT COUNT(*) FROM courses";
 
-    try (
-        PreparedStatement statement =
-                connection.prepareStatement(publishedSql);
-        ResultSet resultSet =
-                statement.executeQuery()
-    ) {
-        if (resultSet.next()) {
-            publishedQuizzes = resultSet.getInt(1);
-        }
+try (
+    PreparedStatement statement =
+            connection.prepareStatement(courseSql);
+    ResultSet resultSet =
+            statement.executeQuery()
+) {
+    if (resultSet.next()) {
+        totalCourses = resultSet.getInt(1);
     }
+}
+
+
+String publishedSql =
+        "SELECT COUNT(*) " +
+        "FROM quizzes " +
+        "WHERE status = 'PUBLISHED'";
+
+try (
+    PreparedStatement statement =
+            connection.prepareStatement(publishedSql);
+    ResultSet resultSet =
+            statement.executeQuery()
+) {
+    if (resultSet.next()) {
+        publishedQuizzes = resultSet.getInt(1);
+    }
+}
+
 
 } catch (Exception e) {
-    e.printStackTrace();
+e.printStackTrace();
 }
 
 %>
@@ -171,152 +192,149 @@ try (Connection connection = DBConnection.getConnection()) {
 <!-- Mobile Menu -->
 
 <button
-    class="btn sidebar-toggle d-lg-none me-2"
-    type="button"
-    data-bs-toggle="offcanvas"
-    data-bs-target="#adminSidebar">
+ class="btn sidebar-toggle d-lg-none me-2"
+ type="button"
+ data-bs-toggle="offcanvas"
+ data-bs-target="#adminSidebar">
 
-    <i class="bi bi-list"></i>
+<i class="bi bi-list"></i>
 
 </button>
-
 
 <!-- Brand -->
 
 <a
-    class="navbar-brand d-flex align-items-center"
-    href="<%= request.getContextPath() %>/admin/dashboard.jsp">
+ class="navbar-brand d-flex align-items-center"
+ href="<%= request.getContextPath() %>/admin/dashboard.jsp">
 
-    <div class="brand-icon">
+<div class="brand-icon">
 
-        <i class="bi bi-mortarboard-fill"></i>
+    <i class="bi bi-mortarboard-fill"></i>
 
-    </div>
+</div>
 
 
-    <div class="brand-text">
+<div class="brand-text">
 
-        <span>
-            UDOM
-        </span>
+    <span>
+        UDOM
+    </span>
 
-        <small>
-            Online Quiz System
-        </small>
+    <small>
+        Online Quiz System
+    </small>
 
-    </div>
+</div>
 
 </a>
-
 
 <!-- Right Side -->
 
 <div class="d-flex align-items-center ms-auto">
 
+<!-- Notification -->
 
-    <!-- Notification -->
+<button
+    class="notification-btn me-3"
+    type="button">
+
+    <i class="bi bi-bell"></i>
+
+    <span class="notification-badge">
+        4
+    </span>
+
+</button>
+
+
+<!-- Admin Profile -->
+
+<div class="dropdown">
 
     <button
-        class="notification-btn me-3"
-        type="button">
+        class="profile-button dropdown-toggle"
+        type="button"
+        data-bs-toggle="dropdown">
 
-        <i class="bi bi-bell"></i>
+        <div class="student-avatar">
 
-        <span class="notification-badge">
-            4
-        </span>
+            <%= adminFirstName.substring(0, 1).toUpperCase() %>
+
+        </div>
+
+
+        <div class="student-name d-none d-md-block">
+
+            <strong>
+                <%= adminFullName %>
+            </strong>
+
+            <small>
+                System Administrator
+            </small>
+
+        </div>
 
     </button>
 
 
-    <!-- Admin Profile -->
+    <ul
+        class="dropdown-menu dropdown-menu-end shadow">
 
-    <div class="dropdown">
+        <li>
 
-        <button
-            class="profile-button dropdown-toggle"
-            type="button"
-            data-bs-toggle="dropdown">
+            <a
+                class="dropdown-item"
+                href="<%= request.getContextPath() %>/admin/profile.jsp">
 
-            <div class="student-avatar">
+                <i class="bi bi-person me-2"></i>
 
-                <%= adminFirstName.substring(0, 1).toUpperCase() %>
+                My Profile
 
-            </div>
+            </a>
 
-
-            <div class="student-name d-none d-md-block">
-
-                <strong>
-                    <%= adminFullName %>
-                </strong>
-
-                <small>
-                    System Administrator
-                </small>
-
-            </div>
-
-        </button>
+        </li>
 
 
-        <ul
-            class="dropdown-menu dropdown-menu-end shadow">
+        <li>
 
-            <li>
+            <a
+                class="dropdown-item"
+                href="<%= request.getContextPath() %>/admin/settings.jsp">
 
-                <a
-                    class="dropdown-item"
-                    href="<%= request.getContextPath() %>/admin/profile.jsp">
+                <i class="bi bi-gear me-2"></i>
 
-                    <i class="bi bi-person me-2"></i>
+                Settings
 
-                    My Profile
+            </a>
 
-                </a>
-
-            </li>
+        </li>
 
 
-            <li>
+        <li>
 
-                <a
-                    class="dropdown-item"
-                    href="<%= request.getContextPath() %>/admin/settings.jsp">
+            <hr class="dropdown-divider">
 
-                    <i class="bi bi-gear me-2"></i>
-
-                    Settings
-
-                </a>
-
-            </li>
+        </li>
 
 
-            <li>
+        <li>
 
-                <hr class="dropdown-divider">
+            <a
+                class="dropdown-item text-danger"
+                href="<%= request.getContextPath() %>/logout">
 
-            </li>
+                <i class="bi bi-box-arrow-right me-2"></i>
 
+                Logout
 
-            <li>
+            </a>
 
-                <a
-                    class="dropdown-item text-danger"
-                    href="<%= request.getContextPath() %>/logout">
+        </li>
 
-                    <i class="bi bi-box-arrow-right me-2"></i>
+    </ul>
 
-                    Logout
-
-                </a>
-
-            </li>
-
-        </ul>
-
-    </div>
+</div>
 
 </div>
 
@@ -337,239 +355,250 @@ try (Connection connection = DBConnection.getConnection()) {
 
 <div class="offcanvas-header d-lg-none">
 
-    <h5 class="offcanvas-title">
-        Administrator Menu
-    </h5>
+<h5 class="offcanvas-title">
+    Administrator Menu
+</h5>
 
 
-    <button
-        type="button"
-        class="btn-close"
-        data-bs-dismiss="offcanvas">
-    </button>
+<button
+    type="button"
+    class="btn-close"
+    data-bs-dismiss="offcanvas">
+</button>
+
+</div>
+
+<div class="sidebar-content">
+
+<!-- Administrator Information -->
+
+<div class="sidebar-profile">
+
+    <div class="sidebar-avatar">
+
+        <%= adminFirstName.substring(0, 1).toUpperCase() %>
+
+    </div>
+
+
+    <div>
+
+        <h6>
+            <%= adminFullName %>
+        </h6>
+
+        <span>
+            System Administrator
+        </span>
+
+    </div>
 
 </div>
 
 
 
-<div class="sidebar-content">
+<!-- Navigation -->
 
+<div class="sidebar-menu">
 
-    <!-- Administrator Information -->
 
-    <div class="sidebar-profile">
+    <p class="menu-title">
+        MAIN MENU
+    </p>
 
-        <div class="sidebar-avatar">
 
-            <%= adminFirstName.substring(0, 1).toUpperCase() %>
+    <!-- Dashboard -->
 
-        </div>
+    <a
+        href="<%= request.getContextPath() %>/admin/dashboard.jsp"
+        class="sidebar-link active">
 
+        <i class="bi bi-grid-1x2-fill"></i>
 
-        <div>
+        <span>
+            Dashboard
+        </span>
 
-            <h6>
-                <%= adminFullName %>
-            </h6>
+    </a>
 
-            <span>
-                System Administrator
-            </span>
 
-        </div>
+    <!-- Create Teacher -->
 
-    </div>
+    <a
+        href="<%= request.getContextPath() %>/admin/create-teacher.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-person-plus-fill"></i>
 
+        <span>
+            Create Teacher
+        </span>
 
-    <!-- Navigation -->
+    </a>
 
-    <div class="sidebar-menu">
 
+    <!-- Manage Teachers -->
 
-        <p class="menu-title">
-            MAIN MENU
-        </p>
+    <a
+        href="<%= request.getContextPath() %>/admin/manage-teachers.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-people-fill"></i>
 
-        <!-- Dashboard -->
+        <span>
+            Manage Teachers
+        </span>
 
-        <a
-            href="<%= request.getContextPath() %>/admin/dashboard.jsp"
-            class="sidebar-link active">
+    </a>
 
-            <i class="bi bi-grid-1x2-fill"></i>
 
-            <span>
-                Dashboard
-            </span>
+    <!-- Manage Courses -->
 
-        </a>
+    <a
+        href="<%= request.getContextPath() %>/admin/manage-courses.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-book-fill"></i>
 
-        <!-- Create Teacher -->
+        <span>
+            Manage Courses
+        </span>
 
-        <a
-            href="<%= request.getContextPath() %>/admin/create-teacher.jsp"
-            class="sidebar-link">
+    </a>
 
-            <i class="bi bi-person-plus-fill"></i>
 
-            <span>
-                Create Teacher
-            </span>
+    <!-- Assign Courses -->
 
-        </a>
+    <a
+        href="<%= request.getContextPath() %>/admin/assign-courses.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-journal-check"></i>
 
-        <!-- Manage Teachers -->
+        <span>
+            Assign Courses
+        </span>
 
-        <a
-            href="<%= request.getContextPath() %>/admin/manage-teachers.jsp"
-            class="sidebar-link">
+    </a>
 
-            <i class="bi bi-people-fill"></i>
 
-            <span>
-                Manage Teachers
-            </span>
+    <!-- Manage Students -->
 
-        </a>
+    <a
+        href="<%= request.getContextPath() %>/admin/manage-students.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-mortarboard-fill"></i>
 
-        <!-- Assign Courses -->
+        <span>
+            Manage Students
+        </span>
 
-        <a
-            href="<%= request.getContextPath() %>/admin/assign-courses.jsp"
-            class="sidebar-link">
+    </a>
 
-            <i class="bi bi-journal-check"></i>
 
-            <span>
-                Assign Courses
-            </span>
+    <!-- Manage Quizzes -->
 
-        </a>
+    <a
+        href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-journal-text"></i>
 
-        <!-- Manage Students -->
+        <span>
+            Manage Quizzes
+        </span>
 
-        <a
-            href="<%= request.getContextPath() %>/admin/manage-students.jsp"
-            class="sidebar-link">
+    </a>
 
-            <i class="bi bi-mortarboard-fill"></i>
 
-            <span>
-                Manage Students
-            </span>
+    <!-- Student Results -->
 
-        </a>
+    <a
+        href="<%= request.getContextPath() %>/admin/results.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-bar-chart-fill"></i>
 
-        <!-- Manage Quizzes -->
+        <span>
+            Student Results
+        </span>
 
-        <a
-            href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
-            class="sidebar-link">
+    </a>
 
-            <i class="bi bi-journal-text"></i>
 
-            <span>
-                Manage Quizzes
-            </span>
+    <!-- Reports -->
 
-        </a>
+    <a
+        href="<%= request.getContextPath() %>/admin/reports.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-file-earmark-bar-graph-fill"></i>
 
-        <!-- Student Results -->
+        <span>
+            Reports
+        </span>
 
-        <a
-            href="<%= request.getContextPath() %>/admin/results.jsp"
-            class="sidebar-link">
+    </a>
 
-            <i class="bi bi-bar-chart-fill"></i>
 
-            <span>
-                Student Results
-            </span>
 
-        </a>
+    <p class="menu-title mt-4">
+        ACCOUNT
+    </p>
 
 
-        <!-- Reports -->
+    <!-- Profile -->
 
-        <a
-            href="<%= request.getContextPath() %>/admin/reports.jsp"
-            class="sidebar-link">
+    <a
+        href="<%= request.getContextPath() %>/admin/profile.jsp"
+        class="sidebar-link">
 
-            <i class="bi bi-file-earmark-bar-graph-fill"></i>
+        <i class="bi bi-person-fill"></i>
 
-            <span>
-                Reports
-            </span>
+        <span>
+            My Profile
+        </span>
 
-        </a>
+    </a>
 
 
+    <!-- Settings -->
 
-        <p class="menu-title mt-4">
-            ACCOUNT
-        </p>
+    <a
+        href="<%= request.getContextPath() %>/admin/settings.jsp"
+        class="sidebar-link">
 
+        <i class="bi bi-gear-fill"></i>
 
-        <!-- Profile -->
+        <span>
+            Settings
+        </span>
 
-        <a
-            href="<%= request.getContextPath() %>/admin/profile.jsp"
-            class="sidebar-link">
+    </a>
 
-            <i class="bi bi-person-fill"></i>
 
-            <span>
-                My Profile
-            </span>
+</div>
 
-        </a>
 
 
-        <!-- Settings -->
+<!-- Logout -->
 
-        <a
-            href="<%= request.getContextPath() %>/admin/settings.jsp"
-            class="sidebar-link">
+<div class="sidebar-bottom">
 
-            <i class="bi bi-gear-fill"></i>
+    <a
+        href="<%= request.getContextPath() %>/logout"
+        class="logout-link">
 
-            <span>
-                Settings
-            </span>
+        <i class="bi bi-box-arrow-left"></i>
 
-        </a>
+        <span>
+            Logout
+        </span>
 
+    </a>
 
-    </div>
-
-
-
-    <!-- Logout -->
-
-    <div class="sidebar-bottom">
-
-        <a
-            href="<%= request.getContextPath() %>/logout"
-            class="logout-link">
-
-            <i class="bi bi-box-arrow-left"></i>
-
-            <span>
-                Logout
-            </span>
-
-        </a>
-
-    </div>
-
+</div>
 
 </div>
 
@@ -589,45 +618,41 @@ try (Connection connection = DBConnection.getConnection()) {
 
 <div class="welcome-section">
 
+<div>
 
-    <div>
-
-        <span class="welcome-label">
-            ADMINISTRATION
-        </span>
-
-
-        <h1>
-            Welcome, <%= adminFirstName %>
-        </h1>
+    <span class="welcome-label">
+        ADMINISTRATION
+    </span>
 
 
-        <p>
-            Manage the UDOM Online Quiz System from your
-            administrator dashboard.
-        </p>
-
-    </div>
+    <h1>
+        Welcome, <%= adminFirstName %>
+    </h1>
 
 
-    <div>
-
-        <a
-            href="<%= request.getContextPath() %>/admin/create-teacher.jsp"
-            class="btn btn-primary">
-
-            <i class="bi bi-person-plus-fill me-2"></i>
-
-            Create Teacher
-
-        </a>
-
-    </div>
-
+    <p>
+        Manage the UDOM Online Quiz System from your
+        administrator dashboard.
+    </p>
 
 </div>
 
 
+<div>
+
+    <a
+        href="<%= request.getContextPath() %>/admin/create-teacher.jsp"
+        class="btn btn-primary">
+
+        <i class="bi bi-person-plus-fill me-2"></i>
+
+        Create Teacher
+
+    </a>
+
+</div>
+
+</div>
 
 <!-- =====================================================
      STATISTICS
@@ -635,173 +660,169 @@ try (Connection connection = DBConnection.getConnection()) {
 
 <div class="row g-4 mb-4">
 
+<!-- Students -->
 
-    <!-- Students -->
+<div class="col-xl-3 col-md-6">
 
-    <div class="col-xl-3 col-md-6">
+    <a
+        href="<%= request.getContextPath() %>/admin/manage-students.jsp"
+        class="text-decoration-none">
 
-        <a
-            href="<%= request.getContextPath() %>/admin/manage-students.jsp"
-            class="text-decoration-none">
+        <div class="stat-card">
 
-            <div class="stat-card">
+            <div class="stat-icon">
 
-                <div class="stat-icon">
-
-                    <i class="bi bi-mortarboard-fill"></i>
-
-                </div>
-
-
-                <div>
-
-                    <p>
-                        Total Students
-                    </p>
-
-                    <h3>
-                        <%= totalStudents %>
-                    </h3>
-
-                    <span>
-                        Registered students
-                    </span>
-
-                </div>
+                <i class="bi bi-mortarboard-fill"></i>
 
             </div>
 
-        </a>
 
-    </div>
+            <div>
 
+                <p>
+                    Total Students
+                </p>
 
+                <h3>
+                    <%= totalStudents %>
+                </h3>
 
-    <!-- Teachers -->
-
-    <div class="col-xl-3 col-md-6">
-
-        <a
-            href="<%= request.getContextPath() %>/admin/manage-teachers.jsp"
-            class="text-decoration-none">
-
-            <div class="stat-card">
-
-                <div class="stat-icon">
-
-                    <i class="bi bi-person-workspace"></i>
-
-                </div>
-
-
-                <div>
-
-                    <p>
-                        Total Teachers
-                    </p>
-
-                    <h3>
-                        <%= totalTeachers %>
-                    </h3>
-
-                    <span>
-                        Academic staff
-                    </span>
-
-                </div>
+                <span>
+                    Registered students
+                </span>
 
             </div>
 
-        </a>
+        </div>
 
-    </div>
-
-
-
-    <!-- Quizzes -->
-
-    <div class="col-xl-3 col-md-6">
-
-        <a
-            href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
-            class="text-decoration-none">
-
-            <div class="stat-card">
-
-                <div class="stat-icon">
-
-                    <i class="bi bi-journal-text"></i>
-
-                </div>
-
-
-                <div>
-
-                    <p>
-                        Total Quizzes
-                    </p>
-
-                    <h3>
-                        <%= totalQuizzes %>
-                    </h3>
-
-                    <span>
-                        Created quizzes
-                    </span>
-
-                </div>
-
-            </div>
-
-        </a>
-
-    </div>
-
-
-
-    <!-- Published -->
-
-    <div class="col-xl-3 col-md-6">
-
-        <a
-            href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
-            class="text-decoration-none">
-
-            <div class="stat-card">
-
-                <div class="stat-icon">
-
-                    <i class="bi bi-check-circle-fill"></i>
-
-                </div>
-
-
-                <div>
-
-                    <p>
-                        Published Quizzes
-                    </p>
-
-                    <h3>
-                        <%= publishedQuizzes %>
-                    </h3>
-
-                    <span>
-                        Available to students
-                    </span>
-
-                </div>
-
-            </div>
-
-        </a>
-
-    </div>
-
+    </a>
 
 </div>
 
 
+
+<!-- Teachers -->
+
+<div class="col-xl-3 col-md-6">
+
+    <a
+        href="<%= request.getContextPath() %>/admin/manage-teachers.jsp"
+        class="text-decoration-none">
+
+        <div class="stat-card">
+
+            <div class="stat-icon">
+
+                <i class="bi bi-person-workspace"></i>
+
+            </div>
+
+
+            <div>
+
+                <p>
+                    Total Teachers
+                </p>
+
+                <h3>
+                    <%= totalTeachers %>
+                </h3>
+
+                <span>
+                    Academic staff
+                </span>
+
+            </div>
+
+        </div>
+
+    </a>
+
+</div>
+
+
+
+<!-- Quizzes -->
+
+<div class="col-xl-3 col-md-6">
+
+    <a
+        href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
+        class="text-decoration-none">
+
+        <div class="stat-card">
+
+            <div class="stat-icon">
+
+                <i class="bi bi-journal-text"></i>
+
+            </div>
+
+
+            <div>
+
+                <p>
+                    Total Quizzes
+                </p>
+
+                <h3>
+                    <%= totalQuizzes %>
+                </h3>
+
+                <span>
+                    Created quizzes
+                </span>
+
+            </div>
+
+        </div>
+
+    </a>
+
+</div>
+
+
+
+<!-- Published -->
+
+<div class="col-xl-3 col-md-6">
+
+    <a
+        href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
+        class="text-decoration-none">
+
+        <div class="stat-card">
+
+            <div class="stat-icon">
+
+                <i class="bi bi-check-circle-fill"></i>
+
+            </div>
+
+
+            <div>
+
+                <p>
+                    Published Quizzes
+                </p>
+
+                <h3>
+                    <%= publishedQuizzes %>
+                </h3>
+
+                <span>
+                    Available to students
+                </span>
+
+            </div>
+
+        </div>
+
+    </a>
+
+</div>
+
+</div>
 
 <!-- =====================================================
      ADMINISTRATION CONTENT
@@ -809,484 +830,561 @@ try (Connection connection = DBConnection.getConnection()) {
 
 <div class="row g-4">
 
+<!-- Quick Actions -->
 
-    <!-- Quick Actions -->
+<div class="col-xl-8">
 
-    <div class="col-xl-8">
-
-        <div class="content-card">
+    <div class="content-card">
 
 
-            <div class="card-header-custom">
+        <div class="card-header-custom">
 
-                <div>
+            <div>
 
-                    <h4>
-                        Administration
-                    </h4>
+                <h4>
+                    Administration
+                </h4>
 
-                    <p>
-                        Manage users and quiz activities
-                    </p>
+                <p>
+                    Manage users, courses and quiz activities
+                </p>
 
-                </div>
+            </div>
+
+        </div>
+
+
+
+        <div class="row g-4">
+
+
+            <!-- Create Teacher -->
+
+            <div class="col-md-6">
+
+                <a
+                    href="<%= request.getContextPath() %>/admin/create-teacher.jsp"
+                    class="text-decoration-none">
+
+                    <div class="quiz-item">
+
+
+                        <div class="quiz-icon">
+
+                            <i class="bi bi-person-plus-fill"></i>
+
+                        </div>
+
+
+                        <div class="quiz-information">
+
+                            <h5>
+                                Create Teacher
+                            </h5>
+
+                            <div class="quiz-meta">
+
+                                <span>
+                                    Add a new academic staff account
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </a>
 
             </div>
 
 
 
-            <div class="row g-4">
+            <!-- Manage Teachers -->
+
+            <div class="col-md-6">
+
+                <a
+                    href="<%= request.getContextPath() %>/admin/manage-teachers.jsp"
+                    class="text-decoration-none">
+
+                    <div class="quiz-item">
 
 
-                <!-- Create Teacher -->
+                        <div class="quiz-icon software-icon">
 
-                <div class="col-md-6">
-
-                    <a
-                        href="<%= request.getContextPath() %>/admin/create-teacher.jsp"
-                        class="text-decoration-none">
-
-                        <div class="quiz-item">
-
-
-                            <div class="quiz-icon">
-
-                                <i class="bi bi-person-plus-fill"></i>
-
-                            </div>
-
-
-                            <div class="quiz-information">
-
-                                <h5>
-                                    Create Teacher
-                                </h5>
-
-                                <div class="quiz-meta">
-
-                                    <span>
-                                        Add a new academic staff account
-                                    </span>
-
-                                </div>
-
-                            </div>
-
+                            <i class="bi bi-people-fill"></i>
 
                         </div>
 
-                    </a>
 
-                </div>
+                        <div class="quiz-information">
 
+                            <h5>
+                                Manage Teachers
+                            </h5>
 
+                            <div class="quiz-meta">
 
-                <!-- Manage Teachers -->
-
-                <div class="col-md-6">
-
-                    <a
-                        href="<%= request.getContextPath() %>/admin/manage-teachers.jsp"
-                        class="text-decoration-none">
-
-                        <div class="quiz-item">
-
-
-                            <div class="quiz-icon software-icon">
-
-                                <i class="bi bi-people-fill"></i>
+                                <span>
+                                    View and manage teacher accounts
+                                </span>
 
                             </div>
-
-
-                            <div class="quiz-information">
-
-                                <h5>
-                                    Manage Teachers
-                                </h5>
-
-                                <div class="quiz-meta">
-
-                                    <span>
-                                        View and manage teacher accounts
-                                    </span>
-
-                                </div>
-
-                            </div>
-
 
                         </div>
 
-                    </a>
 
-                </div>
+                    </div>
 
+                </a>
 
-
-                <!-- Assign Courses -->
-
-                <div class="col-md-6">
-
-                    <a
-                        href="<%= request.getContextPath() %>/admin/assign-courses.jsp"
-                        class="text-decoration-none">
-
-                        <div class="quiz-item">
+            </div>
 
 
-                            <div class="quiz-icon network-icon">
 
-                                <i class="bi bi-journal-check"></i>
+            <!-- Manage Courses -->
 
-                            </div>
+            <div class="col-md-6">
+
+                <a
+                    href="<%= request.getContextPath() %>/admin/manage-courses.jsp"
+                    class="text-decoration-none">
+
+                    <div class="quiz-item">
 
 
-                            <div class="quiz-information">
+                        <div class="quiz-icon">
 
-                                <h5>
-                                    Assign Courses
-                                </h5>
-
-                                <div class="quiz-meta">
-
-                                    <span>
-                                        Assign courses to teachers
-                                    </span>
-
-                                </div>
-
-                            </div>
-
+                            <i class="bi bi-book-fill"></i>
 
                         </div>
 
-                    </a>
 
-                </div>
+                        <div class="quiz-information">
 
+                            <h5>
+                                Manage Courses
+                            </h5>
 
+                            <div class="quiz-meta">
 
-                <!-- Manage Students -->
-
-                <div class="col-md-6">
-
-                    <a
-                        href="<%= request.getContextPath() %>/admin/manage-students.jsp"
-                        class="text-decoration-none">
-
-                        <div class="quiz-item">
-
-
-                            <div class="quiz-icon">
-
-                                <i class="bi bi-mortarboard-fill"></i>
+                                <span>
+                                    Add and manage curriculum courses
+                                </span>
 
                             </div>
-
-
-                            <div class="quiz-information">
-
-                                <h5>
-                                    Manage Students
-                                </h5>
-
-                                <div class="quiz-meta">
-
-                                    <span>
-                                        View registered students
-                                    </span>
-
-                                </div>
-
-                            </div>
-
 
                         </div>
 
-                    </a>
 
-                </div>
+                    </div>
 
+                </a>
 
-
-                <!-- Manage Quizzes -->
-
-                <div class="col-md-6">
-
-                    <a
-                        href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
-                        class="text-decoration-none">
-
-                        <div class="quiz-item">
+            </div>
 
 
-                            <div class="quiz-icon security-icon">
 
-                                <i class="bi bi-journal-check"></i>
+            <!-- Assign Courses -->
 
-                            </div>
+            <div class="col-md-6">
+
+                <a
+                    href="<%= request.getContextPath() %>/admin/assign-courses.jsp"
+                    class="text-decoration-none">
+
+                    <div class="quiz-item">
 
 
-                            <div class="quiz-information">
+                        <div class="quiz-icon network-icon">
 
-                                <h5>
-                                    Manage Quizzes
-                                </h5>
-
-                                <div class="quiz-meta">
-
-                                    <span>
-                                        Monitor quiz activities
-                                    </span>
-
-                                </div>
-
-                            </div>
-
+                            <i class="bi bi-journal-check"></i>
 
                         </div>
 
-                    </a>
 
-                </div>
+                        <div class="quiz-information">
 
+                            <h5>
+                                Assign Courses
+                            </h5>
 
+                            <div class="quiz-meta">
 
-                <!-- Student Results -->
-
-                <div class="col-md-6">
-
-                    <a
-                        href="<%= request.getContextPath() %>/admin/results.jsp"
-                        class="text-decoration-none">
-
-                        <div class="quiz-item">
-
-
-                            <div class="quiz-icon">
-
-                                <i class="bi bi-bar-chart-fill"></i>
+                                <span>
+                                    Assign courses to teachers
+                                </span>
 
                             </div>
-
-
-                            <div class="quiz-information">
-
-                                <h5>
-                                    Student Results
-                                </h5>
-
-                                <div class="quiz-meta">
-
-                                    <span>
-                                        View student quiz performance
-                                    </span>
-
-                                </div>
-
-                            </div>
-
 
                         </div>
 
-                    </a>
 
-                </div>
+                    </div>
 
+                </a>
 
-
-                <!-- Reports -->
-
-                <div class="col-md-6">
-
-                    <a
-                        href="<%= request.getContextPath() %>/admin/reports.jsp"
-                        class="text-decoration-none">
-
-                        <div class="quiz-item">
+            </div>
 
 
-                            <div class="quiz-icon software-icon">
 
-                                <i class="bi bi-file-earmark-bar-graph-fill"></i>
+            <!-- Manage Students -->
 
-                            </div>
+            <div class="col-md-6">
+
+                <a
+                    href="<%= request.getContextPath() %>/admin/manage-students.jsp"
+                    class="text-decoration-none">
+
+                    <div class="quiz-item">
 
 
-                            <div class="quiz-information">
+                        <div class="quiz-icon">
 
-                                <h5>
-                                    Reports
-                                </h5>
-
-                                <div class="quiz-meta">
-
-                                    <span>
-                                        View system performance reports
-                                    </span>
-
-                                </div>
-
-                            </div>
-
+                            <i class="bi bi-mortarboard-fill"></i>
 
                         </div>
 
-                    </a>
 
-                </div>
+                        <div class="quiz-information">
 
+                            <h5>
+                                Manage Students
+                            </h5>
+
+                            <div class="quiz-meta">
+
+                                <span>
+                                    View registered students
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </a>
+
+            </div>
+
+
+
+            <!-- Manage Quizzes -->
+
+            <div class="col-md-6">
+
+                <a
+                    href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
+                    class="text-decoration-none">
+
+                    <div class="quiz-item">
+
+
+                        <div class="quiz-icon security-icon">
+
+                            <i class="bi bi-journal-check"></i>
+
+                        </div>
+
+
+                        <div class="quiz-information">
+
+                            <h5>
+                                Manage Quizzes
+                            </h5>
+
+                            <div class="quiz-meta">
+
+                                <span>
+                                    Monitor quiz activities
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </a>
+
+            </div>
+
+
+
+            <!-- Student Results -->
+
+            <div class="col-md-6">
+
+                <a
+                    href="<%= request.getContextPath() %>/admin/results.jsp"
+                    class="text-decoration-none">
+
+                    <div class="quiz-item">
+
+
+                        <div class="quiz-icon">
+
+                            <i class="bi bi-bar-chart-fill"></i>
+
+                        </div>
+
+
+                        <div class="quiz-information">
+
+                            <h5>
+                                Student Results
+                            </h5>
+
+                            <div class="quiz-meta">
+
+                                <span>
+                                    View student quiz performance
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </a>
+
+            </div>
+
+
+
+            <!-- Reports -->
+
+            <div class="col-md-6">
+
+                <a
+                    href="<%= request.getContextPath() %>/admin/reports.jsp"
+                    class="text-decoration-none">
+
+                    <div class="quiz-item">
+
+
+                        <div class="quiz-icon software-icon">
+
+                            <i class="bi bi-file-earmark-bar-graph-fill"></i>
+
+                        </div>
+
+
+                        <div class="quiz-information">
+
+                            <h5>
+                                Reports
+                            </h5>
+
+                            <div class="quiz-meta">
+
+                                <span>
+                                    View system performance reports
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </a>
 
             </div>
 
 
         </div>
+
 
     </div>
 
+</div>
 
 
-    <!-- System Overview -->
 
-    <div class="col-xl-4">
+<!-- System Overview -->
 
-
-        <div class="content-card">
+<div class="col-xl-4">
 
 
-            <div class="card-header-custom">
+    <div class="content-card">
 
-                <div>
 
-                    <h4>
-                        System Overview
-                    </h4>
+        <div class="card-header-custom">
 
-                    <p>
-                        Current platform status
-                    </p>
+            <div>
+
+                <h4>
+                    System Overview
+                </h4>
+
+                <p>
+                    Current platform status
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Users -->
+
+        <a
+            href="<%= request.getContextPath() %>/admin/manage-students.jsp"
+            class="text-decoration-none">
+
+            <div class="quiz-item">
+
+                <div class="quiz-icon">
+
+                    <i class="bi bi-people-fill"></i>
+
+                </div>
+
+
+                <div class="quiz-information">
+
+                    <h5>
+                        Users
+                    </h5>
+
+                    <div class="quiz-meta">
+
+                        <span>
+                            <%= totalStudents + totalTeachers %>
+                            registered users
+                        </span>
+
+                    </div>
 
                 </div>
 
             </div>
 
+        </a>
 
 
-            <!-- Users -->
 
-            <a
-                href="<%= request.getContextPath() %>/admin/manage-students.jsp"
-                class="text-decoration-none">
+        <!-- Courses -->
 
-                <div class="quiz-item">
+        <a
+            href="<%= request.getContextPath() %>/admin/manage-courses.jsp"
+            class="text-decoration-none">
 
-                    <div class="quiz-icon">
+            <div class="quiz-item">
 
-                        <i class="bi bi-people-fill"></i>
+                <div class="quiz-icon">
 
-                    </div>
+                    <i class="bi bi-book-fill"></i>
+
+                </div>
 
 
-                    <div class="quiz-information">
+                <div class="quiz-information">
 
-                        <h5>
-                            Users
-                        </h5>
+                    <h5>
+                        Courses
+                    </h5>
 
-                        <div class="quiz-meta">
+                    <div class="quiz-meta">
 
-                            <span>
-                                <%= totalStudents + totalTeachers %>
-                                registered users
-                            </span>
-
-                        </div>
+                        <span>
+                            <%= totalCourses %>
+                            courses in the system
+                        </span>
 
                     </div>
 
                 </div>
 
-            </a>
+            </div>
+
+        </a>
 
 
 
-            <!-- Quizzes -->
+        <!-- Quizzes -->
 
-            <a
-                href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
-                class="text-decoration-none">
+        <a
+            href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
+            class="text-decoration-none">
 
-                <div class="quiz-item">
+            <div class="quiz-item">
 
-                    <div class="quiz-icon software-icon">
+                <div class="quiz-icon software-icon">
 
-                        <i class="bi bi-journal-text"></i>
+                    <i class="bi bi-journal-text"></i>
 
-                    </div>
+                </div>
 
 
-                    <div class="quiz-information">
+                <div class="quiz-information">
 
-                        <h5>
-                            Quizzes
-                        </h5>
+                    <h5>
+                        Quizzes
+                    </h5>
 
-                        <div class="quiz-meta">
+                    <div class="quiz-meta">
 
-                            <span>
-                                <%= totalQuizzes %>
-                                quizzes in the system
-                            </span>
-
-                        </div>
+                        <span>
+                            <%= totalQuizzes %>
+                            quizzes in the system
+                        </span>
 
                     </div>
 
                 </div>
 
-            </a>
+            </div>
+
+        </a>
 
 
 
-            <!-- Published -->
+        <!-- Published -->
 
-            <a
-                href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
-                class="text-decoration-none">
+        <a
+            href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
+            class="text-decoration-none">
 
-                <div class="quiz-item">
+            <div class="quiz-item">
 
-                    <div class="quiz-icon security-icon">
+                <div class="quiz-icon security-icon">
 
-                        <i class="bi bi-broadcast-pin"></i>
+                    <i class="bi bi-broadcast-pin"></i>
 
-                    </div>
+                </div>
 
 
-                    <div class="quiz-information">
+                <div class="quiz-information">
 
-                        <h5>
-                            Published
-                        </h5>
+                    <h5>
+                        Published
+                    </h5>
 
-                        <div class="quiz-meta">
+                    <div class="quiz-meta">
 
-                            <span>
-                                <%= publishedQuizzes %>
-                                quizzes available
-                            </span>
-
-                        </div>
+                        <span>
+                            <%= publishedQuizzes %>
+                            quizzes available
+                        </span>
 
                     </div>
 
                 </div>
 
-            </a>
+            </div>
 
-
-        </div>
+        </a>
 
 
     </div>
@@ -1294,7 +1392,7 @@ try (Connection connection = DBConnection.getConnection()) {
 
 </div>
 
-
+</div>
 
 <!-- =====================================================
      ADMINISTRATOR RESPONSIBILITIES
@@ -1302,152 +1400,191 @@ try (Connection connection = DBConnection.getConnection()) {
 
 <div class="content-card mt-4">
 
+<div class="card-header-custom">
 
-    <div class="card-header-custom">
+    <div>
 
-        <div>
+        <h4>
+            Administrator Responsibilities
+        </h4>
 
-            <h4>
-                Administrator Responsibilities
-            </h4>
+        <p>
+            Main functions available to system administrators
+        </p>
 
-            <p>
-                Main functions available to system administrators
-            </p>
+    </div>
 
-        </div>
+</div>
+
+
+
+<div class="row g-3">
+
+
+    <!-- User Management -->
+
+    <div class="col-md-4">
+
+        <a
+            href="<%= request.getContextPath() %>/admin/manage-students.jsp"
+            class="text-decoration-none">
+
+            <div class="quiz-item">
+
+                <div class="quiz-icon">
+
+                    <i class="bi bi-person-check-fill"></i>
+
+                </div>
+
+
+                <div class="quiz-information">
+
+                    <h5>
+                        User Management
+                    </h5>
+
+                    <div class="quiz-meta">
+
+                        <span>
+                            Manage students and academic staff.
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </a>
 
     </div>
 
 
 
-    <div class="row g-3">
+    <!-- Course Management -->
+
+    <div class="col-md-4">
+
+        <a
+            href="<%= request.getContextPath() %>/admin/manage-courses.jsp"
+            class="text-decoration-none">
+
+            <div class="quiz-item">
+
+                <div class="quiz-icon network-icon">
+
+                    <i class="bi bi-book-fill"></i>
+
+                </div>
 
 
-        <!-- User Management -->
+                <div class="quiz-information">
 
-        <div class="col-md-4">
+                    <h5>
+                        Course Management
+                    </h5>
 
-            <a
-                href="<%= request.getContextPath() %>/admin/manage-students.jsp"
-                class="text-decoration-none">
+                    <div class="quiz-meta">
 
-                <div class="quiz-item">
-
-                    <div class="quiz-icon">
-
-                        <i class="bi bi-person-check-fill"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-                            User Management
-                        </h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-                                Manage students and academic staff.
-                            </span>
-
-                        </div>
+                        <span>
+                            Manage courses, programmes and curriculum.
+                        </span>
 
                     </div>
 
                 </div>
 
-            </a>
+            </div>
 
-        </div>
-
-
-
-        <!-- System Control -->
-
-        <div class="col-md-4">
-
-            <a
-                href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
-                class="text-decoration-none">
-
-                <div class="quiz-item">
-
-                    <div class="quiz-icon software-icon">
-
-                        <i class="bi bi-shield-check"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-                            System Control
-                        </h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-                                Monitor system activities and access.
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </a>
-
-        </div>
-
-
-
-        <!-- Reports -->
-
-        <div class="col-md-4">
-
-            <a
-                href="<%= request.getContextPath() %>/admin/reports.jsp"
-                class="text-decoration-none">
-
-                <div class="quiz-item">
-
-                    <div class="quiz-icon network-icon">
-
-                        <i class="bi bi-bar-chart-line-fill"></i>
-
-                    </div>
-
-
-                    <div class="quiz-information">
-
-                        <h5>
-                            Reports
-                        </h5>
-
-                        <div class="quiz-meta">
-
-                            <span>
-                                Monitor quiz and student performance.
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </a>
-
-        </div>
-
+        </a>
 
     </div>
 
+
+
+    <!-- System Control -->
+
+    <div class="col-md-4">
+
+        <a
+            href="<%= request.getContextPath() %>/admin/manage-quizzes.jsp"
+            class="text-decoration-none">
+
+            <div class="quiz-item">
+
+                <div class="quiz-icon software-icon">
+
+                    <i class="bi bi-shield-check"></i>
+
+                </div>
+
+
+                <div class="quiz-information">
+
+                    <h5>
+                        System Control
+                    </h5>
+
+                    <div class="quiz-meta">
+
+                        <span>
+                            Monitor system activities and access.
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </a>
+
+    </div>
+
+
+
+    <!-- Reports -->
+
+    <div class="col-md-4">
+
+        <a
+            href="<%= request.getContextPath() %>/admin/reports.jsp"
+            class="text-decoration-none">
+
+            <div class="quiz-item">
+
+                <div class="quiz-icon network-icon">
+
+                    <i class="bi bi-bar-chart-line-fill"></i>
+
+                </div>
+
+
+                <div class="quiz-information">
+
+                    <h5>
+                        Reports
+                    </h5>
+
+                    <div class="quiz-meta">
+
+                        <span>
+                            Monitor quiz and student performance.
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </a>
+
+    </div>
+
+
+</div>
 
 </div>
 
