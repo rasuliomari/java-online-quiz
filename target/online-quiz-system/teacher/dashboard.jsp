@@ -475,6 +475,16 @@ if (totalQuizzes > 0) {
 
     </a>
 
+    <a href="my-courses.jsp"
+        class="sidebar-link">
+
+        <i class="bi bi-book-half"></i>
+
+        <span>
+            My Courses
+        </span>
+    </a>
+
 
 
     <a href="#my-quizzes"
