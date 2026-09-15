@@ -5,9 +5,13 @@
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/AdminResultsServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/AdminUpdateQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/AssignCourseServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateCollegeServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateCourseServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateProgrammeServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/CreateTeacherServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/DeleteCollegeServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/DeleteCourseServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/DeleteQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/DeleteStudentServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/DeleteTeacherServlet.java
@@ -18,6 +22,7 @@
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/SaveQuestionServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/StudentRegisterServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/SubmitQuizServlet.java
+/home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateCourseServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateQuestionServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateQuizServlet.java
 /home/rasoul/Music/quiz/online-quiz-system/src/main/java/tz/udom/quiz/servlet/UpdateStudentServlet.java

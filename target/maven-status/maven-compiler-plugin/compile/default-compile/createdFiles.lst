@@ -5,7 +5,9 @@ tz/udom/quiz/servlet/AdminChangePasswordServlet.class
 tz/udom/quiz/servlet/LoginServlet.class
 tz/udom/quiz/servlet/DeleteStudentServlet.class
 tz/udom/quiz/servlet/UpdateQuizServlet.class
+tz/udom/quiz/servlet/DeleteCourseServlet.class
 tz/udom/quiz/servlet/PublishQuizServlet.class
+tz/udom/quiz/servlet/CreateProgrammeServlet.class
 tz/udom/quiz/util/AdminPasswordGenerator.class
 tz/udom/quiz/servlet/UpdateQuestionServlet.class
 tz/udom/quiz/servlet/UpdateStudentServlet.class
@@ -17,10 +19,13 @@ tz/udom/quiz/servlet/AdminUpdateQuizServlet.class
 tz/udom/quiz/servlet/UpdateTeacherServlet.class
 tz/udom/quiz/servlet/CreateCourseServlet.class
 tz/udom/quiz/filter/StudentAuthFilter.class
+tz/udom/quiz/servlet/DeleteCollegeServlet.class
 tz/udom/quiz/util/DatabaseTest.class
 tz/udom/quiz/servlet/SubmitQuizServlet.class
 tz/udom/quiz/servlet/DeleteQuizServlet.class
 tz/udom/quiz/servlet/CreateTeacherServlet.class
 tz/udom/quiz/servlet/StudentRegisterServlet.class
+tz/udom/quiz/servlet/CreateCollegeServlet.class
+tz/udom/quiz/servlet/UpdateCourseServlet.class
 tz/udom/quiz/servlet/GetProgrammesServlet.class
 tz/udom/quiz/servlet/LogoutServlet.class

@@ -1,12 +1,10 @@
 package tz.udom.quiz.servlet;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,82 +18,78 @@ public class GetProgrammesServlet extends HttpServlet {
     protected void doGet(
             HttpServletRequest request,
             HttpServletResponse response)
-            throws ServletException, IOException {
+            throws IOException {
 
-        response.setContentType(
-                "application/json;charset=UTF-8");
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
 
         String collegeIdText =
                 request.getParameter("collegeId");
 
-        PrintWriter out =
-                response.getWriter();
+        if (collegeIdText == null ||
+                collegeIdText.trim().isEmpty()) {
 
-        if (collegeIdText == null) {
-
-            out.print("[]");
-
+            response.getWriter().print("[]");
             return;
         }
 
+        int collegeId;
 
         try {
 
-            int collegeId =
+            collegeId =
                     Integer.parseInt(collegeIdText);
 
+        } catch (NumberFormatException e) {
 
-            String sql =
-                    "SELECT id, name " +
-                    "FROM programmes " +
-                    "WHERE college_id = ? " +
-                    "ORDER BY name";
+            response.getWriter().print("[]");
+            return;
+        }
 
+        String sql =
+                "SELECT id, name "
+                        + "FROM programmes "
+                        + "WHERE college_id = ? "
+                        + "ORDER BY name";
 
-            try (Connection connection =
-                         DBConnection.getConnection();
+        StringBuilder json =
+                new StringBuilder("[");
 
-                 PreparedStatement ps =
-                         connection.prepareStatement(sql)) {
+        try (Connection connection =
+                     DBConnection.getConnection();
+             PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
 
-                ps.setInt(1, collegeId);
+            statement.setInt(1, collegeId);
 
-                try (ResultSet rs =
-                             ps.executeQuery()) {
+            try (ResultSet resultSet =
+                         statement.executeQuery()) {
 
-                    StringBuilder json =
-                            new StringBuilder("[");
+                boolean first = true;
 
-                    boolean first = true;
+                while (resultSet.next()) {
 
-                    while (rs.next()) {
-
-                        if (!first) {
-                            json.append(",");
-                        }
-
-                        json.append("{");
-
-                        json.append("\"id\":")
-                                .append(rs.getInt("id"))
-                                .append(",");
-
-                        json.append("\"name\":\"")
-                                .append(
-                                    escapeJson(
-                                        rs.getString("name")
-                                    )
-                                )
-                                .append("\"");
-
-                        json.append("}");
-
-                        first = false;
+                    if (!first) {
+                        json.append(",");
                     }
 
-                    json.append("]");
+                    json.append("{");
 
-                    out.print(json);
+                    json.append("\"id\":")
+                            .append(resultSet.getInt("id"))
+                            .append(",");
+
+                    json.append("\"name\":\"")
+                            .append(
+                                    escapeJson(
+                                            resultSet.getString("name")
+                                    )
+                            )
+                            .append("\"");
+
+                    json.append("}");
+
+                    first = false;
                 }
             }
 
@@ -103,8 +97,13 @@ public class GetProgrammesServlet extends HttpServlet {
 
             e.printStackTrace();
 
-            out.print("[]");
+            response.getWriter().print("[]");
+            return;
         }
+
+        json.append("]");
+
+        response.getWriter().print(json);
     }
 
 
@@ -116,6 +115,8 @@ public class GetProgrammesServlet extends HttpServlet {
 
         return value
                 .replace("\\", "\\\\")
-                .replace("\"", "\\\"");
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
     }
 }

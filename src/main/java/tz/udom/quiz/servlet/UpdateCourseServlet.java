@@ -14,8 +14,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import tz.udom.quiz.util.DBConnection;
 
-@WebServlet("/createCourse")
-public class CreateCourseServlet extends HttpServlet {
+@WebServlet("/updateCourse")
+public class UpdateCourseServlet extends HttpServlet {
 
     @Override
     protected void doPost(
@@ -35,22 +35,18 @@ public class CreateCourseServlet extends HttpServlet {
             return;
         }
 
-        String programmeIdText =
-                request.getParameter("programmeId");
+        String courseIdText = request.getParameter("courseId");
+        String programmeIdText = request.getParameter("programmeId");
+        String yearText = request.getParameter("yearOfStudy");
+        String courseCode = request.getParameter("courseCode");
+        String courseName = request.getParameter("courseName");
 
-        String yearText =
-                request.getParameter("yearOfStudy");
-
-        String courseCode =
-                request.getParameter("courseCode");
-
-        String courseName =
-                request.getParameter("courseName");
-
-        if (programmeIdText == null ||
+        if (courseIdText == null ||
+                programmeIdText == null ||
                 yearText == null ||
                 courseCode == null ||
                 courseName == null ||
+                courseIdText.trim().isEmpty() ||
                 programmeIdText.trim().isEmpty() ||
                 yearText.trim().isEmpty() ||
                 courseCode.trim().isEmpty() ||
@@ -63,16 +59,15 @@ public class CreateCourseServlet extends HttpServlet {
             return;
         }
 
+        int courseId;
         int programmeId;
         int yearOfStudy;
 
         try {
 
-            programmeId =
-                    Integer.parseInt(programmeIdText);
-
-            yearOfStudy =
-                    Integer.parseInt(yearText);
+            courseId = Integer.parseInt(courseIdText);
+            programmeId = Integer.parseInt(programmeIdText);
+            yearOfStudy = Integer.parseInt(yearText);
 
         } catch (NumberFormatException e) {
 
@@ -95,10 +90,8 @@ public class CreateCourseServlet extends HttpServlet {
         courseCode = courseCode.trim().toUpperCase();
         courseName = courseName.trim();
 
-        try (Connection connection =
-                     DBConnection.getConnection()) {
+        try (Connection connection = DBConnection.getConnection()) {
 
-            // Verify programme exists
             String checkProgramme =
                     "SELECT id FROM programmes WHERE id = ?";
 
@@ -122,9 +115,12 @@ public class CreateCourseServlet extends HttpServlet {
             }
 
             String sql =
-                    "INSERT INTO courses "
-                            + "(programme_id, course_code, course_name, year_of_study) "
-                            + "VALUES (?, ?, ?, ?)";
+                    "UPDATE courses "
+                            + "SET programme_id = ?, "
+                            + "course_code = ?, "
+                            + "course_name = ?, "
+                            + "year_of_study = ? "
+                            + "WHERE id = ?";
 
             try (PreparedStatement statement =
                          connection.prepareStatement(sql)) {
@@ -133,12 +129,22 @@ public class CreateCourseServlet extends HttpServlet {
                 statement.setString(2, courseCode);
                 statement.setString(3, courseName);
                 statement.setInt(4, yearOfStudy);
+                statement.setInt(5, courseId);
 
-                statement.executeUpdate();
+                int rows = statement.executeUpdate();
+
+                if (rows == 0) {
+
+                    response.sendRedirect(
+                            request.getContextPath()
+                                    + "/admin/manage-courses.jsp?error=course_not_found"
+                    );
+                    return;
+                }
 
                 response.sendRedirect(
                         request.getContextPath()
-                                + "/admin/manage-courses.jsp?success=course_added"
+                                + "/admin/manage-courses.jsp?success=course_updated"
                 );
             }
 
