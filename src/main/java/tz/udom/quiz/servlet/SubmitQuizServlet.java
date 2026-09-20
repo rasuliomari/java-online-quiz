@@ -29,39 +29,58 @@ public class SubmitQuizServlet extends HttpServlet {
 
         HttpSession session = request.getSession(false);
 
-        // ---------------------------------------------------------
+        // =========================================================
         // 1. CHECK STUDENT LOGIN
-        // ---------------------------------------------------------
+        // =========================================================
         if (session == null
-                || !Boolean.TRUE.equals(session.getAttribute("studentLoggedIn"))
-                || !"STUDENT".equals(session.getAttribute("userRole"))) {
+                || !Boolean.TRUE.equals(
+                        session.getAttribute("studentLoggedIn"))
+                || !"STUDENT".equals(
+                        session.getAttribute("userRole"))) {
 
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(
+                    request.getContextPath() + "/login.jsp"
+            );
             return;
         }
 
-        Object studentIdObject = session.getAttribute("studentId");
+        Object studentIdObject =
+                session.getAttribute("studentId");
 
         if (studentIdObject == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+
+            response.sendRedirect(
+                    request.getContextPath() + "/login.jsp"
+            );
             return;
         }
 
         int studentId;
 
         try {
-            studentId = Integer.parseInt(studentIdObject.toString());
+
+            studentId =
+                    Integer.parseInt(
+                            studentIdObject.toString()
+                    );
+
         } catch (NumberFormatException e) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+
+            response.sendRedirect(
+                    request.getContextPath() + "/login.jsp"
+            );
             return;
         }
 
-        // ---------------------------------------------------------
+        // =========================================================
         // 2. GET QUIZ ID
-        // ---------------------------------------------------------
-        String quizIdParameter = request.getParameter("quizId");
+        // =========================================================
+        String quizIdParameter =
+                request.getParameter("quizId");
 
-        if (quizIdParameter == null || quizIdParameter.trim().isEmpty()) {
+        if (quizIdParameter == null
+                || quizIdParameter.trim().isEmpty()) {
+
             response.sendRedirect(
                     request.getContextPath()
                             + "/student/dashboard.jsp?error=invalidQuiz"
@@ -72,13 +91,44 @@ public class SubmitQuizServlet extends HttpServlet {
         int quizId;
 
         try {
-            quizId = Integer.parseInt(quizIdParameter);
+
+            quizId =
+                    Integer.parseInt(
+                            quizIdParameter.trim()
+                    );
+
         } catch (NumberFormatException e) {
+
             response.sendRedirect(
                     request.getContextPath()
                             + "/student/dashboard.jsp?error=invalidQuiz"
             );
             return;
+        }
+
+        // =========================================================
+        // 3. GET SUBMISSION TYPE
+        // =========================================================
+        String submissionType =
+                request.getParameter("submissionType");
+
+        if (submissionType == null
+                || submissionType.trim().isEmpty()) {
+
+            submissionType = "normal";
+
+        } else {
+
+            submissionType =
+                    submissionType.trim().toLowerCase();
+        }
+
+        // Only these submission types are allowed
+        if (!submissionType.equals("normal")
+                && !submissionType.equals("exit")
+                && !submissionType.equals("time_expired")) {
+
+            submissionType = "normal";
         }
 
         Connection connection = null;
@@ -87,11 +137,14 @@ public class SubmitQuizServlet extends HttpServlet {
 
             connection = DBConnection.getConnection();
 
+            // =====================================================
+            // START TRANSACTION
+            // =====================================================
             connection.setAutoCommit(false);
 
-            // -----------------------------------------------------
-            // 3. LOAD PUBLISHED QUIZ
-            // -----------------------------------------------------
+            // =====================================================
+            // 4. LOAD PUBLISHED QUIZ
+            // =====================================================
             String quizSql =
                     "SELECT title, question_count, pass_mark " +
                     "FROM quizzes " +
@@ -107,7 +160,8 @@ public class SubmitQuizServlet extends HttpServlet {
 
                 statement.setInt(1, quizId);
 
-                try (ResultSet resultSet = statement.executeQuery()) {
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
 
                     if (!resultSet.next()) {
 
@@ -121,30 +175,36 @@ public class SubmitQuizServlet extends HttpServlet {
                         return;
                     }
 
-                    quizTitle = resultSet.getString("title");
+                    quizTitle =
+                            resultSet.getString("title");
+
                     expectedQuestionCount =
                             resultSet.getInt("question_count");
+
                     passMark =
                             resultSet.getInt("pass_mark");
                 }
             }
 
-            // -----------------------------------------------------
-            // 4. CHECK DATABASE FOR EXISTING ATTEMPT
-            // -----------------------------------------------------
+            // =====================================================
+            // 5. CHECK IF STUDENT ALREADY ATTEMPTED QUIZ
+            // =====================================================
             String existingAttemptSql =
                     "SELECT id " +
                     "FROM quiz_attempts " +
                     "WHERE quiz_id = ? " +
-                    "AND student_id = ?";
+                    "AND student_id = ? " +
+                    "LIMIT 1";
 
             try (PreparedStatement statement =
-                         connection.prepareStatement(existingAttemptSql)) {
+                         connection.prepareStatement(
+                                 existingAttemptSql)) {
 
                 statement.setInt(1, quizId);
                 statement.setInt(2, studentId);
 
-                try (ResultSet resultSet = statement.executeQuery()) {
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
 
                     if (resultSet.next()) {
 
@@ -161,9 +221,9 @@ public class SubmitQuizServlet extends HttpServlet {
                 }
             }
 
-            // -----------------------------------------------------
-            // 5. LOAD CORRECT ANSWERS
-            // -----------------------------------------------------
+            // =====================================================
+            // 6. LOAD CORRECT ANSWERS
+            // =====================================================
             String correctAnswerSql =
                     "SELECT q.id, a.option_label " +
                     "FROM questions q " +
@@ -177,11 +237,13 @@ public class SubmitQuizServlet extends HttpServlet {
                     new LinkedHashMap<>();
 
             try (PreparedStatement statement =
-                         connection.prepareStatement(correctAnswerSql)) {
+                         connection.prepareStatement(
+                                 correctAnswerSql)) {
 
                 statement.setInt(1, quizId);
 
-                try (ResultSet resultSet = statement.executeQuery()) {
+                try (ResultSet resultSet =
+                             statement.executeQuery()) {
 
                     while (resultSet.next()) {
 
@@ -189,7 +251,17 @@ public class SubmitQuizServlet extends HttpServlet {
                                 resultSet.getInt("id");
 
                         String correctOption =
-                                resultSet.getString("option_label");
+                                resultSet.getString(
+                                        "option_label"
+                                );
+
+                        if (correctOption != null) {
+
+                            correctOption =
+                                    correctOption
+                                            .trim()
+                                            .toUpperCase();
+                        }
 
                         correctAnswers.put(
                                 questionId,
@@ -199,10 +271,11 @@ public class SubmitQuizServlet extends HttpServlet {
                 }
             }
 
-            // -----------------------------------------------------
-            // 6. VERIFY QUESTION COUNT
-            // -----------------------------------------------------
-            if (correctAnswers.size() != expectedQuestionCount) {
+            // =====================================================
+            // 7. VERIFY QUESTION COUNT
+            // =====================================================
+            if (correctAnswers.size()
+                    != expectedQuestionCount) {
 
                 connection.rollback();
 
@@ -216,9 +289,9 @@ public class SubmitQuizServlet extends HttpServlet {
                 return;
             }
 
-            // -----------------------------------------------------
-            // 7. CALCULATE SCORE
-            // -----------------------------------------------------
+            // =====================================================
+            // 8. READ STUDENT ANSWERS AND CALCULATE SCORE
+            // =====================================================
             int score = 0;
 
             Map<Integer, String> submittedAnswers =
@@ -230,7 +303,8 @@ public class SubmitQuizServlet extends HttpServlet {
             for (Map.Entry<Integer, String> entry
                     : correctAnswers.entrySet()) {
 
-                int questionId = entry.getKey();
+                int questionId =
+                        entry.getKey();
 
                 String correctOption =
                         entry.getValue();
@@ -240,12 +314,23 @@ public class SubmitQuizServlet extends HttpServlet {
                                 "question_" + questionId
                         );
 
-                // Only accept A, B, C or D
+                /*
+                 * IMPORTANT:
+                 *
+                 * If the student did not answer a question,
+                 * submittedOption will be null.
+                 *
+                 * This is NOT treated as a submission error.
+                 * It simply means the question is unanswered.
+                 */
                 if (submittedOption != null) {
 
                     submittedOption =
-                            submittedOption.trim().toUpperCase();
+                            submittedOption
+                                    .trim()
+                                    .toUpperCase();
 
+                    // Only accept A, B, C or D
                     if (!submittedOption.equals("A")
                             && !submittedOption.equals("B")
                             && !submittedOption.equals("C")
@@ -262,7 +347,10 @@ public class SubmitQuizServlet extends HttpServlet {
 
                 boolean isCorrect =
                         submittedOption != null
-                                && submittedOption.equals(correctOption);
+                                && correctOption != null
+                                && submittedOption.equals(
+                                        correctOption
+                                );
 
                 answerCorrectness.put(
                         questionId,
@@ -274,9 +362,9 @@ public class SubmitQuizServlet extends HttpServlet {
                 }
             }
 
-            // -----------------------------------------------------
-            // 8. CALCULATE PERCENTAGE
-            // -----------------------------------------------------
+            // =====================================================
+            // 9. CALCULATE PERCENTAGE
+            // =====================================================
             double percentage = 0.0;
 
             if (expectedQuestionCount > 0) {
@@ -293,9 +381,9 @@ public class SubmitQuizServlet extends HttpServlet {
             String resultStatus =
                     passed ? "PASS" : "FAIL";
 
-            // -----------------------------------------------------
-            // 9. INSERT QUIZ ATTEMPT
-            // -----------------------------------------------------
+            // =====================================================
+            // 10. INSERT QUIZ ATTEMPT
+            // =====================================================
             String insertAttemptSql =
                     "INSERT INTO quiz_attempts " +
                     "(quiz_id, student_id, score, total_questions, " +
@@ -307,7 +395,8 @@ public class SubmitQuizServlet extends HttpServlet {
             int attemptId;
 
             try (PreparedStatement statement =
-                         connection.prepareStatement(insertAttemptSql)) {
+                         connection.prepareStatement(
+                                 insertAttemptSql)) {
 
                 statement.setInt(1, quizId);
                 statement.setInt(2, studentId);
@@ -331,16 +420,17 @@ public class SubmitQuizServlet extends HttpServlet {
                 }
             }
 
-            // -----------------------------------------------------
-            // 10. SAVE EACH STUDENT ANSWER
-            // -----------------------------------------------------
+            // =====================================================
+            // 11. SAVE STUDENT ANSWERS
+            // =====================================================
             String insertAnswerSql =
                     "INSERT INTO quiz_attempt_answers " +
                     "(attempt_id, question_id, selected_option, is_correct) " +
                     "VALUES (?, ?, ?, ?)";
 
             try (PreparedStatement statement =
-                         connection.prepareStatement(insertAnswerSql)) {
+                         connection.prepareStatement(
+                                 insertAnswerSql)) {
 
                 for (Integer questionId :
                         correctAnswers.keySet()) {
@@ -351,16 +441,35 @@ public class SubmitQuizServlet extends HttpServlet {
                     boolean isCorrect =
                             answerCorrectness.get(questionId);
 
-                    statement.setInt(1, attemptId);
-                    statement.setInt(2, questionId);
+                    statement.setInt(
+                            1,
+                            attemptId
+                    );
+
+                    statement.setInt(
+                            2,
+                            questionId
+                    );
 
                     if (selectedOption == null) {
-                        statement.setNull(3, java.sql.Types.CHAR);
+
+                        statement.setNull(
+                                3,
+                                java.sql.Types.CHAR
+                        );
+
                     } else {
-                        statement.setString(3, selectedOption);
+
+                        statement.setString(
+                                3,
+                                selectedOption
+                        );
                     }
 
-                    statement.setBoolean(4, isCorrect);
+                    statement.setBoolean(
+                            4,
+                            isCorrect
+                    );
 
                     statement.addBatch();
                 }
@@ -368,14 +477,14 @@ public class SubmitQuizServlet extends HttpServlet {
                 statement.executeBatch();
             }
 
-            // -----------------------------------------------------
-            // 11. COMMIT EVERYTHING
-            // -----------------------------------------------------
+            // =====================================================
+            // 12. COMMIT DATABASE TRANSACTION
+            // =====================================================
             connection.commit();
 
-            // -----------------------------------------------------
-            // 12. KEEP SESSION RESULT FOR CURRENT RESULT PAGE
-            // -----------------------------------------------------
+            // =====================================================
+            // 13. SAVE RESULT INFORMATION IN SESSION
+            // =====================================================
             session.setAttribute(
                     "quizAttempted_" + quizId,
                     true
@@ -421,18 +530,27 @@ public class SubmitQuizServlet extends HttpServlet {
                     passed
             );
 
+            // Save how the quiz was submitted
+            session.setAttribute(
+                    "quizResultSubmissionType_" + quizId,
+                    submissionType
+            );
+
+            // Save submitted answers
             session.setAttribute(
                     "quizSubmittedAnswers_" + quizId,
                     submittedAnswers
             );
 
-            // -----------------------------------------------------
-            // 13. SAVE RESULT IN SESSION HISTORY
-            // -----------------------------------------------------
+            // =====================================================
+            // 14. SAVE RESULT IN SESSION HISTORY
+            // =====================================================
             List<Map<String, Object>> history;
 
             Object historyObject =
-                    session.getAttribute("quizResultHistory");
+                    session.getAttribute(
+                            "quizResultHistory"
+                    );
 
             if (historyObject instanceof List<?>) {
 
@@ -451,7 +569,9 @@ public class SubmitQuizServlet extends HttpServlet {
                                 ((Map<?, ?>) item).entrySet()) {
 
                             copy.put(
-                                    String.valueOf(entry.getKey()),
+                                    String.valueOf(
+                                            entry.getKey()
+                                    ),
                                     entry.getValue()
                             );
                         }
@@ -509,10 +629,18 @@ public class SubmitQuizServlet extends HttpServlet {
                     passed
             );
 
-            // Add newest result first
-            history.add(0, result);
+            result.put(
+                    "submissionType",
+                    submissionType
+            );
 
-            // Keep only latest 10 results
+            // Newest result first
+            history.add(
+                    0,
+                    result
+            );
+
+            // Keep latest 10 results
             if (history.size() > 10) {
 
                 history =
@@ -526,9 +654,9 @@ public class SubmitQuizServlet extends HttpServlet {
                     history
             );
 
-            // -----------------------------------------------------
-            // 14. GO TO RESULT PAGE
-            // -----------------------------------------------------
+            // =====================================================
+            // 15. REDIRECT TO RESULT PAGE
+            // =====================================================
             response.sendRedirect(
                     request.getContextPath()
                             + "/student/quiz-result.jsp?quizId="
@@ -539,22 +667,24 @@ public class SubmitQuizServlet extends HttpServlet {
 
         } catch (SQLException e) {
 
-            // -----------------------------------------------------
+            // =====================================================
             // ROLLBACK IF DATABASE ERROR OCCURS
-            // -----------------------------------------------------
+            // =====================================================
             if (connection != null) {
 
                 try {
                     connection.rollback();
+
                 } catch (SQLException rollbackException) {
+
                     rollbackException.printStackTrace();
                 }
             }
 
             e.printStackTrace();
 
-            // PostgreSQL duplicate unique constraint
-            // SQLState 23505 = unique_violation
+            // PostgreSQL unique_violation
+            // SQLState 23505
             if ("23505".equals(e.getSQLState())) {
 
                 response.sendRedirect(
@@ -575,14 +705,16 @@ public class SubmitQuizServlet extends HttpServlet {
 
         } finally {
 
-            // -----------------------------------------------------
+            // =====================================================
             // CLOSE DATABASE CONNECTION
-            // -----------------------------------------------------
+            // =====================================================
             if (connection != null) {
 
                 try {
                     connection.close();
+
                 } catch (SQLException e) {
+
                     e.printStackTrace();
                 }
             }

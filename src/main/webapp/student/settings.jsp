@@ -79,7 +79,7 @@
 
 
     // ============================================================
-    // LOAD FRESH DATA
+    // LOAD FRESH STUDENT DATA
     // ============================================================
 
     String dbFirstName = firstName;
@@ -96,14 +96,17 @@
     try (
             Connection connection =
                     DBConnection.getConnection();
+
             PreparedStatement statement =
                     connection.prepareStatement(sql)
     ) {
 
         statement.setInt(1, studentId);
 
-        try (ResultSet resultSet =
-                statement.executeQuery()) {
+        try (
+                ResultSet resultSet =
+                        statement.executeQuery()
+        ) {
 
             if (resultSet.next()) {
 
@@ -120,12 +123,21 @@
         }
 
     } catch (SQLException e) {
+
         e.printStackTrace();
     }
 
 
-    if (dbFirstName == null) dbFirstName = "Student";
-    if (dbEmail == null) dbEmail = "";
+    if (dbFirstName == null ||
+        dbFirstName.trim().isEmpty()) {
+
+        dbFirstName = "Student";
+    }
+
+    if (dbEmail == null) {
+        dbEmail = "";
+    }
+
     if (dbRegistrationNumber == null) {
         dbRegistrationNumber = "";
     }
@@ -136,10 +148,20 @@
     // ============================================================
 
     String avatarLetter =
-            dbFirstName
-            .substring(0, 1)
-            .toUpperCase();
+            dbFirstName.substring(0, 1).toUpperCase();
+
+
+    // ============================================================
+    // SUCCESS / ERROR MESSAGES
+    // ============================================================
+
+    String successMessage =
+            request.getParameter("success");
+
+    String errorMessage =
+            request.getParameter("error");
 %>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -156,19 +178,111 @@
         Settings | UDOM Online Quiz System
     </title>
 
+
+    <!-- Bootstrap 5.3.3 -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet">
 
+
+    <!-- Bootstrap Icons -->
     <link
         rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
+
+    <!-- Dashboard CSS -->
     <link
         rel="stylesheet"
         href="../css/dashboard.css">
 
+
+    <style>
+
+        /* ========================================================
+           CHANGE PASSWORD
+        ======================================================== */
+
+        .password-section {
+            padding: 24px;
+        }
+
+        .password-form-group {
+            margin-bottom: 20px;
+        }
+
+        .password-form-group label {
+            font-weight: 600;
+            color: #343a40;
+            margin-bottom: 8px;
+        }
+
+        .password-input-group {
+            position: relative;
+        }
+
+        .password-input-group .form-control {
+            padding-right: 48px;
+            min-height: 46px;
+            border-radius: 10px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            color: #6c757d;
+            padding: 5px 8px;
+            z-index: 5;
+        }
+
+        .password-toggle:hover {
+            color: #0d6efd;
+        }
+
+        .password-help {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 6px;
+        }
+
+        .change-password-btn {
+            min-height: 46px;
+            border-radius: 10px;
+            font-weight: 600;
+            padding: 0 22px;
+        }
+
+        .security-notice {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .security-notice i {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+
+        .security-notice p {
+            margin: 8px 0 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .alert {
+            border-radius: 10px;
+        }
+
+    </style>
+
 </head>
+
 
 <body>
 
@@ -181,6 +295,9 @@
 
     <div class="container-fluid">
 
+
+        <!-- Mobile Sidebar Button -->
+
         <button
             class="btn sidebar-toggle d-lg-none me-2"
             type="button"
@@ -191,6 +308,8 @@
 
         </button>
 
+
+        <!-- Brand -->
 
         <a
             class="navbar-brand d-flex align-items-center"
@@ -211,10 +330,16 @@
         </a>
 
 
+        <!-- Right Side -->
+
         <div class="ms-auto d-flex align-items-center">
 
+
+            <!-- Notification -->
+
             <button
-                class="btn notification-btn me-3">
+                class="btn notification-btn me-3"
+                type="button">
 
                 <i class="bi bi-bell"></i>
 
@@ -225,12 +350,15 @@
             </button>
 
 
+            <!-- Profile Dropdown -->
+
             <div class="dropdown">
 
                 <button
                     class="btn profile-button dropdown-toggle"
                     type="button"
-                    data-bs-toggle="dropdown">
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false">
 
                     <span class="student-avatar">
 
@@ -249,6 +377,7 @@
 
                 <ul class="dropdown-menu dropdown-menu-end">
 
+
                     <li>
 
                         <a
@@ -262,6 +391,7 @@
                         </a>
 
                     </li>
+
 
                     <li>
 
@@ -277,11 +407,13 @@
 
                     </li>
 
+
                     <li>
 
                         <hr class="dropdown-divider">
 
                     </li>
+
 
                     <li>
 
@@ -297,6 +429,7 @@
 
                     </li>
 
+
                 </ul>
 
             </div>
@@ -308,6 +441,7 @@
 </nav>
 
 
+
 <!-- ============================================================
      SIDEBAR
 ============================================================ -->
@@ -317,6 +451,8 @@
     tabindex="-1"
     id="studentSidebar">
 
+
+    <!-- Mobile Header -->
 
     <div class="offcanvas-header d-lg-none">
 
@@ -337,8 +473,12 @@
     </div>
 
 
+    <!-- Sidebar Content -->
+
     <div class="sidebar-content">
 
+
+        <!-- Student Profile -->
 
         <div class="sidebar-profile">
 
@@ -363,6 +503,9 @@
         </div>
 
 
+
+        <!-- Sidebar Menu -->
+
         <div class="sidebar-menu">
 
 
@@ -370,6 +513,8 @@
                 MAIN MENU
             </div>
 
+
+            <!-- Dashboard -->
 
             <a
                 href="dashboard.jsp"
@@ -384,6 +529,8 @@
             </a>
 
 
+            <!-- Available Quizzes -->
+
             <a
                 href="dashboard.jsp#available-quizzes"
                 class="sidebar-link">
@@ -396,6 +543,8 @@
 
             </a>
 
+
+            <!-- Quiz History -->
 
             <a
                 href="quiz-history.jsp"
@@ -410,6 +559,8 @@
             </a>
 
 
+            <!-- My Results -->
+
             <a
                 href="quiz-history.jsp"
                 class="sidebar-link">
@@ -423,10 +574,14 @@
             </a>
 
 
+            <!-- Account -->
+
             <div class="menu-title mt-3">
                 ACCOUNT
             </div>
 
+
+            <!-- Profile -->
 
             <a
                 href="profile.jsp"
@@ -440,6 +595,8 @@
 
             </a>
 
+
+            <!-- Settings -->
 
             <a
                 href="settings.jsp"
@@ -457,6 +614,9 @@
         </div>
 
 
+
+        <!-- Sidebar Bottom -->
+
         <div class="sidebar-bottom">
 
             <a
@@ -473,9 +633,11 @@
 
         </div>
 
+
     </div>
 
 </div>
+
 
 
 <!-- ============================================================
@@ -486,6 +648,8 @@
 
     <div class="container-fluid dashboard-container">
 
+
+        <!-- Page Header -->
 
         <div class="welcome-section">
 
@@ -508,6 +672,65 @@
         </div>
 
 
+
+        <!-- ====================================================
+             SUCCESS MESSAGE
+        ===================================================== -->
+
+        <% if (successMessage != null &&
+               !successMessage.trim().isEmpty()) { %>
+
+            <div
+                class="alert alert-success alert-dismissible fade show"
+                role="alert">
+
+                <i class="bi bi-check-circle-fill me-2"></i>
+
+                <%= successMessage %>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert">
+                </button>
+
+            </div>
+
+        <% } %>
+
+
+
+        <!-- ====================================================
+             ERROR MESSAGE
+        ===================================================== -->
+
+        <% if (errorMessage != null &&
+               !errorMessage.trim().isEmpty()) { %>
+
+            <div
+                class="alert alert-danger alert-dismissible fade show"
+                role="alert">
+
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
+                <%= errorMessage %>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert">
+                </button>
+
+            </div>
+
+        <% } %>
+
+
+
+        <!-- ====================================================
+             MAIN ROW
+        ===================================================== -->
+
         <div class="row g-4">
 
 
@@ -518,6 +741,7 @@
             <div class="col-lg-6">
 
                 <div class="content-card h-100">
+
 
                     <div class="card-header-custom">
 
@@ -543,6 +767,8 @@
                     <div class="p-4">
 
 
+                        <!-- Account Name -->
+
                         <div class="quiz-item mb-3">
 
                             <div class="quiz-icon">
@@ -566,6 +792,8 @@
                         </div>
 
 
+                        <!-- Registration Number -->
+
                         <div class="quiz-item mb-3">
 
                             <div class="quiz-icon">
@@ -588,6 +816,8 @@
 
                         </div>
 
+
+                        <!-- Email -->
 
                         <div class="quiz-item">
 
@@ -619,13 +849,15 @@
             </div>
 
 
+
             <!-- =================================================
-                 SECURITY
+                 SECURITY STATUS
             ================================================== -->
 
             <div class="col-lg-6">
 
                 <div class="content-card h-100">
+
 
                     <div class="card-header-custom">
 
@@ -651,6 +883,8 @@
                     <div class="p-4">
 
 
+                        <!-- Account Status -->
+
                         <div class="quiz-item mb-3">
 
                             <div class="quiz-icon">
@@ -674,6 +908,8 @@
                         </div>
 
 
+                        <!-- Password -->
+
                         <div class="quiz-item mb-3">
 
                             <div class="quiz-icon">
@@ -696,6 +932,8 @@
 
                         </div>
 
+
+                        <!-- Role -->
 
                         <div class="quiz-item">
 
@@ -727,6 +965,249 @@
             </div>
 
 
+
+            <!-- =================================================
+                 CHANGE PASSWORD
+            ================================================== -->
+
+            <div class="col-12">
+
+                <div class="content-card">
+
+
+                    <div class="card-header-custom">
+
+                        <div>
+
+                            <h5>
+
+                                <i class="bi bi-key me-2"></i>
+
+                                Change Password
+
+                            </h5>
+
+                            <p>
+                                Change the password provided by the administrator.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="password-section">
+
+
+                        <!-- Information Notice -->
+
+                        <div class="alert alert-info">
+
+                            <i class="bi bi-info-circle-fill me-2"></i>
+
+                            If the administrator gave you a default password,
+                            you can change it here after logging in.
+
+                        </div>
+
+
+                        <!-- Change Password Form -->
+
+                        <form
+                            action="../studentChangePassword"
+                            method="post"
+                            autocomplete="off">
+
+
+                            <!-- Current Password -->
+
+                            <div class="password-form-group">
+
+                                <label
+                                    for="currentPassword"
+                                    class="form-label">
+
+                                    Current Password
+
+                                </label>
+
+
+                                <div class="password-input-group">
+
+                                    <input
+                                        type="password"
+                                        class="form-control"
+                                        id="currentPassword"
+                                        name="currentPassword"
+                                        placeholder="Enter your current password"
+                                        required>
+
+
+                                    <button
+                                        type="button"
+                                        class="password-toggle"
+                                        onclick="togglePassword('currentPassword', this)"
+                                        aria-label="Show current password">
+
+                                        <i class="bi bi-eye"></i>
+
+                                    </button>
+
+                                </div>
+
+
+                                <div class="password-help">
+
+                                    Enter the password you currently use
+                                    to log in.
+
+                                </div>
+
+                            </div>
+
+
+
+                            <!-- New Password -->
+
+                            <div class="password-form-group">
+
+                                <label
+                                    for="newPassword"
+                                    class="form-label">
+
+                                    New Password
+
+                                </label>
+
+
+                                <div class="password-input-group">
+
+                                    <input
+                                        type="password"
+                                        class="form-control"
+                                        id="newPassword"
+                                        name="newPassword"
+                                        placeholder="Enter your new password"
+                                        minlength="6"
+                                        required>
+
+
+                                    <button
+                                        type="button"
+                                        class="password-toggle"
+                                        onclick="togglePassword('newPassword', this)"
+                                        aria-label="Show new password">
+
+                                        <i class="bi bi-eye"></i>
+
+                                    </button>
+
+                                </div>
+
+
+                                <div class="password-help">
+
+                                    Your new password must contain at least
+                                    6 characters.
+
+                                </div>
+
+                            </div>
+
+
+
+                            <!-- Confirm Password -->
+
+                            <div class="password-form-group">
+
+                                <label
+                                    for="confirmPassword"
+                                    class="form-label">
+
+                                    Confirm New Password
+
+                                </label>
+
+
+                                <div class="password-input-group">
+
+                                    <input
+                                        type="password"
+                                        class="form-control"
+                                        id="confirmPassword"
+                                        name="confirmPassword"
+                                        placeholder="Confirm your new password"
+                                        minlength="6"
+                                        required>
+
+
+                                    <button
+                                        type="button"
+                                        class="password-toggle"
+                                        onclick="togglePassword('confirmPassword', this)"
+                                        aria-label="Show password confirmation">
+
+                                        <i class="bi bi-eye"></i>
+
+                                    </button>
+
+                                </div>
+
+
+                            </div>
+
+
+
+                            <!-- Submit -->
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary change-password-btn">
+
+                                <i class="bi bi-shield-lock me-2"></i>
+
+                                Change Password
+
+                            </button>
+
+
+                        </form>
+
+
+
+                        <!-- Security Notice -->
+
+                        <div class="security-notice">
+
+                            <div>
+
+                                <i class="bi bi-shield-check text-success"></i>
+
+                                <strong>
+                                    Password Security
+                                </strong>
+
+                            </div>
+
+                            <p>
+
+                                Your password is stored securely using
+                                password hashing. Never share your password
+                                with another person.
+
+                            </p>
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
             <!-- =================================================
                  SYSTEM INFORMATION
             ================================================== -->
@@ -734,6 +1215,7 @@
             <div class="col-12">
 
                 <div class="content-card">
+
 
                     <div class="card-header-custom">
 
@@ -760,6 +1242,8 @@
 
                         <div class="row g-4">
 
+
+                            <!-- System -->
 
                             <div class="col-md-4">
 
@@ -788,6 +1272,8 @@
                             </div>
 
 
+                            <!-- User Type -->
+
                             <div class="col-md-4">
 
                                 <div class="quiz-item">
@@ -814,6 +1300,8 @@
 
                             </div>
 
+
+                            <!-- Access -->
 
                             <div class="col-md-4">
 
@@ -853,14 +1341,136 @@
 
         </div>
 
+
+        <!-- ====================================================
+             FOOTER
+        ===================================================== -->
+
+        <footer class="dashboard-footer mt-5">
+
+            <div class="d-flex flex-column flex-md-row
+                        justify-content-between align-items-center">
+
+                <p class="mb-2 mb-md-0">
+
+                    &copy; <%= java.time.Year.now().getValue() %>
+                    UDOM Online Quiz System.
+                    All rights reserved.
+
+                </p>
+
+
+                <div>
+
+                    <a href="#" class="me-3">
+                        Help
+                    </a>
+
+                    <a href="#" class="me-3">
+                        Privacy
+                    </a>
+
+                    <a href="#">
+                        Support
+                    </a>
+
+                </div>
+
+            </div>
+
+        </footer>
+
+
     </div>
 
 </main>
 
 
+
+<!-- ============================================================
+     BOOTSTRAP
+============================================================ -->
+
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
 
+
+
+<!-- ============================================================
+     PASSWORD TOGGLE
+============================================================ -->
+
+<script>
+
+    function togglePassword(fieldId, button) {
+
+        const field =
+            document.getElementById(fieldId);
+
+        const icon =
+            button.querySelector("i");
+
+
+        if (field.type === "password") {
+
+            field.type = "text";
+
+            icon.classList.remove("bi-eye");
+
+            icon.classList.add("bi-eye-slash");
+
+            button.setAttribute(
+                "aria-label",
+                "Hide password"
+            );
+
+        } else {
+
+            field.type = "password";
+
+            icon.classList.remove("bi-eye-slash");
+
+            icon.classList.add("bi-eye");
+
+            button.setAttribute(
+                "aria-label",
+                "Show password"
+            );
+        }
+    }
+
+
+    // ============================================================
+    // CONFIRM PASSWORD CHECK
+    // ============================================================
+
+    document
+        .querySelector("form")
+        .addEventListener("submit", function(event) {
+
+            const newPassword =
+                document.getElementById("newPassword").value;
+
+            const confirmPassword =
+                document.getElementById("confirmPassword").value;
+
+
+            if (newPassword !== confirmPassword) {
+
+                event.preventDefault();
+
+                alert(
+                    "New password and confirmation do not match."
+                );
+
+            }
+
+        });
+
+</script>
+
+
 </body>
+
 </html>

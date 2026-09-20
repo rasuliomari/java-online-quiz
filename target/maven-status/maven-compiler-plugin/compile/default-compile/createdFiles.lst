@@ -15,6 +15,7 @@ tz/udom/quiz/servlet/UpdateStudentServlet.class
 tz/udom/quiz/servlet/DeleteTeacherServlet.class
 tz/udom/quiz/servlet/AssignCourseServlet.class
 tz/udom/quiz/util/DBConnection.class
+tz/udom/quiz/servlet/StudentChangePasswordServlet.class
 tz/udom/quiz/servlet/SaveQuestionServlet.class
 tz/udom/quiz/servlet/AdminUpdateQuizServlet.class
 tz/udom/quiz/servlet/UpdateTeacherServlet.class

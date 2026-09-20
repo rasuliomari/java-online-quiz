@@ -36,10 +36,12 @@
     int studentId;
 
     try {
+
         studentId =
                 Integer.parseInt(
                         studentIdObject.toString()
                 );
+
     } catch (NumberFormatException e) {
 
         response.sendRedirect("../login.jsp");
@@ -66,10 +68,12 @@
     int quizId;
 
     try {
+
         quizId =
                 Integer.parseInt(
                         quizIdParameter
                 );
+
     } catch (NumberFormatException e) {
 
         response.sendRedirect("dashboard.jsp");
@@ -81,11 +85,10 @@
      * ============================================================
      * PERMANENT ATTEMPT CHECK
      *
-     * This is the important part.
+     * Check PostgreSQL before allowing the quiz to open.
      *
-     * We check PostgreSQL instead of relying only on the session.
-     * Therefore, even if the student logs out and logs in again,
-     * the student cannot attempt the same quiz again.
+     * If the student has already submitted this quiz,
+     * the student cannot attempt it again.
      * ============================================================
      */
 
@@ -136,6 +139,7 @@
     } finally {
 
         if (attemptResult != null) {
+
             try {
                 attemptResult.close();
             } catch (SQLException ignored) {
@@ -143,6 +147,7 @@
         }
 
         if (attemptStatement != null) {
+
             try {
                 attemptStatement.close();
             } catch (SQLException ignored) {
@@ -150,6 +155,7 @@
         }
 
         if (attemptConnection != null) {
+
             try {
                 attemptConnection.close();
             } catch (SQLException ignored) {
@@ -238,6 +244,7 @@
     } finally {
 
         if (quizResult != null) {
+
             try {
                 quizResult.close();
             } catch (SQLException ignored) {
@@ -245,6 +252,7 @@
         }
 
         if (quizStatement != null) {
+
             try {
                 quizStatement.close();
             } catch (SQLException ignored) {
@@ -252,6 +260,7 @@
         }
 
         if (connection != null) {
+
             try {
                 connection.close();
             } catch (SQLException ignored) {
@@ -299,7 +308,8 @@
             && !studentFirstName.isEmpty()) {
 
         initials =
-                studentFirstName.substring(0, 1)
+                studentFirstName
+                        .substring(0, 1)
                         .toUpperCase();
 
         if (studentLastName != null
@@ -307,7 +317,8 @@
                 && !"null".equals(studentLastName)) {
 
             initials +=
-                    studentLastName.substring(0, 1)
+                    studentLastName
+                            .substring(0, 1)
                             .toUpperCase();
         }
     }
@@ -353,6 +364,7 @@
     } finally {
 
         if (availableResult != null) {
+
             try {
                 availableResult.close();
             } catch (SQLException ignored) {
@@ -360,6 +372,7 @@
         }
 
         if (availableStatement != null) {
+
             try {
                 availableStatement.close();
             } catch (SQLException ignored) {
@@ -367,6 +380,7 @@
         }
 
         if (connection != null) {
+
             try {
                 connection.close();
             } catch (SQLException ignored) {
@@ -387,17 +401,33 @@
 
     <title>Take Quiz - UDOM Online Quiz System</title>
 
+
+    <!-- ========================================================
+         BOOTSTRAP
+         ======================================================== -->
+
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet">
+
+
+    <!-- ========================================================
+         BOOTSTRAP ICONS
+         ======================================================== -->
 
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
         rel="stylesheet">
 
+
+    <!-- ========================================================
+         DASHBOARD CSS
+         ======================================================== -->
+
     <link
         rel="stylesheet"
         href="../css/dashboard.css">
+
 
     <style>
 
@@ -407,12 +437,14 @@
             box-shadow: 0 5px 20px rgba(0,0,0,0.07);
         }
 
+
         .question-card {
             border: none;
             border-radius: 16px;
             box-shadow: 0 4px 18px rgba(0,0,0,0.06);
             margin-bottom: 20px;
         }
+
 
         .answer-option {
             border: 1px solid #dee2e6;
@@ -423,10 +455,20 @@
             transition: 0.2s;
         }
 
+
         .answer-option:hover {
             background-color: #f8f9fa;
             border-color: #0d6efd;
         }
+
+
+        .answer-option:has(
+            input[type="radio"]:checked
+        ) {
+            background-color: #e7f1ff;
+            border-color: #0d6efd;
+        }
+
 
         .timer-box {
             position: sticky;
@@ -435,6 +477,7 @@
             border-radius: 14px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
+
 
         .quiz-question-number {
             width: 38px;
@@ -447,13 +490,47 @@
             color: white;
             font-weight: 600;
             margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+
+        /*
+         * TIMER WARNING
+         */
+
+        .timer-warning {
+            color: #dc3545 !important;
+        }
+
+
+        .timer-danger {
+            color: #dc3545 !important;
+            animation: timerPulse 1s infinite;
+        }
+
+
+        @keyframes timerPulse {
+
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.45;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
     </style>
 
 </head>
 
+
 <body>
+
 
 <!-- ============================================================
      SIDEBAR
@@ -463,12 +540,17 @@
      tabindex="-1"
      id="studentSidebar">
 
+
     <div class="offcanvas-header">
 
         <h5 class="fw-bold mb-0">
+
             <i class="bi bi-mortarboard-fill me-2"></i>
+
             UDOM
+
         </h5>
+
 
         <button
             type="button"
@@ -478,17 +560,22 @@
 
     </div>
 
+
     <div class="offcanvas-body">
 
         <div class="mb-4">
 
             <div class="small text-muted">
+
                 Online Quiz System
+
             </div>
 
         </div>
 
+
         <ul class="nav flex-column gap-2">
+
 
             <li class="nav-item">
 
@@ -496,11 +583,13 @@
                    href="dashboard.jsp">
 
                     <i class="bi bi-grid me-2"></i>
+
                     Dashboard
 
                 </a>
 
             </li>
+
 
             <li class="nav-item">
 
@@ -508,15 +597,19 @@
                    href="dashboard.jsp#available-quizzes">
 
                     <i class="bi bi-journal-check me-2"></i>
+
                     Available Quizzes
 
                     <span class="badge bg-primary float-end">
+
                         <%= availableQuizCount %>
+
                     </span>
 
                 </a>
 
             </li>
+
 
             <li class="nav-item">
 
@@ -524,11 +617,13 @@
                    href="quiz-history.jsp">
 
                     <i class="bi bi-bar-chart me-2"></i>
+
                     My Results
 
                 </a>
 
             </li>
+
 
             <li class="nav-item">
 
@@ -536,11 +631,13 @@
                    href="quiz-history.jsp">
 
                     <i class="bi bi-clock-history me-2"></i>
+
                     Quiz History
 
                 </a>
 
             </li>
+
 
             <li class="nav-item">
 
@@ -548,11 +645,13 @@
                    href="profile.jsp">
 
                     <i class="bi bi-person me-2"></i>
+
                     Profile
 
                 </a>
 
             </li>
+
 
             <li class="nav-item mt-3">
 
@@ -560,11 +659,13 @@
                    href="../logout">
 
                     <i class="bi bi-box-arrow-right me-2"></i>
+
                     Logout
 
                 </a>
 
             </li>
+
 
         </ul>
 
@@ -579,7 +680,9 @@
 
 <nav class="navbar navbar-expand-lg dashboard-navbar bg-white shadow-sm">
 
+
     <div class="container-fluid">
+
 
         <button
             class="btn btn-outline-primary d-lg-none me-2"
@@ -591,6 +694,7 @@
 
         </button>
 
+
         <a class="navbar-brand fw-bold"
            href="dashboard.jsp">
 
@@ -600,20 +704,25 @@
 
         </a>
 
+
         <div class="dropdown ms-auto">
+
 
             <button
                 class="btn d-flex align-items-center"
                 data-bs-toggle="dropdown">
 
-                <span class="rounded-circle bg-primary text-white
-                             d-inline-flex align-items-center
-                             justify-content-center me-2"
-                      style="width:40px;height:40px;">
+
+                <span
+                    class="rounded-circle bg-primary text-white
+                           d-inline-flex align-items-center
+                           justify-content-center me-2"
+                    style="width:40px;height:40px;">
 
                     <%= initials %>
 
                 </span>
+
 
                 <span class="d-none d-md-inline">
 
@@ -621,11 +730,15 @@
 
                 </span>
 
+
                 <i class="bi bi-chevron-down ms-2"></i>
+
 
             </button>
 
+
             <ul class="dropdown-menu dropdown-menu-end">
+
 
                 <li>
 
@@ -633,15 +746,20 @@
                        href="profile.jsp">
 
                         <i class="bi bi-person me-2"></i>
+
                         Profile
 
                     </a>
 
                 </li>
 
+
                 <li>
+
                     <hr class="dropdown-divider">
+
                 </li>
+
 
                 <li>
 
@@ -649,11 +767,13 @@
                        href="../logout">
 
                         <i class="bi bi-box-arrow-right me-2"></i>
+
                         Logout
 
                     </a>
 
                 </li>
+
 
             </ul>
 
@@ -670,30 +790,48 @@
 
 <div class="container-fluid py-4">
 
+
     <div class="row g-4">
 
-        <!-- LEFT CONTENT -->
+
+        <!-- ====================================================
+             LEFT CONTENT
+             ==================================================== -->
 
         <div class="col-lg-9">
 
-            <!-- QUIZ HEADER -->
+
+            <!-- =================================================
+                 QUIZ HEADER
+                 ================================================= -->
 
             <div class="card quiz-header-card mb-4">
 
+
                 <div class="card-body p-4">
 
-                    <div class="d-flex justify-content-between
-                                align-items-start flex-wrap gap-3">
+
+                    <div
+                        class="d-flex justify-content-between
+                               align-items-start flex-wrap gap-3">
+
 
                         <div>
 
+
                             <span class="badge bg-primary mb-2">
+
                                 Published Quiz
+
                             </span>
 
+
                             <h2 class="fw-bold mb-2">
+
                                 <%= quizTitle %>
+
                             </h2>
+
 
                             <div class="text-muted mb-2">
 
@@ -703,39 +841,61 @@
 
                             </div>
 
+
                             <% if (description != null
                                     && !description.trim().isEmpty()) { %>
 
+
                                 <p class="text-muted mb-0">
+
                                     <%= description %>
+
                                 </p>
+
 
                             <% } %>
 
+
                         </div>
 
-                        <a href="dashboard.jsp"
-                           class="btn btn-outline-secondary">
 
-                            <i class="bi bi-arrow-left me-1"></i>
+                        <!-- =================================================
+                             EXIT BUTTON
+                             ================================================= -->
+
+                        <button
+                            type="button"
+                            id="exitQuizButton"
+                            class="btn btn-outline-secondary">
+
+                            <i class="bi bi-box-arrow-left me-1"></i>
 
                             Exit
 
-                        </a>
+                        </button>
+
 
                     </div>
 
+
                     <hr>
+
 
                     <div class="row g-3">
 
+
                         <div class="col-md-3">
+
 
                             <div class="p-3 bg-light rounded-3">
 
+
                                 <div class="text-muted small">
+
                                     Questions
+
                                 </div>
+
 
                                 <div class="fw-bold fs-5">
 
@@ -743,17 +903,24 @@
 
                                 </div>
 
+
                             </div>
 
                         </div>
 
+
                         <div class="col-md-3">
+
 
                             <div class="p-3 bg-light rounded-3">
 
+
                                 <div class="text-muted small">
+
                                     Duration
+
                                 </div>
+
 
                                 <div class="fw-bold fs-5">
 
@@ -761,17 +928,24 @@
 
                                 </div>
 
+
                             </div>
 
                         </div>
 
+
                         <div class="col-md-3">
+
 
                             <div class="p-3 bg-light rounded-3">
 
+
                                 <div class="text-muted small">
+
                                     Pass Mark
+
                                 </div>
+
 
                                 <div class="fw-bold fs-5">
 
@@ -779,17 +953,24 @@
 
                                 </div>
 
+
                             </div>
 
                         </div>
 
+
                         <div class="col-md-3">
+
 
                             <div class="p-3 bg-light rounded-3">
 
+
                                 <div class="text-muted small">
+
                                     Student
+
                                 </div>
+
 
                                 <div class="fw-bold">
 
@@ -797,9 +978,11 @@
 
                                 </div>
 
+
                             </div>
 
                         </div>
+
 
                     </div>
 
@@ -808,27 +991,37 @@
             </div>
 
 
-            <!-- WARNING -->
+            <!-- =================================================
+                 WARNING
+                 ================================================= -->
 
             <div class="alert alert-warning border-0 shadow-sm">
 
+
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
 
                 <strong>Important:</strong>
 
-                Once you submit this quiz, you cannot attempt it again.
 
-                Make sure you answer all questions before submitting.
+                Once you submit or exit this quiz, your attempt
+                will be recorded and you cannot attempt this quiz again.
+
 
             </div>
 
 
-            <!-- QUIZ FORM -->
+            <!-- =================================================
+                 QUIZ FORM
+                 ================================================= -->
 
             <form
                 method="post"
                 action="<%= request.getContextPath() %>/submitQuiz"
                 id="quizForm">
+
+
+                <!-- QUIZ ID -->
 
                 <input
                     type="hidden"
@@ -836,7 +1029,28 @@
                     value="<%= quizId %>">
 
 
+                <!-- =================================================
+                     SUBMISSION TYPE
+                     
+                     normal       = Submit Quiz button
+                     exit         = Exit button
+                     time_expired = Timer reached zero
+                     ================================================= -->
+
+                <input
+                    type="hidden"
+                    name="submissionType"
+                    id="submissionType"
+                    value="normal">
+
+
                 <%
+                    /*
+                     * ====================================================
+                     * LOAD QUESTIONS
+                     * ====================================================
+                     */
+
                     Connection questionConnection = null;
                     PreparedStatement questionStatement = null;
                     ResultSet questionResult = null;
@@ -855,20 +1069,27 @@
                                         "ORDER BY question_number ASC"
                                 );
 
-                        questionStatement.setInt(1, quizId);
+                        questionStatement.setInt(
+                                1,
+                                quizId
+                        );
 
                         questionResult =
                                 questionStatement.executeQuery();
 
+
                         while (questionResult.next()) {
+
 
                             int currentQuestionId =
                                     questionResult.getInt("id");
+
 
                             int currentQuestionNumber =
                                     questionResult.getInt(
                                             "question_number"
                                     );
+
 
                             String questionText =
                                     questionResult.getString(
@@ -876,32 +1097,52 @@
                                     );
                 %>
 
-                <!-- QUESTION -->
+
+                <!-- =================================================
+                     QUESTION CARD
+                     ================================================= -->
 
                 <div class="card question-card">
 
+
                     <div class="card-body p-4">
 
-                        <div class="d-flex align-items-start mb-3">
 
-                            <span class="quiz-question-number">
+                        <div
+                            class="d-flex align-items-start mb-3">
+
+
+                            <span
+                                class="quiz-question-number">
 
                                 <%= currentQuestionNumber %>
 
                             </span>
 
-                            <h5 class="fw-semibold mb-0 pt-1">
+
+                            <h5
+                                class="fw-semibold mb-0 pt-1">
 
                                 <%= questionText %>
 
                             </h5>
 
+
                         </div>
 
 
                         <%
-                            PreparedStatement answerStatement = null;
-                            ResultSet answerResult = null;
+                            /*
+                             * =================================================
+                             * LOAD ANSWERS
+                             * =================================================
+                             */
+
+                            PreparedStatement answerStatement =
+                                    null;
+
+                            ResultSet answerResult =
+                                    null;
 
                             try {
 
@@ -914,20 +1155,25 @@
                                                 "ORDER BY option_label ASC"
                                         );
 
+
                                 answerStatement.setInt(
                                         1,
                                         currentQuestionId
                                 );
 
+
                                 answerResult =
                                         answerStatement.executeQuery();
 
+
                                 while (answerResult.next()) {
+
 
                                     String optionLabel =
                                             answerResult.getString(
                                                     "option_label"
                                             );
+
 
                                     String answerText =
                                             answerResult.getString(
@@ -935,9 +1181,17 @@
                                             );
                         %>
 
-                        <label class="answer-option d-block">
+
+                        <!-- =================================================
+                             ANSWER OPTION
+                             ================================================= -->
+
+                        <label
+                            class="answer-option d-block">
+
 
                             <div class="form-check">
+
 
                                 <input
                                     class="form-check-input"
@@ -945,51 +1199,76 @@
                                     name="question_<%= currentQuestionId %>"
                                     value="<%= optionLabel %>">
 
-                                <span class="form-check-label">
+
+                                <span
+                                    class="form-check-label">
+
 
                                     <strong>
+
                                         <%= optionLabel %>.
+
                                     </strong>
+
 
                                     <%= answerText %>
 
+
                                 </span>
+
 
                             </div>
 
+
                         </label>
+
 
                         <%
                                 }
 
                             } finally {
 
+
                                 if (answerResult != null) {
+
                                     try {
+
                                         answerResult.close();
+
                                     } catch (SQLException ignored) {
                                     }
+
                                 }
 
+
                                 if (answerStatement != null) {
+
                                     try {
+
                                         answerStatement.close();
+
                                     } catch (SQLException ignored) {
                                     }
+
                                 }
+
                             }
                         %>
+
 
                     </div>
 
                 </div>
+
 
                 <%
                         }
 
                     } catch (SQLException e) {
 
+
                         e.printStackTrace();
+
 
                         out.println(
                             "<div class='alert alert-danger'>" +
@@ -997,110 +1276,166 @@
                             "</div>"
                         );
 
+
                     } finally {
 
+
                         if (questionResult != null) {
+
                             try {
+
                                 questionResult.close();
+
                             } catch (SQLException ignored) {
                             }
+
                         }
+
 
                         if (questionStatement != null) {
+
                             try {
+
                                 questionStatement.close();
+
                             } catch (SQLException ignored) {
                             }
+
                         }
 
+
                         if (questionConnection != null) {
+
                             try {
+
                                 questionConnection.close();
+
                             } catch (SQLException ignored) {
                             }
+
                         }
+
                     }
                 %>
 
 
-                <!-- SUBMIT -->
+                <!-- =================================================
+                     NORMAL SUBMIT
+                     ================================================= -->
 
                 <div class="card question-card">
 
+
                     <div class="card-body p-4 text-center">
 
+
                         <h5 class="fw-bold">
+
                             Ready to submit?
+
                         </h5>
+
 
                         <p class="text-muted">
 
                             Review your answers before submitting.
-                            You will not be able to retake this quiz.
+                            Unanswered questions will be submitted
+                            without an answer.
 
                         </p>
 
+
                         <button
                             type="submit"
+                            id="submitQuizButton"
                             class="btn btn-primary btn-lg px-5">
+
 
                             <i class="bi bi-send-check me-2"></i>
 
+
                             Submit Quiz
 
+
                         </button>
+
 
                     </div>
 
                 </div>
 
+
             </form>
+
 
         </div>
 
 
-        <!-- RIGHT TIMER -->
+        <!-- ====================================================
+             RIGHT TIMER
+             ==================================================== -->
 
         <div class="col-lg-3">
 
+
             <div class="card timer-box">
+
 
                 <div class="card-body text-center p-4">
 
+
                     <div class="text-muted mb-2">
+
 
                         <i class="bi bi-clock me-1"></i>
 
+
                         Time Remaining
 
+
                     </div>
+
 
                     <div
                         id="timer"
                         class="fw-bold fs-2 text-primary">
 
+
                         <%= durationMinutes %>:00
 
+
                     </div>
+
 
                     <hr>
 
+
                     <div class="small text-muted">
 
-                        Quiz cannot be retaken after submission.
+
+                        The quiz will automatically be submitted
+                        when the timer reaches zero.
+
 
                     </div>
+
 
                 </div>
 
             </div>
 
+
         </div>
+
 
     </div>
 
 </div>
 
+
+<!-- ============================================================
+     BOOTSTRAP JAVASCRIPT
+     ============================================================ -->
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
@@ -1111,95 +1446,442 @@
 
     /*
      * ============================================================
-     * QUIZ TIMER
+     * QUIZ FORM
      * ============================================================
      */
-
-    let totalSeconds =
-        <%= durationMinutes %> * 60;
-
-    const timerElement =
-        document.getElementById("timer");
 
     const quizForm =
         document.getElementById("quizForm");
 
 
-    function updateTimer() {
-
-        let minutes =
-            Math.floor(totalSeconds / 60);
-
-        let seconds =
-            totalSeconds % 60;
-
-        seconds =
-            seconds < 10
-                ? "0" + seconds
-                : seconds;
-
-        timerElement.textContent =
-            minutes + ":" + seconds;
+    const timerElement =
+        document.getElementById("timer");
 
 
-        if (totalSeconds <= 0) {
+    const exitQuizButton =
+        document.getElementById("exitQuizButton");
 
-            clearInterval(timerInterval);
 
-            alert(
-                "Time is over. Your quiz will be submitted."
-            );
+    const submitQuizButton =
+        document.getElementById("submitQuizButton");
 
-            quizForm.submit();
+
+    const submissionType =
+        document.getElementById("submissionType");
+
+
+    /*
+     * ============================================================
+     * QUIZ STATE
+     * ============================================================
+     */
+
+    let quizSubmitted = false;
+
+    let timeExpired = false;
+
+
+    /*
+     * ============================================================
+     * SUBMIT QUIZ FUNCTION
+     *
+     * type can be:
+     *
+     * normal
+     * exit
+     * time_expired
+     * ============================================================
+     */
+
+    function submitQuiz(type) {
+
+
+        /*
+         * Prevent duplicate submissions.
+         */
+
+        if (quizSubmitted) {
 
             return;
         }
+
+
+        /*
+         * Mark quiz as submitted.
+         */
+
+        quizSubmitted = true;
+
+
+        /*
+         * Store the submission type.
+         */
+
+        submissionType.value =
+                type;
+
+
+        /*
+         * Stop the timer.
+         */
+
+        clearInterval(
+                timerInterval
+        );
+
+
+        /*
+         * Remove the browser's
+         * leave-page warning.
+         */
+
+        window.removeEventListener(
+                "beforeunload",
+                preventLeaving
+        );
+
+
+        /*
+         * Disable buttons so the
+         * student cannot submit twice.
+         */
+
+        if (exitQuizButton) {
+
+            exitQuizButton.disabled = true;
+        }
+
+
+        if (submitQuizButton) {
+
+            submitQuizButton.disabled = true;
+        }
+
+
+        /*
+         * Submit the complete form.
+         *
+         * All selected radio-button answers
+         * will be sent to SubmitQuizServlet.
+         *
+         * Questions not answered will simply
+         * have no parameter.
+         */
+
+        quizForm.submit();
+
+    }
+
+
+    /*
+     * ============================================================
+     * EXIT QUIZ
+     * ============================================================
+     */
+
+    exitQuizButton.addEventListener(
+        "click",
+        function () {
+
+
+            /*
+             * Ask the student for confirmation.
+             */
+
+            const confirmExit =
+                    confirm(
+                        "Are you sure you want to exit this quiz?\n\n"
+                        +
+                        "Your quiz will be submitted with the answers "
+                        +
+                        "you have provided so far.\n\n"
+                        +
+                        "Any unanswered questions will remain "
+                        +
+                        "unanswered and you will not be able "
+                        +
+                        "to attempt this quiz again."
+                    );
+
+
+            /*
+             * Student cancelled.
+             */
+
+            if (!confirmExit) {
+
+                return;
+            }
+
+
+            /*
+             * Submit the quiz.
+             */
+
+            submitQuiz("exit");
+
+        }
+    );
+
+
+    /*
+     * ============================================================
+     * TIMER
+     * ============================================================
+     */
+
+    let totalSeconds =
+            <%= durationMinutes %> * 60;
+
+
+    /*
+     * ============================================================
+     * UPDATE TIMER
+     * ============================================================
+     */
+
+    function updateTimer() {
+
+
+        /*
+         * Do nothing if quiz was already submitted.
+         */
+
+        if (quizSubmitted) {
+
+            return;
+        }
+
+
+        /*
+         * Calculate minutes.
+         */
+
+        let minutes =
+                Math.floor(
+                    totalSeconds / 60
+                );
+
+
+        /*
+         * Calculate seconds.
+         */
+
+        let seconds =
+                totalSeconds % 60;
+
+
+        /*
+         * Add leading zero.
+         */
+
+        seconds =
+                seconds < 10
+                    ? "0" + seconds
+                    : seconds;
+
+
+        /*
+         * Display timer.
+         */
+
+        timerElement.textContent =
+                minutes + ":" + seconds;
+
+
+        /*
+         * ========================================================
+         * TIME EXPIRED
+         * ========================================================
+         */
+
+        if (totalSeconds <= 0) {
+
+
+            /*
+             * Stop timer.
+             */
+
+            clearInterval(
+                    timerInterval
+            );
+
+
+            timeExpired = true;
+
+
+            /*
+             * Change timer appearance.
+             */
+
+            timerElement.textContent =
+                    "00:00";
+
+
+            timerElement.classList.remove(
+                    "text-primary"
+            );
+
+
+            timerElement.classList.add(
+                    "timer-danger"
+            );
+
+
+            /*
+             * Tell the student what happened.
+             */
+
+            alert(
+                "Time is over. Your quiz will now be submitted automatically."
+            );
+
+
+            /*
+             * Automatically submit quiz.
+             */
+
+            submitQuiz(
+                    "time_expired"
+            );
+
+
+            return;
+        }
+
+
+        /*
+         * ========================================================
+         * TIMER WARNINGS
+         * ========================================================
+         */
+
+        /*
+         * Last 5 minutes.
+         */
+
+        if (totalSeconds <= 300) {
+
+            timerElement.classList.add(
+                    "timer-warning"
+            );
+        }
+
+
+        /*
+         * Last 60 seconds.
+         */
+
+        if (totalSeconds <= 60) {
+
+            timerElement.classList.remove(
+                    "timer-warning"
+            );
+
+
+            timerElement.classList.add(
+                    "timer-danger"
+            );
+        }
+
+
+        /*
+         * Move to next second.
+         */
 
         totalSeconds--;
 
     }
 
 
+    /*
+     * ============================================================
+     * START TIMER
+     * ============================================================
+     */
+
     updateTimer();
 
+
     const timerInterval =
-        setInterval(updateTimer, 1000);
+            setInterval(
+                updateTimer,
+                1000
+            );
 
 
     /*
      * ============================================================
-     * LEAVING PAGE WARNING
+     * NORMAL SUBMIT
+     *
+     * This happens when the student clicks
+     * "Submit Quiz".
      * ============================================================
      */
-
-    let quizSubmitted = false;
 
     quizForm.addEventListener(
         "submit",
         function () {
 
-            quizSubmitted = true;
 
-        }
-    );
-
-
-    window.addEventListener(
-        "beforeunload",
-        function (event) {
+            /*
+             * If the form was submitted through
+             * the Exit or timer function,
+             * do not change the submission type.
+             */
 
             if (!quizSubmitted) {
 
-                event.preventDefault();
+                quizSubmitted = true;
 
-                event.returnValue = "";
+
+                submissionType.value =
+                        "normal";
+
+
+                clearInterval(
+                        timerInterval
+                );
+
+
+                window.removeEventListener(
+                        "beforeunload",
+                        preventLeaving
+                );
 
             }
 
         }
     );
 
+
+    /*
+     * ============================================================
+     * PREVENT ACCIDENTAL PAGE LEAVING
+     * ============================================================
+     */
+
+    function preventLeaving(event) {
+
+
+        if (!quizSubmitted) {
+
+            event.preventDefault();
+
+            event.returnValue = "";
+
+        }
+
+    }
+
+
+    window.addEventListener(
+        "beforeunload",
+        preventLeaving
+    );
+
 </script>
+
 
 </body>
 
