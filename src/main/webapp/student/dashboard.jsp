@@ -504,6 +504,19 @@ try (
                 </a>
 
             </li>
+            <li>
+
+                <a
+                    class="dropdown-item"
+                    href="settings.jsp">
+
+                    <i class="bi bi-gear me-2"></i>
+
+                    Settings
+
+                </a>
+
+            </li>
 
 
             <li>
@@ -716,7 +729,7 @@ try (
 <!-- Settings -->
 
 <a
-    href="#"
+    href="settings.jsp"
     class="sidebar-link">
 
     <i class="bi bi-gear-fill"></i>
