@@ -393,6 +393,8 @@
                             </label>
 
                             <a href="#"
+                                data-bs-toggle="modal"
+                                data-bs-target="#forgotPasswordModal"
                                class="small"
                                style="color:#003b73;">
 
@@ -628,6 +630,116 @@ function toggleLoginPassword() {
 }
 
 </script>
+
+
+<!-- =========================================================
+     FORGOT PASSWORD MODAL
+========================================================= -->
+
+<div
+    class="modal fade"
+    id="forgotPasswordModal"
+    tabindex="-1"
+    aria-labelledby="forgotPasswordModalLabel"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+
+                <h5
+                    class="modal-title"
+                    id="forgotPasswordModalLabel">
+
+                    <i class="bi bi-key-fill me-2"></i>
+                    Forgot Password?
+
+                </h5>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close">
+                </button>
+
+            </div>
+
+
+            <!-- Modal Body -->
+            <div class="modal-body text-center p-4">
+
+                <div class="mb-3">
+
+                    <i
+                        class="bi bi-shield-lock-fill"
+                        style="font-size: 3rem;">
+                    </i>
+
+                </div>
+
+                <h5 class="mb-3">
+                    Need help accessing your account?
+                </h5>
+
+                <p class="text-muted mb-3">
+
+                    If you have forgotten your password,
+                    please contact the system administrator.
+
+                </p>
+
+                <div class="alert alert-info text-start">
+
+                    <i class="bi bi-info-circle-fill me-2"></i>
+
+                    <strong>Important:</strong>
+
+                    The administrator will assist you in
+                    resetting your password and provide you
+                    with a <strong>default password</strong>
+                    to access your account.
+
+                </div>
+
+                <p class="text-muted small mb-0">
+
+                    After logging in with the default password,
+                    you can change it from your account settings.
+
+                </p>
+
+            </div>
+
+
+            <!-- Modal Footer -->
+            <div class="modal-footer justify-content-center">
+
+                <button
+                    type="button"
+                    class="btn btn-primary px-4"
+                    data-bs-dismiss="modal">
+
+                    <i class="bi bi-check-circle me-1"></i>
+                    I Understand
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+</script>
+
 
 
 </body>
