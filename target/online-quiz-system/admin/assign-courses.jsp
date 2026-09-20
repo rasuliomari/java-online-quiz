@@ -1,812 +1,966 @@
-<%@ page import="java.sql.Connection" %>
-<%@ page import="java.sql.PreparedStatement" %>
-<%@ page import="java.sql.ResultSet" %>
+<%@ page import="java.sql.*" %>
 <%@ page import="tz.udom.quiz.util.DBConnection" %>
 
 <%
-// =========================================================
-// ADMIN AUTHENTICATION
-// =========================================================
+    // ============================================================
+    // SESSION CHECK
+    // ============================================================
+    if (session.getAttribute("adminLoggedIn") == null ||
+        !(Boolean) session.getAttribute("adminLoggedIn")) {
 
-Boolean adminLoggedIn =
-        (Boolean) session.getAttribute("adminLoggedIn");
+        response.sendRedirect("../login.jsp");
+        return;
+    }
 
-if (adminLoggedIn == null || !adminLoggedIn) {
+    String contextPath = request.getContextPath();
 
-    response.sendRedirect(
-            request.getContextPath() + "/login.jsp"
-    );
+    // ============================================================
+    // CURRENT ADMIN DETAILS
+    // ============================================================
+    String adminFirstName = (String) session.getAttribute("adminFirstName");
+    String adminLastName = (String) session.getAttribute("adminLastName");
+    String adminUsername = (String) session.getAttribute("adminUsername");
 
-    return;
-}
+    if (adminFirstName == null) adminFirstName = "Admin";
+    if (adminLastName == null) adminLastName = "";
+    if (adminUsername == null) adminUsername = "Administrator";
 
+    String adminFullName =
+            (adminFirstName + " " + adminLastName).trim();
 
-String adminFirstName =
-        (String) session.getAttribute("adminFirstName");
+    String adminInitials =
+            ((adminFirstName.length() > 0)
+                    ? adminFirstName.substring(0, 1).toUpperCase()
+                    : "A")
+            +
+            ((adminLastName.length() > 0)
+                    ? adminLastName.substring(0, 1).toUpperCase()
+                    : "");
 
-String adminLastName =
-        (String) session.getAttribute("adminLastName");
+    // ============================================================
+    // PARAMETERS
+    // ============================================================
+    String selectedTeacherId =
+            request.getParameter("teacherId");
 
+    String selectedProgrammeId =
+            request.getParameter("programmeId");
 
-String adminFullName =
-        ((adminFirstName != null)
-                ? adminFirstName
-                : "")
-        + " "
-        + ((adminLastName != null)
-                ? adminLastName
-                : "");
+    String selectedYear =
+            request.getParameter("year");
 
+    String message =
+            request.getParameter("message");
 
-// =========================================================
-// SELECTED TEACHER
-// =========================================================
+    String messageType =
+            request.getParameter("messageType");
 
-int selectedTeacherId = 0;
+    if (messageType == null || messageType.trim().isEmpty()) {
+        messageType = "info";
+    }
 
-String teacherIdParam =
-        request.getParameter("teacherId");
+    // ============================================================
+    // LOAD TEACHERS
+    // ============================================================
+    java.util.List<java.util.Map<String, String>> teachers =
+            new java.util.ArrayList<>();
 
+    // ============================================================
+    // LOAD COLLEGES
+    // ============================================================
+    java.util.List<java.util.Map<String, String>> colleges =
+            new java.util.ArrayList<>();
 
-if (teacherIdParam != null &&
-    !teacherIdParam.trim().isEmpty()) {
+    try (Connection conn = DBConnection.getConnection()) {
 
-    try {
+        // --------------------------------------------------------
+        // TEACHERS
+        // --------------------------------------------------------
+        String teacherSql =
+                "SELECT id, staff_number, first_name, middle_name, last_name " +
+                "FROM teachers " +
+                "ORDER BY first_name, last_name";
 
-        selectedTeacherId =
-                Integer.parseInt(
-                        teacherIdParam
+        try (PreparedStatement ps =
+                     conn.prepareStatement(teacherSql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                java.util.Map<String, String> teacher =
+                        new java.util.HashMap<>();
+
+                String firstName = rs.getString("first_name");
+                String middleName = rs.getString("middle_name");
+                String lastName = rs.getString("last_name");
+
+                String fullName =
+                        java.util.Arrays.asList(
+                                firstName,
+                                middleName,
+                                lastName
+                        ).stream()
+                         .filter(java.util.Objects::nonNull)
+                         .map(String::trim)
+                         .filter(s -> !s.isEmpty())
+                         .collect(java.util.stream.Collectors.joining(" "));
+
+                teacher.put(
+                        "id",
+                        String.valueOf(rs.getInt("id"))
                 );
 
-    } catch (NumberFormatException e) {
+                teacher.put(
+                        "staffNumber",
+                        rs.getString("staff_number")
+                );
 
-        selectedTeacherId = 0;
+                teacher.put(
+                        "name",
+                        fullName
+                );
+
+                teachers.add(teacher);
+            }
+        }
+
+        // --------------------------------------------------------
+        // COLLEGES
+        // --------------------------------------------------------
+        String collegeSql =
+                "SELECT id, name " +
+                "FROM colleges " +
+                "ORDER BY name";
+
+        try (PreparedStatement ps =
+                     conn.prepareStatement(collegeSql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                java.util.Map<String, String> college =
+                        new java.util.HashMap<>();
+
+                college.put(
+                        "id",
+                        String.valueOf(rs.getInt("id"))
+                );
+
+                college.put(
+                        "name",
+                        rs.getString("name")
+                );
+
+                colleges.add(college);
+            }
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
     }
-}
 
+    // ============================================================
+    // INITIAL COLLEGE
+    //
+    // If a teacher is already selected and a programme was supplied,
+    // determine its college so the page can restore the selection.
+    // ============================================================
+    String initialCollegeId = "";
 
-String message =
-        request.getParameter("message");
+    if (selectedProgrammeId != null &&
+        !selectedProgrammeId.trim().isEmpty()) {
 
-String status =
-        request.getParameter("status");
+        try (Connection conn = DBConnection.getConnection()) {
 
+            String sql =
+                    "SELECT college_id " +
+                    "FROM programmes " +
+                    "WHERE id = ?";
+
+            try (PreparedStatement ps =
+                         conn.prepareStatement(sql)) {
+
+                ps.setInt(
+                        1,
+                        Integer.parseInt(selectedProgrammeId)
+                );
+
+                try (ResultSet rs = ps.executeQuery()) {
+
+                    if (rs.next()) {
+                        initialCollegeId =
+                                String.valueOf(
+                                        rs.getInt("college_id")
+                                );
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 %>
 
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
 
-<meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
-
-
-<title>
-    Assign Courses | UDOM Online Quiz System
-</title>
-
-
-<!-- =====================================================
-     BOOTSTRAP
-     ===================================================== -->
-
-<link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet">
-
-
-<!-- =====================================================
-     BOOTSTRAP ICONS
-     ===================================================== -->
-
-<link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-
-<!-- =====================================================
-     DASHBOARD CSS
-     ===================================================== -->
-
-<link
-    rel="stylesheet"
-    href="<%= request.getContextPath() %>/css/dashboard.css">
-
-
-<style>
-
-    body {
-
-        background-color: #f5f7fb;
-
-    }
-
-
-    .page-container {
-
-        padding: 30px;
-
-    }
-
-
-    .assignment-card {
-
-        border: none;
-
-        border-radius: 16px;
-
-        box-shadow:
-            0 4px 20px
-            rgba(0, 0, 0, 0.08);
-
-    }
-
-
-    .page-title {
-
-        font-weight: 700;
-
-        color: #1f2937;
-
-    }
-
-
-    .page-subtitle {
-
-        color: #6b7280;
-
-    }
-
-
-    .course-card {
-
-        border: 1px solid #e5e7eb;
-
-        border-radius: 12px;
-
-        transition:
-            0.2s ease;
-
-    }
-
-
-    .course-card:hover {
-
-        border-color: #0d6efd;
-
-        box-shadow:
-            0 3px 12px
-            rgba(13, 110, 253, 0.12);
-
-    }
-
-
-    .course-card.assigned {
-
-        border-color: #198754;
-
-        background-color: #f0fff6;
-
-    }
-
-
-    .course-code {
-
-        font-weight: 700;
-
-        color: #0d6efd;
-
-    }
-
-
-    .course-name {
-
-        font-weight: 600;
-
-        color: #374151;
-
-    }
-
-
-    .assigned-badge {
-
-        font-size: 11px;
-
-    }
-
-
-    .empty-state {
-
-        padding: 50px 20px;
-
-        text-align: center;
-
-        color: #6b7280;
-
-    }
-
-
-    .filter-card {
-
-        background: white;
-
-        border-radius: 16px;
-
-        border: none;
-
-        box-shadow:
-            0 4px 20px
-            rgba(0, 0, 0, 0.06);
-
-    }
-
-
-    .top-navbar {
-
-        background: #ffffff;
-
-        border-bottom:
-            1px solid #e5e7eb;
-
-        min-height: 70px;
-
-    }
-
-
-    .brand-title {
-
-        font-weight: 700;
-
-        color: #0d6efd;
-
-    }
-
-
-    .admin-avatar {
-
-        width: 40px;
-
-        height: 40px;
-
-        border-radius: 50%;
-
-        background: #0d6efd;
-
-        color: white;
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        font-weight: 700;
-
-    }
-
-
-    .course-counter {
-
-        font-size: 14px;
-
-        color: #6b7280;
-
-    }
-
-
-    .selected-filter {
-
-        font-size: 13px;
-
-        color: #6b7280;
-
-        margin-top: 6px;
-
-    }
-
-</style>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Assign Courses | UDOM Online Quiz System</title>
+
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+        rel="stylesheet">
+
+    <!-- Dashboard CSS -->
+    <link
+        rel="stylesheet"
+        href="<%= contextPath %>/css/dashboard.css">
+
+    <style>
+
+        /* ========================================================
+           PAGE HEADER
+           ======================================================== */
+
+        .assign-page-header {
+            margin-bottom: 25px;
+        }
+
+        .assign-page-title {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 6px;
+        }
+
+        .assign-page-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(13, 110, 253, 0.10);
+            color: #0d6efd;
+            font-size: 23px;
+        }
+
+        .assign-page-title h2 {
+            margin: 0;
+            font-size: 1.65rem;
+            font-weight: 700;
+        }
+
+        .assign-page-header p {
+            margin: 0;
+            color: #6c757d;
+        }
+
+
+        /* ========================================================
+           FILTER CARD
+           ======================================================== */
+
+        .assignment-filter-card {
+            border: 0;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+            margin-bottom: 25px;
+        }
+
+        .assignment-filter-card .card-header {
+            background: transparent;
+            border-bottom: 1px solid #edf0f4;
+            padding: 20px 22px;
+        }
+
+        .assignment-filter-card .card-body {
+            padding: 22px;
+        }
+
+        .filter-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            color: #212529;
+        }
+
+        .filter-title i {
+            color: #0d6efd;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 7px;
+        }
+
+        .form-select {
+            min-height: 44px;
+            border-radius: 10px;
+            border-color: #dee2e6;
+        }
+
+        .form-select:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.12);
+        }
+
+
+        /* ========================================================
+           COURSE SUMMARY
+           ======================================================== */
+
+        .course-summary {
+            margin-bottom: 20px;
+        }
+
+        .course-summary-card {
+            border: 0;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            padding: 18px 20px;
+        }
+
+        .course-summary-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .course-summary-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .course-summary-text {
+            color: #6c757d;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .course-count-badge {
+            background: rgba(13, 110, 253, 0.1);
+            color: #0d6efd;
+            border-radius: 50px;
+            padding: 8px 14px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+
+        /* ========================================================
+           COURSE ITEMS
+           ======================================================== */
+
+        .assignment-course-item {
+            border: 1px solid #e9ecef;
+            border-radius: 15px;
+            background: #fff;
+            padding: 17px;
+            margin-bottom: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .assignment-course-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .assignment-course-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .assignment-course-icon {
+            width: 45px;
+            height: 45px;
+            min-width: 45px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(13, 110, 253, 0.09);
+            color: #0d6efd;
+            font-size: 20px;
+        }
+
+        .assignment-course-information {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .assignment-course-code {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #0d6efd;
+            margin-bottom: 3px;
+        }
+
+        .assignment-course-name {
+            font-weight: 700;
+            margin-bottom: 3px;
+            color: #212529;
+        }
+
+        .assignment-course-year {
+            color: #6c757d;
+            font-size: 0.84rem;
+        }
+
+        .assignment-status {
+            text-align: right;
+            min-width: 150px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            border-radius: 50px;
+            padding: 7px 11px;
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .status-current {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-other {
+            background: #fff3cd;
+            color: #664d03;
+        }
+
+        .status-available {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .assignment-course-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .assignment-course-checkbox:disabled {
+            cursor: not-allowed;
+        }
+
+
+        /* ========================================================
+           SAVE CARD
+           ======================================================== */
+
+        .assignment-save-card {
+            border: 0;
+            border-radius: 17px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+
+        .assignment-save-card .card-body {
+            padding: 20px;
+        }
+
+        .save-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .save-description {
+            color: #6c757d;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .save-button {
+            min-width: 150px;
+            border-radius: 10px;
+            font-weight: 600;
+            padding: 10px 18px;
+        }
+
+
+        /* ========================================================
+           EMPTY STATE
+           ======================================================== */
+
+        .assignment-empty-state {
+            text-align: center;
+            background: #fff;
+            border-radius: 17px;
+            padding: 55px 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .assignment-empty-icon {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: #f1f3f5;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 27px;
+        }
+
+        .assignment-empty-state h5 {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .assignment-empty-state p {
+            color: #6c757d;
+            margin: 0;
+        }
+
+
+        /* ========================================================
+           LEGEND
+           ======================================================== */
+
+        .assignment-legend {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+            color: #6c757d;
+            font-size: 0.82rem;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .legend-current {
+            background: #198754;
+        }
+
+        .legend-other {
+            background: #ffc107;
+        }
+
+        .legend-available {
+            background: #adb5bd;
+        }
+
+
+        /* ========================================================
+           ALERT
+           ======================================================== */
+
+        .assignment-alert {
+            border: 0;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+
+        /* ========================================================
+           RESPONSIVE
+           ======================================================== */
+
+        @media (max-width: 768px) {
+
+            .assignment-course-row {
+                align-items: flex-start;
+            }
+
+            .assignment-status {
+                min-width: auto;
+                text-align: left;
+            }
+
+            .assignment-course-information {
+                width: 100%;
+            }
+
+            .course-summary-content,
+            .save-content {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .save-button {
+                width: 100%;
+            }
+        }
+
+    </style>
 
 </head>
 
 <body>
 
-<!-- =========================================================
-     TOP NAVBAR
-     ========================================================= -->
+<!-- ============================================================
+     NAVBAR
+     ============================================================ -->
 
-<nav class="navbar top-navbar px-4">
+<nav class="navbar navbar-expand-lg dashboard-navbar fixed-top">
 
-<div class="container-fluid">
+    <div class="container-fluid">
 
+        <!-- Mobile Sidebar Button -->
+        <button
+            class="btn d-lg-none me-2"
+            type="button"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#adminSidebar">
 
-    <div class="d-flex align-items-center">
+            <i class="bi bi-list fs-4"></i>
 
-        <i class="bi bi-mortarboard-fill
-                  fs-3 text-primary me-2"></i>
-
-        <span class="brand-title fs-5">
-
-            UDOM Online Quiz System
-
-        </span>
-
-    </div>
+        </button>
 
 
-    <div class="d-flex align-items-center gap-3">
+        <!-- Brand -->
+        <a
+            class="navbar-brand d-flex align-items-center"
+            href="dashboard.jsp">
+
+            <i class="bi bi-mortarboard-fill me-2"></i>
+
+            <span>
+                <strong>UDOM</strong>
+                <span class="d-none d-sm-inline">
+                    / Online Quiz System
+                </span>
+            </span>
+
+        </a>
 
 
-        <div class="text-end d-none d-md-block">
+        <!-- Right Side -->
+        <div class="ms-auto d-flex align-items-center">
 
-            <div class="fw-semibold">
+            <!-- Notification -->
+            <button
+                class="btn btn-link text-decoration-none position-relative me-2">
 
-                <%= adminFullName.trim() %>
+                <i class="bi bi-bell fs-5"></i>
+
+                <span
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                    style="font-size: 0.55rem;">
+                    3
+                </span>
+
+            </button>
+
+
+            <!-- Profile Dropdown -->
+            <div class="dropdown">
+
+                <button
+                    class="btn d-flex align-items-center border-0"
+                    type="button"
+                    data-bs-toggle="dropdown">
+
+                    <div
+                        class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
+                        style="width: 38px; height: 38px; font-size: 0.8rem; font-weight: 700;">
+
+                        <%= adminInitials %>
+
+                    </div>
+
+                    <div class="d-none d-md-block text-start">
+
+                        <div
+                            style="font-size: 0.85rem; font-weight: 700;">
+
+                            <%= adminFullName %>
+
+                        </div>
+
+                        <div
+                            style="font-size: 0.72rem; color: #6c757d;">
+
+                            System Administrator
+
+                        </div>
+
+                    </div>
+
+                    <i class="bi bi-chevron-down ms-2 small"></i>
+
+                </button>
+
+
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+
+                    <li>
+                        <h6 class="dropdown-header">
+                            <%= adminUsername %>
+                        </h6>
+                    </li>
+
+                    <li>
+                        <a
+                            class="dropdown-item"
+                            href="profile.jsp">
+
+                            <i class="bi bi-person me-2"></i>
+                            My Profile
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a
+                            class="dropdown-item"
+                            href="settings.jsp">
+
+                            <i class="bi bi-gear me-2"></i>
+                            Settings
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+
+                    <li>
+                        <a
+                            class="dropdown-item text-danger"
+                            href="<%= contextPath %>/logout">
+
+                            <i class="bi bi-box-arrow-right me-2"></i>
+                            Logout
+
+                        </a>
+                    </li>
+
+                </ul>
 
             </div>
 
-            <small class="text-muted">
-
-                Administrator
-
-            </small>
-
         </div>
-
-
-        <div class="admin-avatar">
-
-            <%
-
-                String avatarLetter = "A";
-
-
-                if (adminFirstName != null &&
-                    !adminFirstName.trim().isEmpty()) {
-
-                    avatarLetter =
-                            adminFirstName
-                            .substring(0, 1)
-                            .toUpperCase();
-
-                }
-
-            %>
-
-            <%= avatarLetter %>
-
-        </div>
-
-
-        <a href="<%= request.getContextPath() %>/logout"
-           class="btn btn-outline-danger btn-sm">
-
-            <i class="bi bi-box-arrow-right"></i>
-
-            Logout
-
-        </a>
 
     </div>
-
-</div>
 
 </nav>
 
-<!-- =========================================================
-     MAIN CONTENT
-     ========================================================= -->
 
-<div class="container-fluid page-container">
+<!-- ============================================================
+     SIDEBAR
+     ============================================================ -->
 
-<!-- =====================================================
-     PAGE HEADER
-     ===================================================== -->
+<div
+    class="offcanvas-lg offcanvas-start student-sidebar"
+    tabindex="-1"
+    id="adminSidebar">
 
-<div class="d-flex
-            justify-content-between
-            align-items-center
-            mb-4">
+    <div class="offcanvas-header d-lg-none">
 
+        <h5 class="offcanvas-title">
+            UDOM Online Quiz System
+        </h5>
 
-    <div>
-
-        <h2 class="page-title mb-1">
-
-            <i class="bi bi-journal-bookmark-fill
-                      text-primary me-2"></i>
-
-            Assign Courses
-
-        </h2>
-
-
-        <p class="page-subtitle mb-0">
-
-            Assign academic courses to a teacher.
-
-        </p>
-
-    </div>
-
-
-    <div>
-
-        <a href="manage-teachers.jsp"
-           class="btn btn-outline-secondary">
-
-            <i class="bi bi-arrow-left"></i>
-
-            Back to Teachers
-
-        </a>
-
-    </div>
-
-</div>
-
-
-
-<!-- =====================================================
-     ALERT MESSAGE
-     ===================================================== -->
-
-<%
-
-    if (message != null &&
-        !message.trim().isEmpty()) {
-
-%>
-
-
-    <div class="alert
-        <%= "success".equals(status)
-            ? "alert-success"
-            : "alert-danger" %>
-        alert-dismissible fade show">
-
-
-        <i class="bi
-            <%= "success".equals(status)
-                ? "bi-check-circle"
-                : "bi-exclamation-triangle" %>
-            me-2"></i>
-
-
-        <%= message %>
-
-
-        <button type="button"
-                class="btn-close"
-                data-bs-dismiss="alert">
+        <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="offcanvas"
+            data-bs-target="#adminSidebar">
         </button>
 
     </div>
 
 
-<%
+    <div class="offcanvas-body d-flex flex-column p-0">
 
-    }
+        <!-- Sidebar Profile -->
+        <div class="sidebar-profile">
 
-%>
+            <div class="sidebar-avatar">
+                <%= adminInitials %>
+            </div>
 
+            <div class="sidebar-profile-info">
 
+                <div class="sidebar-profile-name">
+                    <%= adminFullName %>
+                </div>
 
-<!-- =====================================================
-     FILTER CARD
-     ===================================================== -->
-
-<div class="card filter-card mb-4">
-
-
-    <div class="card-body p-4">
-
-
-        <div class="row g-4">
-
-
-            <!-- =================================================
-                 TEACHER
-                 ================================================= -->
-
-            <div class="col-md-4">
-
-
-                <label class="form-label fw-semibold">
-
-                    <i class="bi bi-person-badge me-1"></i>
-
-                    Teacher
-
-                </label>
-
-
-                <select id="teacherId"
-                        class="form-select"
-                        required>
-
-
-                    <option value="">
-
-                        Select Teacher
-
-                    </option>
-
-
-                    <%
-
-                        try (
-                            Connection connection =
-                                DBConnection.getConnection();
-
-                            PreparedStatement statement =
-                                connection.prepareStatement(
-
-                                    "SELECT id, first_name, middle_name, " +
-                                    "last_name, staff_number " +
-                                    "FROM teachers " +
-                                    "ORDER BY first_name, last_name"
-
-                                );
-
-                            ResultSet resultSet =
-                                statement.executeQuery()
-                        ) {
-
-
-                            while (resultSet.next()) {
-
-
-                                int teacherId =
-                                        resultSet.getInt("id");
-
-
-                                String firstName =
-                                        resultSet.getString(
-                                                "first_name"
-                                        );
-
-
-                                String middleName =
-                                        resultSet.getString(
-                                                "middle_name"
-                                        );
-
-
-                                String lastName =
-                                        resultSet.getString(
-                                                "last_name"
-                                        );
-
-
-                                String staffNumber =
-                                        resultSet.getString(
-                                                "staff_number"
-                                        );
-
-
-                                String fullName =
-                                        firstName;
-
-
-                                if (middleName != null &&
-                                    !middleName.trim().isEmpty()) {
-
-                                    fullName +=
-                                            " " + middleName;
-
-                                }
-
-
-                                fullName +=
-                                        " " + lastName;
-
-                    %>
-
-
-                        <option value="<%= teacherId %>"
-                            <%= teacherId == selectedTeacherId
-                                ? "selected"
-                                : "" %>>
-
-                            <%= fullName %>
-                            - <%= staffNumber %>
-
-                        </option>
-
-
-                    <%
-
-                            }
-
-                        } catch (Exception e) {
-
-                            e.printStackTrace();
-
-                    %>
-
-
-                        <option value="">
-
-                            Unable to load teachers
-
-                        </option>
-
-
-                    <%
-
-                        }
-
-                    %>
-
-                </select>
+                <div class="sidebar-profile-role">
+                    System Administrator
+                </div>
 
             </div>
 
+        </div>
 
 
-            <!-- =================================================
-                 PROGRAMME
-                 ================================================= -->
+        <!-- Main Navigation -->
+        <div class="sidebar-menu">
 
-            <div class="col-md-4">
+            <div class="sidebar-section-title">
+                MAIN MENU
+            </div>
 
+            <a
+                href="dashboard.jsp"
+                class="sidebar-link">
 
-                <label class="form-label fw-semibold">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
 
-                    <i class="bi bi-mortarboard me-1"></i>
-
-                    Programme
-
-                </label>
-
-
-                <select id="programmeId"
-                        class="form-select"
-                        required>
+            </a>
 
 
-                    <option value="">
+            <a
+                href="create-teacher.jsp"
+                class="sidebar-link">
 
-                        Select Programme
+                <i class="bi bi-person-plus"></i>
+                <span>Create Teacher</span>
 
-                    </option>
-
-
-                    <%
-
-                        try (
-                            Connection connection =
-                                DBConnection.getConnection();
-
-                            PreparedStatement statement =
-                                connection.prepareStatement(
-
-                                    "SELECT id, name " +
-                                    "FROM programmes " +
-                                    "ORDER BY name"
-
-                                );
-
-                            ResultSet resultSet =
-                                statement.executeQuery()
-                        ) {
+            </a>
 
 
-                            while (resultSet.next()) {
+            <a
+                href="manage-teachers.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-people"></i>
+                <span>Manage Teachers</span>
+
+            </a>
 
 
-                                int programmeId =
-                                        resultSet.getInt("id");
+            <a
+                href="manage-courses.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-journal-bookmark"></i>
+                <span>Manage Courses</span>
+
+            </a>
 
 
-                                String programmeName =
-                                        resultSet.getString(
-                                                "name"
-                                        );
+            <a
+                href="assign-courses.jsp"
+                class="sidebar-link active">
 
-                    %>
+                <i class="bi bi-person-check"></i>
+                <span>Assign Courses</span>
 
-
-                        <option value="<%= programmeId %>">
-
-                            <%= programmeName %>
-
-                        </option>
+            </a>
 
 
-                    <%
+            <a
+                href="manage-students.jsp"
+                class="sidebar-link">
 
-                            }
+                <i class="bi bi-mortarboard"></i>
+                <span>Manage Students</span>
 
-                        } catch (Exception e) {
-
-                            e.printStackTrace();
-
-                    %>
-
-
-                        <option value="">
-
-                            Unable to load programmes
-
-                        </option>
+            </a>
 
 
-                    <%
+            <a
+                href="manage-quizzes.jsp"
+                class="sidebar-link">
 
-                        }
+                <i class="bi bi-ui-checks-grid"></i>
+                <span>Manage Quizzes</span>
 
-                    %>
+            </a>
 
-                </select>
 
+            <a
+                href="results.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-bar-chart"></i>
+                <span>Student Results</span>
+
+            </a>
+
+
+            <a
+                href="reports.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-file-earmark-bar-graph"></i>
+                <span>Reports</span>
+
+            </a>
+
+
+            <div class="sidebar-section-title mt-4">
+                ACCOUNT
             </div>
 
 
+            <a
+                href="profile.jsp"
+                class="sidebar-link">
 
-            <!-- =================================================
-                 YEAR
-                 ================================================= -->
+                <i class="bi bi-person-circle"></i>
+                <span>My Profile</span>
 
-            <div class="col-md-4">
-
-
-                <label class="form-label fw-semibold">
-
-                    <i class="bi bi-calendar3 me-1"></i>
-
-                    Year of Study
-
-                </label>
+            </a>
 
 
-                <select id="yearOfStudy"
-                        class="form-select"
-                        required>
+            <a
+                href="settings.jsp"
+                class="sidebar-link">
+
+                <i class="bi bi-gear"></i>
+                <span>Settings</span>
+
+            </a>
+
+        </div>
 
 
-                    <option value="">
+        <!-- Logout -->
+        <div class="sidebar-logout mt-auto">
 
-                        Select Year
+            <a
+                href="<%= contextPath %>/logout"
+                class="sidebar-link text-danger">
 
-                    </option>
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
 
-
-                    <option value="1">
-
-                        Year 1
-
-                    </option>
-
-
-                    <option value="2">
-
-                        Year 2
-
-                    </option>
-
-
-                    <option value="3">
-
-                        Year 3
-
-                    </option>
-
-
-                    <option value="4">
-
-                        Year 4
-
-                    </option>
-
-
-                </select>
-
-            </div>
+            </a>
 
         </div>
 
@@ -815,123 +969,35 @@ String status =
 </div>
 
 
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
 
-<!-- =====================================================
-     COURSE CARD
-     ===================================================== -->
+<main class="dashboard-main">
 
-<div class="card assignment-card">
-
-
-    <div class="card-header
-                bg-white
-                border-0
-                p-4">
+    <div class="dashboard-container">
 
 
-        <div class="d-flex
-                    justify-content-between
-                    align-items-center">
+        <!-- ====================================================
+             PAGE HEADER
+             ==================================================== -->
 
+        <div class="assign-page-header">
 
-            <div>
+            <div class="assign-page-title">
 
+                <div class="assign-page-icon">
 
-                <h5 class="mb-1 fw-bold">
-
-                    Available Courses
-
-                </h5>
-
-
-                <div class="course-counter">
-
-                    Select the courses that should be
-                    assigned to the selected teacher.
+                    <i class="bi bi-person-check"></i>
 
                 </div>
 
+                <div>
 
-                <div id="selectedFilter"
-                     class="selected-filter">
-
-                </div>
-
-            </div>
-
-
-            <div>
-
-                <span id="courseCount"
-                      class="badge bg-secondary">
-
-                    0 Courses
-
-                </span>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-    <div class="card-body p-4">
-
-
-        <!-- =================================================
-             LOADING
-             ================================================= -->
-
-        <div id="loadingCourses"
-             class="text-center py-5 d-none">
-
-
-            <div class="spinner-border text-primary"
-                 role="status">
-
-            </div>
-
-
-            <p class="mt-3 text-muted">
-
-                Loading courses...
-
-            </p>
-
-        </div>
-
-
-
-        <!-- =================================================
-             COURSE LIST
-             ================================================= -->
-
-        <div id="courseList"
-             class="row g-3">
-
-
-            <div class="col-12">
-
-
-                <div class="empty-state">
-
-
-                    <i class="bi bi-journal-x fs-1"></i>
-
-
-                    <h5 class="mt-3">
-
-                        Select a programme and year
-
-                    </h5>
-
+                    <h2>Assign Courses</h2>
 
                     <p>
-
-                        Courses will appear here.
-
+                        Assign courses to teachers by programme and year of study.
                     </p>
 
                 </div>
@@ -941,207 +1007,843 @@ String status =
         </div>
 
 
+        <!-- ====================================================
+             ALERT
+             ==================================================== -->
 
-        <!-- =================================================
-             SAVE BUTTON
-             ================================================= -->
+        <% if (message != null &&
+               !message.trim().isEmpty()) { %>
 
-        <div class="d-flex
-                    justify-content-end
-                    mt-4">
+            <div
+                class="alert alert-<%= messageType %> assignment-alert d-flex align-items-center"
+                role="alert">
+
+                <i class="bi
+                    <%= "success".equals(messageType)
+                        ? "bi-check-circle"
+                        : "warning".equals(messageType)
+                            ? "bi-exclamation-triangle"
+                            : "info".equals(messageType)
+                                ? "bi-info-circle"
+                                : "bi-exclamation-circle"
+                    %> me-2">
+                </i>
+
+                <%= message %>
+
+            </div>
+
+        <% } %>
 
 
-            <button type="button"
-                    id="saveAssignments"
-                    class="btn btn-primary"
-                    disabled>
+        <!-- ====================================================
+             FILTER CARD
+             ==================================================== -->
+
+        <div class="card assignment-filter-card">
+
+            <div class="card-header">
+
+                <div class="filter-title">
+
+                    <i class="bi bi-funnel"></i>
+
+                    <span>
+                        Select Assignment Details
+                    </span>
+
+                </div>
+
+            </div>
 
 
-                <i class="bi bi-save me-1"></i>
+            <div class="card-body">
 
-                Save Course Assignments
+                <div class="row g-3">
 
-            </button>
+
+                    <!-- ==================================================
+                         TEACHER
+                         ================================================== -->
+
+                    <div class="col-lg-3 col-md-6">
+
+                        <label
+                            for="teacherSelect"
+                            class="form-label">
+
+                            Teacher
+
+                        </label>
+
+                        <select
+                            id="teacherSelect"
+                            class="form-select">
+
+                            <option value="">
+                                Select Teacher
+                            </option>
+
+                            <% for (java.util.Map<String, String> teacher : teachers) { %>
+
+                                <option
+                                    value="<%= teacher.get("id") %>"
+                                    <%= teacher.get("id").equals(selectedTeacherId)
+                                        ? "selected"
+                                        : "" %>>
+
+                                    <%= teacher.get("name") %>
+                                    -
+                                    <%= teacher.get("staffNumber") %>
+
+                                </option>
+
+                            <% } %>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         COLLEGE
+                         ================================================== -->
+
+                    <div class="col-lg-3 col-md-6">
+
+                        <label
+                            for="collegeSelect"
+                            class="form-label">
+
+                            College
+
+                        </label>
+
+                        <select
+                            id="collegeSelect"
+                            class="form-select">
+
+                            <option value="">
+                                Select College
+                            </option>
+
+                            <% for (java.util.Map<String, String> college : colleges) { %>
+
+                                <option
+                                    value="<%= college.get("id") %>"
+                                    <%= college.get("id").equals(initialCollegeId)
+                                        ? "selected"
+                                        : "" %>>
+
+                                    <%= college.get("name") %>
+
+                                </option>
+
+                            <% } %>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         PROGRAMME
+                         ================================================== -->
+
+                    <div class="col-lg-3 col-md-6">
+
+                        <label
+                            for="programmeSelect"
+                            class="form-label">
+
+                            Programme
+
+                        </label>
+
+                        <select
+                            id="programmeSelect"
+                            class="form-select"
+                            disabled>
+
+                            <option value="">
+                                Select College First
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         YEAR
+                         ================================================== -->
+
+                    <div class="col-lg-3 col-md-6">
+
+                        <label
+                            for="yearSelect"
+                            class="form-label">
+
+                            Year of Study
+
+                        </label>
+
+                        <select
+                            id="yearSelect"
+                            class="form-select">
+
+                            <option value="">
+                                Select Year
+                            </option>
+
+                            <option
+                                value="1"
+                                <%= "1".equals(selectedYear)
+                                    ? "selected"
+                                    : "" %>>
+                                Year 1
+                            </option>
+
+                            <option
+                                value="2"
+                                <%= "2".equals(selectedYear)
+                                    ? "selected"
+                                    : "" %>>
+                                Year 2
+                            </option>
+
+                            <option
+                                value="3"
+                                <%= "3".equals(selectedYear)
+                                    ? "selected"
+                                    : "" %>>
+                                Year 3
+                            </option>
+
+                            <option
+                                value="4"
+                                <%= "4".equals(selectedYear)
+                                    ? "selected"
+                                    : "" %>>
+                                Year 4
+                            </option>
+
+                            <option
+                                value="5"
+                                <%= "5".equals(selectedYear)
+                                    ? "selected"
+                                    : "" %>>
+                                Year 5
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+            </div>
 
         </div>
 
+
+        <!-- ====================================================
+             COURSE SUMMARY
+             ==================================================== -->
+
+        <div
+            id="courseSummary"
+            class="course-summary d-none">
+
+            <div class="course-summary-card">
+
+                <div class="course-summary-content">
+
+                    <div>
+
+                        <div class="course-summary-title">
+                            Available Courses
+                        </div>
+
+                        <p
+                            id="courseSummaryText"
+                            class="course-summary-text">
+                            Courses available for assignment.
+                        </p>
+
+                    </div>
+
+                    <div
+                        id="courseCount"
+                        class="course-count-badge">
+                        0 Courses
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             COURSES CONTAINER
+             ==================================================== -->
+
+        <div
+            id="coursesContainer"
+            class="row g-0">
+
+            <div class="col-12">
+
+                <div class="assignment-empty-state">
+
+                    <div class="assignment-empty-icon">
+
+                        <i class="bi bi-funnel"></i>
+
+                    </div>
+
+                    <h5>
+                        Select Assignment Details
+                    </h5>
+
+                    <p>
+                        Select a teacher, college, programme and year
+                        to load courses.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             SAVE CARD
+             ==================================================== -->
+
+        <div
+            id="saveCard"
+            class="card assignment-save-card d-none">
+
+            <div class="card-body">
+
+                <div class="save-content">
+
+                    <div>
+
+                        <div
+                            class="fw-bold mb-1">
+
+                            Save Course Assignments
+
+                        </div>
+
+                        <p class="save-description">
+
+                            Select the courses that should belong to
+                            this teacher, then save the changes.
+
+                        </p>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        id="saveAssignmentsButton"
+                        class="btn btn-primary save-button">
+
+                        <i class="bi bi-check2-circle me-1"></i>
+
+                        Save Assignments
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             LEGEND
+             ==================================================== -->
+
+        <div class="assignment-legend">
+
+            <div class="legend-item">
+
+                <span
+                    class="legend-dot legend-current">
+                </span>
+
+                Assigned to this teacher
+
+            </div>
+
+
+            <div class="legend-item">
+
+                <span
+                    class="legend-dot legend-other">
+                </span>
+
+                Assigned elsewhere
+
+            </div>
+
+
+            <div class="legend-item">
+
+                <span
+                    class="legend-dot legend-available">
+                </span>
+
+                Available
+
+            </div>
+
+        </div>
+
+
     </div>
 
-</div>
 
-</div>
+    <!-- ========================================================
+         FOOTER
+         ======================================================== -->
 
-<!-- =========================================================
-     BOOTSTRAP JAVASCRIPT
-     ========================================================= -->
+    <footer class="dashboard-footer">
 
+        <div class="container-fluid">
+
+            <div class="text-center">
+
+                <small class="text-muted">
+
+                    © <%= java.time.Year.now().getValue() %>
+                    University of Dodoma
+                    — Online Quiz System
+
+                </small>
+
+            </div>
+
+        </div>
+
+    </footer>
+
+</main>
+
+
+<!-- ============================================================
+     HIDDEN FORM FOR SAVING ASSIGNMENTS
+     ============================================================ -->
+
+<form
+    id="assignmentForm"
+    method="post"
+    action="<%= contextPath %>/assignCourse">
+
+    <input
+        type="hidden"
+        name="teacherId"
+        id="formTeacherId">
+
+    <input
+        type="hidden"
+        name="programmeId"
+        id="formProgrammeId">
+
+    <input
+        type="hidden"
+        name="year"
+        id="formYear">
+
+    <div id="selectedCoursesInputs"></div>
+
+</form>
+
+
+<!-- Bootstrap JS -->
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
 
-<!-- =========================================================
-     JAVASCRIPT
-     ========================================================= -->
 
 <script>
 
-    // =========================================================
-    // CONTEXT
-    // =========================================================
+    /* ============================================================
+       CONTEXT PATH
+       ============================================================ */
 
-    const contextPath =
-        "<%= request.getContextPath() %>";
+    const contextPath = "<%= contextPath %>";
 
 
-    // =========================================================
-    // ELEMENTS
-    // =========================================================
+    /* ============================================================
+       ELEMENTS
+       ============================================================ */
 
     const teacherSelect =
-        document.getElementById("teacherId");
+        document.getElementById("teacherSelect");
 
+    const collegeSelect =
+        document.getElementById("collegeSelect");
 
     const programmeSelect =
-        document.getElementById("programmeId");
-
+        document.getElementById("programmeSelect");
 
     const yearSelect =
-        document.getElementById("yearOfStudy");
+        document.getElementById("yearSelect");
 
+    const coursesContainer =
+        document.getElementById("coursesContainer");
 
-    const courseList =
-        document.getElementById("courseList");
+    const courseSummary =
+        document.getElementById("courseSummary");
 
-
-    const loadingCourses =
-        document.getElementById("loadingCourses");
-
-
-    const saveButton =
-        document.getElementById("saveAssignments");
-
+    const courseSummaryText =
+        document.getElementById("courseSummaryText");
 
     const courseCount =
         document.getElementById("courseCount");
 
+    const saveCard =
+        document.getElementById("saveCard");
 
-    const selectedFilter =
-        document.getElementById("selectedFilter");
+    const saveAssignmentsButton =
+        document.getElementById("saveAssignmentsButton");
 
+    const assignmentForm =
+        document.getElementById("assignmentForm");
 
+    const formTeacherId =
+        document.getElementById("formTeacherId");
 
-    // =========================================================
-    // SHOW EMPTY STATE
-    // =========================================================
+    const formProgrammeId =
+        document.getElementById("formProgrammeId");
 
-    function showEmptyState() {
+    const formYear =
+        document.getElementById("formYear");
 
-
-        courseList.innerHTML =
-
-            '<div class="col-12">' +
-
-                '<div class="empty-state">' +
-
-                    '<i class="bi bi-journal-x fs-1"></i>' +
-
-                    '<h5 class="mt-3">' +
-
-                        'Select a programme and year' +
-
-                    '</h5>' +
-
-                    '<p>' +
-
-                        'Courses will appear here.' +
-
-                    '</p>' +
-
-                '</div>' +
-
-            '</div>';
+    const selectedCoursesInputs =
+        document.getElementById("selectedCoursesInputs");
 
 
-        courseCount.textContent =
-            "0 Courses";
+    /* ============================================================
+       INITIAL VALUES
+       ============================================================ */
+
+    const initialCollegeId =
+        "<%= initialCollegeId %>";
+
+    const initialProgrammeId =
+        "<%= selectedProgrammeId == null ? "" : selectedProgrammeId %>";
+
+    const initialTeacherId =
+        "<%= selectedTeacherId == null ? "" : selectedTeacherId %>";
+
+    const initialYear =
+        "<%= selectedYear == null ? "" : selectedYear %>";
 
 
-        selectedFilter.textContent =
-            "";
+    /* ============================================================
+       EMPTY STATE
+       ============================================================ */
+
+    function showEmptyState(title, text) {
+
+        coursesContainer.innerHTML =
+            "<div class=\"col-12\">" +
+
+                "<div class=\"assignment-empty-state\">" +
+
+                    "<div class=\"assignment-empty-icon\">" +
+
+                        "<i class=\"bi bi-funnel\"></i>" +
+
+                    "</div>" +
+
+                    "<h5>" +
+                        title +
+                    "</h5>" +
+
+                    "<p>" +
+                        text +
+                    "</p>" +
+
+                "</div>" +
+
+            "</div>";
+
+        courseSummary.classList.add("d-none");
+        saveCard.classList.add("d-none");
+    }
 
 
-        saveButton.disabled =
-            true;
+    /* ============================================================
+       LOAD PROGRAMMES
+       ============================================================ */
+
+    async function loadProgrammes(collegeId, selectedProgramme) {
+
+        /*
+         * No college selected.
+         */
+        if (!collegeId) {
+
+            programmeSelect.innerHTML =
+                "<option value=\"\">" +
+                    "Select College First" +
+                "</option>";
+
+            programmeSelect.disabled = true;
+
+            return;
+        }
+
+
+        /*
+         * Show loading state.
+         */
+        programmeSelect.disabled = true;
+
+        programmeSelect.innerHTML =
+            "<option value=\"\">" +
+                "Loading programmes..." +
+            "</option>";
+
+
+        try {
+
+            const url =
+                contextPath +
+                "/getProgrammes?collegeId=" +
+                encodeURIComponent(collegeId);
+
+
+            console.log(
+                "Loading programmes from:",
+                url
+            );
+
+
+            const response =
+                await fetch(url, {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store"
+                });
+
+
+            console.log(
+                "Programme response status:",
+                response.status
+            );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "HTTP " + response.status
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            console.log(
+                "Programme data:",
+                data
+            );
+
+
+            /*
+             * Reset dropdown.
+             */
+            programmeSelect.innerHTML =
+                "<option value=\"\">" +
+                    "Select Programme" +
+                "</option>";
+
+
+            /*
+             * Check returned data.
+             */
+            if (!Array.isArray(data) ||
+                data.length === 0) {
+
+                programmeSelect.innerHTML =
+                    "<option value=\"\">" +
+                        "No programmes found" +
+                    "</option>";
+
+                programmeSelect.disabled = true;
+
+                showEmptyState(
+                    "No Programmes Found",
+                    "The selected college does not have any programmes."
+                );
+
+                return;
+            }
+
+
+            /*
+             * Add programmes.
+             *
+             * IMPORTANT:
+             * GetProgrammesServlet returns:
+             *
+             * id
+             * name
+             *
+             */
+            data.forEach(function (programme) {
+
+                const option =
+                    document.createElement("option");
+
+                option.value =
+                    programme.id;
+
+                option.textContent =
+                    programme.name;
+
+                if (
+                    selectedProgramme &&
+                    String(programme.id) ===
+                    String(selectedProgramme)
+                ) {
+
+                    option.selected = true;
+
+                }
+
+                programmeSelect.appendChild(option);
+
+            });
+
+
+            /*
+             * Enable programme dropdown.
+             */
+            programmeSelect.disabled = false;
+
+
+            /*
+             * If everything is already selected,
+             * load courses automatically.
+             */
+            if (
+                teacherSelect.value &&
+                programmeSelect.value &&
+                yearSelect.value
+            ) {
+
+                loadCourses();
+
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Error loading programmes:",
+                error
+            );
+
+
+            programmeSelect.innerHTML =
+                "<option value=\"\">" +
+                    "Unable to load programmes" +
+                "</option>";
+
+            programmeSelect.disabled = true;
+
+
+            showEmptyState(
+                "Unable to Load Programmes",
+                "Please check the server and try selecting the college again."
+            );
+
+        }
 
     }
 
 
-
-    // =========================================================
-    // LOAD COURSES
-    // =========================================================
+    /* ============================================================
+       LOAD COURSES
+       ============================================================ */
 
     async function loadCourses() {
-
 
         const teacherId =
             teacherSelect.value;
 
-
         const programmeId =
             programmeSelect.value;
-
 
         const year =
             yearSelect.value;
 
 
-
-        // -----------------------------------------------------
-        // REQUIRE ALL THREE VALUES
-        // -----------------------------------------------------
-
-        if (!teacherId ||
+        /*
+         * Check all required selections.
+         */
+        if (
+            !teacherId ||
             !programmeId ||
-            !year) {
+            !year
+        ) {
 
-            showEmptyState();
+            showEmptyState(
+                "Complete the Selection",
+                "Select a teacher, programme and year to load courses."
+            );
 
             return;
-
         }
 
 
+        /*
+         * Show loading state.
+         */
+        coursesContainer.innerHTML =
+            "<div class=\"col-12\">" +
 
-        // -----------------------------------------------------
-        // RESET COURSE LIST
-        // -----------------------------------------------------
+                "<div class=\"assignment-empty-state\">" +
 
-        courseList.innerHTML = "";
+                    "<div class=\"assignment-empty-icon\">" +
 
-        courseCount.textContent =
-            "0 Courses";
+                        "<div class=\"spinner-border text-primary\" role=\"status\">" +
+                            "<span class=\"visually-hidden\">" +
+                                "Loading..." +
+                            "</span>" +
+                        "</div>" +
 
-        saveButton.disabled =
-            true;
+                    "</div>" +
 
+                    "<h5>Loading Courses</h5>" +
 
-        selectedFilter.textContent =
-            "Loading courses for Year " + year + "...";
+                    "<p>Please wait while the courses are loaded.</p>" +
 
+                "</div>" +
 
-        loadingCourses.classList.remove(
-            "d-none"
-        );
+            "</div>";
 
+        courseSummary.classList.add("d-none");
+        saveCard.classList.add("d-none");
 
 
         try {
-
-
-            // =================================================
-            // BUILD REQUEST
-            // =================================================
 
             const url =
                 contextPath +
@@ -1151,747 +1853,599 @@ String status =
                 "&programmeId=" +
                 encodeURIComponent(programmeId) +
                 "&year=" +
-                encodeURIComponent(year) +
-                "&_=" +
-                Date.now();
-
+                encodeURIComponent(year);
 
 
             console.log(
-                "Loading courses:",
+                "Loading courses from:",
                 url
             );
 
 
-
-            // =================================================
-            // REQUEST
-            // =================================================
-
             const response =
-                await fetch(
-                    url,
-                    {
-                        method: "GET",
-                        cache: "no-store",
-                        headers: {
-                            "Accept":
-                                "application/json"
-                        }
-                    }
-                );
+                await fetch(url, {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store"
+                });
 
 
+            console.log(
+                "Course response status:",
+                response.status
+            );
 
-            // =================================================
-            // CHECK HTTP STATUS
-            // =================================================
 
             if (!response.ok) {
 
                 throw new Error(
-                    "HTTP " +
-                    response.status
+                    "HTTP " + response.status
                 );
 
             }
 
 
-
-            // =================================================
-            // READ JSON
-            // =================================================
-
-            const courses =
+            const data =
                 await response.json();
 
 
-
             console.log(
-                "Courses returned by server:",
-                courses
+                "Course data:",
+                data
             );
 
 
-
-            // =================================================
-            // HIDE LOADING
-            // =================================================
-
-            loadingCourses.classList.add(
-                "d-none"
-            );
-
-
-
-            // =================================================
-            // ENSURE ARRAY
-            // =================================================
-
-            if (!Array.isArray(courses)) {
+            /*
+             * Expect an array.
+             */
+            if (!Array.isArray(data)) {
 
                 throw new Error(
-                    "Server returned invalid course data."
+                    "Invalid course response."
                 );
 
             }
 
 
-
-            // =================================================
-            // IMPORTANT:
-            // FILTER COURSES BY SELECTED YEAR
-            //
-            // The database query already filters by:
-            //
-            // programme_id
-            // +
-            // year_of_study
-            //
-            // This additional filter prevents a course from
-            // another year from accidentally appearing.
-            // =================================================
-
-            const selectedYear =
-                Number(year);
-
-
-            const filteredCourses =
-                courses.filter(
-                    function(course) {
-
-                        return Number(
-                            course.year_of_study
-                        ) === selectedYear;
-
-                    }
-                );
-
-
-
-            console.log(
-                "Selected year:",
-                selectedYear
-            );
-
-
-            console.log(
-                "Filtered courses:",
-                filteredCourses
-            );
-
-
-
-            // =================================================
-            // NO COURSES
-            // =================================================
-
-            if (
-                filteredCourses.length === 0
-            ) {
-
-
-                courseList.innerHTML =
-
-                    '<div class="col-12">' +
-
-                        '<div class="empty-state">' +
-
-                            '<i class="bi bi-journal-x fs-1"></i>' +
-
-                            '<h5 class="mt-3">' +
-
-                                'No courses found' +
-
-                            '</h5>' +
-
-                            '<p>' +
-
-                                'There are no courses for the ' +
-
-                                'selected programme and Year ' +
-
-                                selectedYear +
-
-                                '.' +
-
-                            '</p>' +
-
-                        '</div>' +
-
-                    '</div>';
-
-
-                courseCount.textContent =
-                    "0 Courses";
-
-
-                selectedFilter.textContent =
-                    "Programme selected • Year " +
-                    selectedYear;
-
-
-                saveButton.disabled =
-                    true;
-
-
-                return;
-
-            }
-
-
-
-            // =================================================
-            // COURSE COUNT
-            // =================================================
-
-            courseCount.textContent =
-                filteredCourses.length +
-                " Courses";
-
-
-            selectedFilter.textContent =
-                "Showing courses for Year " +
-                selectedYear;
-
-
-
-            // =================================================
-            // CREATE COURSE CARDS
-            // =================================================
-
-            filteredCourses.forEach(
-                function(course) {
-
-
-                    // -----------------------------------------
-                    // COLUMN
-                    // -----------------------------------------
-
-                    const column =
-                        document.createElement(
-                            "div"
-                        );
-
-
-                    column.className =
-                        "col-md-6 col-lg-4";
-
-
-
-                    // -----------------------------------------
-                    // CARD
-                    // -----------------------------------------
-
-                    const card =
-                        document.createElement(
-                            "div"
-                        );
-
-
-                    card.className =
-                        "course-card p-3 h-100";
-
-
-
-                    // -----------------------------------------
-                    // ASSIGNED STATUS
-                    // -----------------------------------------
-
-                    if (
-                        course.assigned === true
-                    ) {
-
-                        card.classList.add(
-                            "assigned"
-                        );
-
-                    }
-
-
-
-                    // -----------------------------------------
-                    // WRAPPER
-                    // -----------------------------------------
-
-                    const wrapper =
-                        document.createElement(
-                            "div"
-                        );
-
-
-                    wrapper.className =
-                        "form-check";
-
-
-
-                    // -----------------------------------------
-                    // CHECKBOX
-                    // -----------------------------------------
-
-                    const checkbox =
-                        document.createElement(
-                            "input"
-                        );
-
-
-                    checkbox.type =
-                        "checkbox";
-
-
-                    checkbox.className =
-                        "form-check-input course-checkbox";
-
-
-                    checkbox.value =
-                        course.id;
-
-
-                    checkbox.id =
-                        "course_" +
-                        course.id;
-
-
-
-                    // -----------------------------------------
-                    // CURRENT ASSIGNMENT
-                    // -----------------------------------------
-
-                    if (
-                        course.assigned === true
-                    ) {
-
-                        checkbox.checked =
-                            true;
-
-                    }
-
-
-
-                    // -----------------------------------------
-                    // LABEL
-                    // -----------------------------------------
-
-                    const label =
-                        document.createElement(
-                            "label"
-                        );
-
-
-                    label.className =
-                        "form-check-label w-100";
-
-
-                    label.setAttribute(
-                        "for",
-                        "course_" +
-                        course.id
-                    );
-
-
-
-                    // -----------------------------------------
-                    // COURSE CODE
-                    // -----------------------------------------
-
-                    const code =
-                        document.createElement(
-                            "div"
-                        );
-
-                    code.className =
-                        "course-code";
-
-                    code.textContent =
-                        course.course_code;
-
-
-                    // -----------------------------------------
-                    // COURSE NAME
-                    // -----------------------------------------
-
-                    const name =
-                        document.createElement(
-                            "div"
-                        );
-
-                    name.className =
-                        "course-name mt-1";
-
-                    name.textContent =
-                        course.course_name;
-
-
-
-                    // -----------------------------------------
-                    // YEAR
-                    // -----------------------------------------
-
-                    const yearText =
-                        document.createElement(
-                            "small"
-                        );
-
-
-                    yearText.className =
-                        "text-muted d-block mt-2";
-
-
-                    yearText.textContent =
-                        "Year " +
-                        selectedYear;
-
-
-
-                    // -----------------------------------------
-                    // ADD COURSE INFORMATION
-                    // -----------------------------------------
-
-                    label.appendChild(
-                        code
-                    );
-
-
-                    label.appendChild(
-                        name
-                    );
-
-
-                    label.appendChild(
-                        yearText
-                    );
-
-
-
-                    // -----------------------------------------
-                    // ASSIGNED BADGE
-                    // -----------------------------------------
-
-                    if (
-                        course.assigned === true
-                    ) {
-
-
-                        const badge =
-                            document.createElement(
-                                "span"
-                            );
-
-
-                        badge.className =
-                            "badge bg-success assigned-badge mt-2";
-
-
-                        badge.textContent =
-                            "Currently Assigned";
-
-
-                        label.appendChild(
-                            badge
-                        );
-
-                    }
-
-
-
-                    // -----------------------------------------
-                    // BUILD CARD
-                    // -----------------------------------------
-
-                    wrapper.appendChild(
-                        checkbox
-                    );
-
-
-                    wrapper.appendChild(
-                        label
-                    );
-
-
-                    card.appendChild(
-                        wrapper
-                    );
-
-
-                    column.appendChild(
-                        card
-                    );
-
-
-                    courseList.appendChild(
-                        column
-                    );
-
-                }
-            );
-
-
-
-            // =================================================
-            // ENABLE SAVE
-            // =================================================
-
-            saveButton.disabled =
-                false;
+            renderCourses(data);
 
 
         } catch (error) {
 
-
             console.error(
-                "Course loading error:",
+                "Error loading courses:",
                 error
             );
 
 
-            loadingCourses.classList.add(
-                "d-none"
+            showEmptyState(
+                "Unable to Load Courses",
+                "Please try again or check the server logs."
             );
-
-
-            courseCount.textContent =
-                "0 Courses";
-
-
-            selectedFilter.textContent =
-                "";
-
-
-            courseList.innerHTML =
-
-                '<div class="col-12">' +
-
-                    '<div class="alert alert-danger">' +
-
-                        '<i class="bi bi-exclamation-triangle me-2"></i>' +
-
-                        'Unable to load courses. ' +
-
-                        'Please check the server logs.' +
-
-                    '</div>' +
-
-                '</div>';
-
-
-            saveButton.disabled =
-                true;
 
         }
 
     }
 
 
+    /* ============================================================
+       RENDER COURSES
+       ============================================================ */
 
-    // =========================================================
-    // FILTER EVENTS
-    // =========================================================
+    function renderCourses(courses) {
+
+        coursesContainer.innerHTML = "";
+
+
+        if (
+            !courses ||
+            courses.length === 0
+        ) {
+
+            showEmptyState(
+                "No Courses Found",
+                "There are no courses for the selected programme and year."
+            );
+
+            return;
+
+        }
+
+
+        /*
+         * Update summary.
+         */
+        courseSummary.classList.remove("d-none");
+
+        courseSummaryText.textContent =
+            courses.length +
+            " course" +
+            (courses.length === 1 ? "" : "s") +
+            " found for the selected programme and year.";
+
+        courseCount.textContent =
+            courses.length +
+            " Course" +
+            (courses.length === 1 ? "" : "s");
+
+
+        /*
+         * Show save card.
+         */
+        saveCard.classList.remove("d-none");
+
+
+        /*
+         * Create each course.
+         */
+        courses.forEach(function (course) {
+
+            const courseId =
+                course.id;
+
+            const courseCode =
+                course.course_code || "";
+
+            const courseName =
+                course.course_name || "";
+
+            const courseYear =
+                course.year_of_study || "";
+
+
+            const assigned =
+                course.assigned === true ||
+                course.assigned === "true";
+
+
+            const assignedElsewhere =
+                course.assigned_to_another_teacher === true ||
+                course.assigned_to_another_teacher === "true";
+
+
+            const assignedTeacherName =
+                course.assigned_teacher_name || "";
+
+
+            const assignedTeacherStaff =
+                course.assigned_teacher_staff_number || "";
+
+
+            /*
+             * Determine status.
+             */
+            let statusHtml = "";
+            let checkboxDisabled = false;
+            let checkboxChecked = false;
+
+
+            if (assigned) {
+
+                statusHtml =
+                    "<span class=\"status-badge status-current\">" +
+                        "<i class=\"bi bi-check-circle\"></i>" +
+                        " Assigned to this teacher" +
+                    "</span>";
+
+                checkboxChecked = true;
+
+            } else if (assignedElsewhere) {
+
+                let teacherText =
+                    assignedTeacherName;
+
+                if (assignedTeacherStaff) {
+
+                    teacherText +=
+                        " (" +
+                        assignedTeacherStaff +
+                        ")";
+
+                }
+
+                statusHtml =
+                    "<span class=\"status-badge status-other\">" +
+                        "<i class=\"bi bi-person-lock\"></i>" +
+                        " Assigned Elsewhere" +
+                    "</span>";
+
+                if (teacherText) {
+
+                    statusHtml +=
+                        "<div class=\"small text-muted mt-1\">" +
+                            teacherText +
+                        "</div>";
+
+                }
+
+                checkboxDisabled = true;
+
+            } else {
+
+                statusHtml =
+                    "<span class=\"status-badge status-available\">" +
+                        "<i class=\"bi bi-circle\"></i>" +
+                        " Available" +
+                    "</span>";
+
+            }
+
+
+            /*
+             * Course item.
+             */
+            const item =
+                document.createElement("div");
+
+            item.className =
+                "col-12";
+
+
+            item.innerHTML =
+
+                "<div class=\"assignment-course-item\">" +
+
+                    "<div class=\"assignment-course-row\">" +
+
+                        "<input " +
+                            "type=\"checkbox\" " +
+                            "class=\"form-check-input assignment-course-checkbox course-checkbox\" " +
+                            "value=\"" +
+                                escapeHtml(String(courseId)) +
+                            "\" " +
+                            (checkboxChecked ? "checked " : "") +
+                            (checkboxDisabled ? "disabled " : "") +
+                        ">" +
+
+                        "<div class=\"assignment-course-icon\">" +
+
+                            "<i class=\"bi bi-journal-text\"></i>" +
+
+                        "</div>" +
+
+                        "<div class=\"assignment-course-information\">" +
+
+                            "<div class=\"assignment-course-code\">" +
+                                escapeHtml(courseCode) +
+                            "</div>" +
+
+                            "<div class=\"assignment-course-name\">" +
+                                escapeHtml(courseName) +
+                            "</div>" +
+
+                            "<div class=\"assignment-course-year\">" +
+                                "Year " +
+                                escapeHtml(String(courseYear)) +
+                            "</div>" +
+
+                        "</div>" +
+
+                        "<div class=\"assignment-status\">" +
+
+                            statusHtml +
+
+                        "</div>" +
+
+                    "</div>" +
+
+                "</div>";
+
+
+            coursesContainer.appendChild(item);
+
+        });
+
+
+        /*
+         * Add change listeners.
+         */
+        document
+            .querySelectorAll(".course-checkbox")
+            .forEach(function (checkbox) {
+
+                checkbox.addEventListener(
+                    "change",
+                    updateSaveButton
+                );
+
+            });
+
+
+        updateSaveButton();
+
+    }
+
+
+    /* ============================================================
+       UPDATE SAVE BUTTON
+       ============================================================ */
+
+    function updateSaveButton() {
+
+        const selected =
+            document.querySelectorAll(
+                ".course-checkbox:checked:not(:disabled)"
+            );
+
+
+        saveAssignmentsButton.disabled =
+            false;
+
+
+        if (selected.length > 0) {
+
+            saveAssignmentsButton.innerHTML =
+                "<i class=\"bi bi-check2-circle me-1\"></i>" +
+                "Save " +
+                selected.length +
+                " Assignment" +
+                (selected.length === 1 ? "" : "s");
+
+        } else {
+
+            saveAssignmentsButton.innerHTML =
+                "<i class=\"bi bi-check2-circle me-1\"></i>" +
+                "Save Assignments";
+
+        }
+
+    }
+
+
+    /* ============================================================
+       ESCAPE HTML
+       ============================================================ */
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+
+    }
+
+
+    /* ============================================================
+       TEACHER CHANGE
+       ============================================================ */
 
     teacherSelect.addEventListener(
         "change",
-        loadCourses
-    );
+        function () {
 
+            if (!teacherSelect.value) {
 
-    programmeSelect.addEventListener(
-        "change",
-        loadCourses
-    );
-
-
-    yearSelect.addEventListener(
-        "change",
-        loadCourses
-    );
-
-
-
-    // =========================================================
-    // SAVE ASSIGNMENTS
-    // =========================================================
-
-    saveButton.addEventListener(
-        "click",
-        function() {
-
-
-            const teacherId =
-                teacherSelect.value;
-
-
-            const programmeId =
-                programmeSelect.value;
-
-
-            const year =
-                yearSelect.value;
-
-
-
-            // -------------------------------------------------
-            // VALIDATE SELECTION
-            // -------------------------------------------------
-
-            if (
-                !teacherId ||
-                !programmeId ||
-                !year
-            ) {
-
-
-                alert(
-                    "Please select teacher, programme and year."
+                showEmptyState(
+                    "Select a Teacher",
+                    "Choose a teacher to continue."
                 );
-
 
                 return;
 
             }
 
 
+            if (
+                programmeSelect.value &&
+                yearSelect.value
+            ) {
 
-            // -------------------------------------------------
-            // SELECT CHECKED COURSES
-            // -------------------------------------------------
+                loadCourses();
 
-            const selectedCourses =
+            } else {
+
+                showEmptyState(
+                    "Complete the Selection",
+                    "Now select a college, programme and year."
+                );
+
+            }
+
+        }
+    );
+
+
+    /* ============================================================
+       COLLEGE CHANGE
+       ============================================================ */
+
+    collegeSelect.addEventListener(
+        "change",
+        function () {
+
+            const collegeId =
+                collegeSelect.value;
+
+
+            /*
+             * Reset courses immediately.
+             */
+            coursesContainer.innerHTML =
+                "<div class=\"col-12\">" +
+
+                    "<div class=\"assignment-empty-state\">" +
+
+                        "<div class=\"assignment-empty-icon\">" +
+
+                            "<i class=\"bi bi-funnel\"></i>" +
+
+                        "</div>" +
+
+                        "<h5>Select a Programme</h5>" +
+
+                        "<p>" +
+                            "Choose a programme and year to load courses." +
+                        "</p>" +
+
+                    "</div>" +
+
+                "</div>";
+
+
+            courseSummary.classList.add("d-none");
+            saveCard.classList.add("d-none");
+
+
+            /*
+             * Load programmes for selected college.
+             *
+             * THIS IS THE IMPORTANT FIX.
+             */
+            loadProgrammes(
+                collegeId,
+                ""
+            );
+
+        }
+    );
+
+
+    /* ============================================================
+       PROGRAMME CHANGE
+       ============================================================ */
+
+    programmeSelect.addEventListener(
+        "change",
+        function () {
+
+            if (
+                teacherSelect.value &&
+                programmeSelect.value &&
+                yearSelect.value
+            ) {
+
+                loadCourses();
+
+            } else {
+
+                showEmptyState(
+                    "Complete the Selection",
+                    "Select a teacher and year to load courses."
+                );
+
+            }
+
+        }
+    );
+
+
+    /* ============================================================
+       YEAR CHANGE
+       ============================================================ */
+
+    yearSelect.addEventListener(
+        "change",
+        function () {
+
+            if (
+                teacherSelect.value &&
+                programmeSelect.value &&
+                yearSelect.value
+            ) {
+
+                loadCourses();
+
+            } else {
+
+                showEmptyState(
+                    "Complete the Selection",
+                    "Select a teacher, programme and year to load courses."
+                );
+
+            }
+
+        }
+    );
+
+
+    /* ============================================================
+       SAVE ASSIGNMENTS
+       ============================================================ */
+
+    saveAssignmentsButton.addEventListener(
+        "click",
+        function () {
+
+            const teacherId =
+                teacherSelect.value;
+
+            const programmeId =
+                programmeSelect.value;
+
+            const year =
+                yearSelect.value;
+
+
+            /*
+             * Validate selections.
+             */
+            if (
+                !teacherId ||
+                !programmeId ||
+                !year
+            ) {
+
+                alert(
+                    "Please select a teacher, programme and year."
+                );
+
+                return;
+
+            }
+
+
+            /*
+             * Get selected courses.
+             */
+            const selectedCheckboxes =
                 document.querySelectorAll(
-                    ".course-checkbox:checked"
+                    ".course-checkbox:checked:not(:disabled)"
                 );
 
 
-
-            // -------------------------------------------------
-            // CREATE FORM
-            // -------------------------------------------------
-
-            const form =
-                document.createElement(
-                    "form"
-                );
+            /*
+             * Clear previous hidden inputs.
+             */
+            selectedCoursesInputs.innerHTML = "";
 
 
-            form.method =
-                "POST";
-
-
-            form.action =
-                contextPath +
-                "/assignCourse";
-
-
-
-            // -------------------------------------------------
-            // TEACHER
-            // -------------------------------------------------
-
-            const teacherInput =
-                document.createElement(
-                    "input"
-                );
-
-
-            teacherInput.type =
-                "hidden";
-
-
-            teacherInput.name =
-                "teacherId";
-
-
-            teacherInput.value =
+            /*
+             * Add teacher/programme/year.
+             */
+            formTeacherId.value =
                 teacherId;
 
-
-            form.appendChild(
-                teacherInput
-            );
-
-
-
-            // -------------------------------------------------
-            // PROGRAMME
-            // -------------------------------------------------
-
-            const programmeInput =
-                document.createElement(
-                    "input"
-                );
-
-
-            programmeInput.type =
-                "hidden";
-
-
-            programmeInput.name =
-                "programmeId";
-
-
-            programmeInput.value =
+            formProgrammeId.value =
                 programmeId;
 
-
-            form.appendChild(
-                programmeInput
-            );
-
-
-
-            // -------------------------------------------------
-            // YEAR
-            // -------------------------------------------------
-
-            const yearInput =
-                document.createElement(
-                    "input"
-                );
-
-
-            yearInput.type =
-                "hidden";
-
-
-            yearInput.name =
-                "year";
-
-
-            yearInput.value =
+            formYear.value =
                 year;
 
 
-            form.appendChild(
-                yearInput
-            );
-
-
-
-            // -------------------------------------------------
-            // COURSE IDS
-            // -------------------------------------------------
-
-            selectedCourses.forEach(
-                function(checkbox) {
-
+            /*
+             * Add selected course IDs.
+             */
+            selectedCheckboxes.forEach(
+                function (checkbox) {
 
                     const input =
-                        document.createElement(
-                            "input"
-                        );
-
+                        document.createElement("input");
 
                     input.type =
                         "hidden";
 
-
                     input.name =
                         "courseIds";
-
 
                     input.value =
                         checkbox.value;
 
-
-                    form.appendChild(
+                    selectedCoursesInputs.appendChild(
                         input
                     );
 
@@ -1899,31 +2453,62 @@ String status =
             );
 
 
-
-            // -------------------------------------------------
-            // SUBMIT
-            // -------------------------------------------------
-
-            document.body.appendChild(
-                form
-            );
+            /*
+             * Confirm.
+             */
+            const count =
+                selectedCheckboxes.length;
 
 
-            form.submit();
+            const confirmed =
+                confirm(
+                    "Save " +
+                    count +
+                    " selected course" +
+                    (count === 1 ? "" : "s") +
+                    " for this teacher?"
+                );
+
+
+            if (!confirmed) {
+                return;
+            }
+
+
+            /*
+             * Submit.
+             */
+            assignmentForm.submit();
 
         }
     );
 
 
+    /* ============================================================
+       INITIAL PAGE LOAD
+       ============================================================ */
 
-    // =========================================================
-    // INITIAL STATE
-    // =========================================================
+    document.addEventListener(
+        "DOMContentLoaded",
+        function () {
 
-    showEmptyState();
+            /*
+             * If a college is already known,
+             * load its programmes.
+             */
+            if (initialCollegeId) {
+
+                loadProgrammes(
+                    initialCollegeId,
+                    initialProgrammeId
+                );
+
+            }
+
+        }
+    );
 
 </script>
 
 </body>
-
 </html>
