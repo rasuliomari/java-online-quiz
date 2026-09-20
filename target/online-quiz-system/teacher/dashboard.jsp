@@ -340,7 +340,7 @@ if (totalQuizzes > 0) {
                 <li>
 
                     <a class="dropdown-item"
-                       href="#">
+                       href="profile.jsp">
 
                         <i class="bi bi-person me-2"></i>
 
@@ -354,7 +354,7 @@ if (totalQuizzes > 0) {
                 <li>
 
                     <a class="dropdown-item"
-                       href="#">
+                       href="settings.jsp">
 
                         <i class="bi bi-gear me-2"></i>
 
@@ -568,7 +568,7 @@ if (totalQuizzes > 0) {
 
 
 
-    <a href="#"
+    <a href="profile.jsp"
        class="sidebar-link">
 
         <i class="bi bi-person"></i>
@@ -581,7 +581,7 @@ if (totalQuizzes > 0) {
 
 
 
-    <a href="#"
+    <a href="settings.jsp"
        class="sidebar-link">
 
         <i class="bi bi-gear"></i>
